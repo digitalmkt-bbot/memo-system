@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  staff
+  manager
+  executive
+  admin
+}
+
+enum MemoStatus {
+  draft
+  pending_manager
+  pending_executive
+  approved
+  rejected
+  cancelled
+}
+
+model Company {
+  id          Int           @id @default(autoincrement())
+  code        String        @unique
+  name        String
+  createdAt   DateTime      @default(now()) @map("created_at")
+  departments Department[]
+  users       User[]
+  memos       Memo[]
+  running     MemoRunning[]
+
+  @@map("companies")
+}
+
+model Department {
+  id        Int     @id @default(autoincrement())
+  companyId Int     @map("company_id")
+  code      String
+  name      String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users     User[]
+  memos     Memo[]
+
+  @@unique([companyId, code])
+  @@map("departments")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  companyId    Int      @map("company_id")
+  departmentId Int?     @map("department_id")
+  employeeCode String   @unique @map("employee_code")
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(staff)
+  managerId    Int?     @map("manager_id")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  company       Company     @relation(fields: [companyId], references: [id])
+  department    Department? @relation(fields: [departmentId], references: [id])
+  manager       User?       @relation("Reports", fields: [managerId], references: [id])
+  reports       User[]      @relation("Reports")
+  createdMemos  Memo[]      @relation("Creator")
+  approverMemos Memo[]      @relation("CurrentApprover")
+  approvals     Approval[]
+
+  @@map("users")
+}
+
+model Memo {
+  id                Int        @id @default(autoincrement())
+  memoNo            String?    @unique @map("memo_no")
+  companyId         Int        @map("company_id")
+  departmentId      Int        @map("department_id")
+  date              DateTime   @default(now()) @db.Date
+  fromName          String     @map("from_name")
+  subject           String
+  attachment        String?
+  detail            String
+  status            MemoStatus @default(draft)
+  createdBy         Int        @map("created_by")
+  currentApproverId Int?       @map("current_approver_id")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at")
+  submittedAt       DateTime?  @map("submitted_at")
+  closedAt          DateTime?  @map("closed_at")
+
+  company         Company    @relation(fields: [companyId], references: [id])
+  department      Department @relation(fields: [departmentId], references: [id])
+  creator         User       @relation("Creator", fields: [createdBy], references: [id])
+  currentApprover User?      @relation("CurrentApprover", fields: [currentApproverId], references: [id])
+  approvals       Approval[]
+
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([createdBy])
+  @@index([currentApproverId])
+  @@index([status])
+  @@map("memos")
+}
+
+model Approval {
+  id         Int      @id @default(autoincrement())
+  memoId     Int      @map("memo_id")
+  step       String
+  approvedBy Int      @map("approved_by")
+  status     String
+  comment    String?
+  approvedAt DateTime @default(now()) @map("approved_at")
+
+  memo     Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  approver User @relation(fields: [approvedBy], references: [id])
+
+  @@index([memoId])
+  @@map("approvals")
+}
+
+model MemoRunning {
+  id         Int     @id @default(autoincrement())
+  companyId  Int     @map("company_id")
+  year       Int
+  month      Int
+  lastNumber Int     @default(0) @map("last_number")
+  company    Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, year, month])
+  @@map("memo_running")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  memoId    Int?     @map("memo_id")
+  userId    Int?     @map("user_id")
+  action    String
+  detail    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([memoId])
+  @@map("audit_log")
+}
