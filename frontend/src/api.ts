@@ -45,5 +45,20 @@ export const api = {
   monthly: () => http.get('/dashboard/monthly').then((r) => r.data),
   byCompany: () => http.get('/dashboard/company').then((r) => r.data),
   byDept: () => http.get('/dashboard/department').then((r) => r.data),
+  listAttachments: (memoId: number) => http.get(`/memos/${memoId}/attachments`).then((r) => r.data),
+  uploadAttachment: (memoId: number, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return http.post(`/memos/${memoId}/attachments`, fd).then((r) => r.data);
+  },
+  deleteAttachment: (memoId: number, attId: number) =>
+    http.delete(`/memos/${memoId}/attachments/${attId}`).then((r) => r.data),
+  downloadAttachment: async (memoId: number, attId: number, filename: string) => {
+    const res = await http.get(`/memos/${memoId}/attachments/${attId}`, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  },
   pdfUrl: (id: number) => `${BASE}/memos/${id}/pdf`,
 };

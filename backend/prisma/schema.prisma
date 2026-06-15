@@ -96,6 +96,7 @@ model Memo {
   creator         User       @relation("Creator", fields: [createdBy], references: [id])
   currentApprover User?      @relation("CurrentApprover", fields: [currentApproverId], references: [id])
   approvals       Approval[]
+  attachments     Attachment[]
 
   @@index([companyId])
   @@index([departmentId])
@@ -131,6 +132,22 @@ model MemoRunning {
 
   @@unique([companyId, year, month])
   @@map("memo_running")
+}
+
+model Attachment {
+  id         Int      @id @default(autoincrement())
+  memoId     Int      @map("memo_id")
+  filename   String
+  mimeType   String   @map("mime_type")
+  size       Int
+  data       Bytes
+  uploadedBy Int      @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+
+  @@index([memoId])
+  @@map("attachments")
 }
 
 model AuditLog {

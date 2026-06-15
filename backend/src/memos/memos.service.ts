@@ -241,4 +241,65 @@ export class MemosService {
       return this.shape(updated);
     });
   }
+
+  // ---- Attachments (stored in Postgres as bytea) ----
+  private async assertCanView(user: JwtUser, memo: any) {
+    const ok =
+      memo.createdBy === user.id || memo.currentApproverId === user.id ||
+      user.role === 'admin' || user.role === 'executive' ||
+      (user.role === 'manager' && memo.companyId === user.companyId && memo.departmentId === user.departmentId);
+    if (ok) return;
+    const ap = await this.prisma.approval.findFirst({ where: { memoId: memo.id, approvedBy: user.id } });
+    if (!ap) throw new ForbiddenException('Not allowed');
+  }
+
+  async addAttachment(user: JwtUser, memoId: number, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.createdBy !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Only the creator can attach files');
+    }
+    const att = await this.prisma.attachment.create({
+      data: {
+        memoId,
+        filename: file.originalname,
+        mimeType: file.mimetype || 'application/octet-stream',
+        size: file.size,
+        data: file.buffer,
+        uploadedBy: user.id,
+      },
+      select: { id: true, filename: true, mimeType: true, size: true, createdAt: true },
+    });
+    await this.audit(memoId, user.id, 'attachment_added', file.originalname);
+    return att;
+  }
+
+  async listAttachments(user: JwtUser, memoId: number) {
+    const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
+    if (!memo) throw new NotFoundException('Memo not found');
+    await this.assertCanView(user, memo);
+    return this.prisma.attachment.findMany({
+      where: { memoId },
+      select: { id: true, filename: true, mimeType: true, size: true, createdAt: true },
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  async getAttachment(user: JwtUser, memoId: number, attId: number) {
+    const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
+    if (!memo) throw new NotFoundException('Memo not found');
+    await this.assertCanView(user, memo);
+    const att = await this.prisma.attachment.findFirst({ where: { id: attId, memoId } });
+    if (!att) throw new NotFoundException('Attachment not found');
+    return att;
+  }
+
+  async deleteAttachment(user: JwtUser, memoId: number, attId: number) {
+    const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('Not allowed');
+    await this.prisma.attachment.deleteMany({ where: { id: attId, memoId } });
+    return { ok: true };
+  }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
@@ -14,6 +14,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
   const [companies, setCompanies] = useState<any[]>([]);
   const [depts, setDepts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MemoFormValues>({
     defaultValues: { companyId: 0, departmentId: 0, fromName: '', subject: '', attachment: '', detail: '', ...initial },
   });
@@ -33,11 +34,19 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
     attachment: v.attachment?.trim() || undefined, detail: v.detail.trim(),
   });
 
+  const uploadIfAny = async (id: number) => {
+    const f = fileRef.current?.files?.[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 10MB — ข้ามการแนบไฟล์'); return; }
+    try { await api.uploadAttachment(id, f); } catch (e: any) { alert('แนบไฟล์ไม่สำเร็จ: ' + e.message); }
+  };
+
   const saveDraft = handleSubmit(async (v) => {
     setBusy(true);
     try {
-      if (memoId) { await api.updateMemo(memoId, build(v)); nav('/memos'); }
-      else { await api.createMemo(build(v)); nav('/memos'); }
+      const id = memoId ? (await api.updateMemo(memoId, build(v)), memoId) : (await api.createMemo(build(v))).id;
+      await uploadIfAny(id);
+      nav('/memos');
     } finally { setBusy(false); }
   });
 
@@ -47,6 +56,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
       let id = memoId;
       if (id) await api.updateMemo(id, build(v));
       else { const m = await api.createMemo(build(v)); id = m.id; }
+      await uploadIfAny(id!);
       await api.submitMemo(id!);
       nav(`/memos/view/${id}`);
     } finally { setBusy(false); }
@@ -87,8 +97,12 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
         <label className="label">เรื่อง (Subject) *</label>
         <input className="input" {...register('subject', { required: true })} maxLength={200} />
 
-        <label className="label">สิ่งที่แนบมา (Attachment)</label>
-        <input className="input" {...register('attachment')} placeholder="เช่น ใบเสนอราคา 1 ฉบับ" />
+        <label className="label">หมายเหตุไฟล์แนบ (ข้อความ)</label>
+        <input className="input" {...register('attachment')} placeholder="เช่น ใบเสนอราคา 1 ฉบับ (คำอธิบาย)" />
+
+        <label className="label">แนบไฟล์ (อัปโหลด)</label>
+        <input ref={fileRef} type="file" className="text-[13px]" />
+        <p className="text-gray-400 text-[11px] mt-1">สูงสุด 10MB · แนบไฟล์เพิ่มได้ในหน้ารายละเอียดหลังบันทึก</p>
 
         <label className="label">รายละเอียด (Detail) *</label>
         <textarea className="input min-h-[220px] leading-7" {...register('detail', { required: true })}
