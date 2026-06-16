@@ -214,7 +214,7 @@ export class MemosService {
 
       let memoNo = memo.memoNo;
       if (!memoNo) {
-        const r = await tx.$queryRaw<{ no: string }[]>`SELECT next_memo_no(${memo.companyId}) AS no`;
+        const r = await tx.$queryRaw<{ no: string }[]>`SELECT next_memo_no(${memo.companyId}::int) AS no`;
         memoNo = r[0].no;
       }
       const updated = await tx.memo.update({
