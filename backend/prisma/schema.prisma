@@ -84,6 +84,7 @@ model Memo {
   attachment        String?
   detail            String
   status            MemoStatus @default(draft)
+  vat               Boolean    @default(false)
   createdBy         Int        @map("created_by")
   currentApproverId Int?       @map("current_approver_id")
   createdAt         DateTime   @default(now()) @map("created_at")

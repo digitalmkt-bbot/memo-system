@@ -1,4 +1,4 @@
-import { IsArray, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateMemoDto {
   @IsInt() companyId: number;
@@ -7,6 +7,7 @@ export class CreateMemoDto {
   @IsString() @MinLength(1) subject: string;
   @IsOptional() @IsString() attachment?: string;
   @IsString() @MinLength(1) detail: string;
+  @IsOptional() @IsBoolean() vat?: boolean;
   @IsOptional() @IsArray() items?: any[];
 }
 
@@ -17,6 +18,7 @@ export class UpdateMemoDto {
   @IsOptional() @IsString() subject?: string;
   @IsOptional() @IsString() attachment?: string;
   @IsOptional() @IsString() detail?: string;
+  @IsOptional() @IsBoolean() vat?: boolean;
   @IsOptional() @IsArray() items?: any[];
 }
 

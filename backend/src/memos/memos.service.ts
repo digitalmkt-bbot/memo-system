@@ -25,10 +25,14 @@ export class MemosService {
       lineTotal: (Number(it.qty) || 0) * (Number(it.unitPrice) || 0),
     }));
     const totalAmount = items.reduce((s: number, it: any) => s + it.lineTotal, 0);
+    const vatAmount = rest.vat ? totalAmount * 0.07 : 0;
+    const grandTotal = totalAmount + vatAmount;
     return {
       ...rest,
       items,
       totalAmount,
+      vatAmount,
+      grandTotal,
       creatorName: creator?.name ?? null,
       deptCode: department?.code ?? null,
       deptName: department?.name ?? null,
@@ -156,6 +160,7 @@ export class MemosService {
         fromName: dto.fromName.trim(), subject: dto.subject.trim(),
         attachment: dto.attachment?.trim() || null, detail: dto.detail.trim(),
         createdBy: user.id, status: 'draft',
+        vat: !!dto.vat,
         items: { create: items },
       },
       include: INCLUDE,
@@ -178,6 +183,7 @@ export class MemosService {
         subject: dto.subject ?? memo.subject,
         attachment: dto.attachment ?? memo.attachment,
         detail: dto.detail ?? memo.detail,
+        vat: dto.vat ?? memo.vat,
         ...(dto.items !== undefined
           ? { items: { deleteMany: {}, create: this.cleanItems(dto.items) } }
           : {}),

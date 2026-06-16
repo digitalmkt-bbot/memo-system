@@ -176,6 +176,7 @@ const TH: Dict = {
     colUnitPrice: 'ราคา/หน่วย', colAmount: 'รวม',
     addRow: '+ เพิ่มรายการ', total: 'ยอดรวม (ฐานอนุมัติ)',
     vatNote: 'VAT จะกำหนดตอนออกเอกสารจัดซื้อ', none: 'ยังไม่มีรายการ',
+    vatLabel: 'คิดภาษีมูลค่าเพิ่ม (VAT 7%)', subtotal: 'ยอดรวม', vatAmount: 'VAT 7%', grandTotal: 'ยอดรวมสุทธิ',
   },
   sign: {
     title: 'ลายมือชื่ออนุมัติ',
@@ -352,6 +353,7 @@ const EN: Dict = {
     colUnitPrice: 'Unit price', colAmount: 'Amount',
     addRow: '+ Add item', total: 'Total (approval base)',
     vatNote: 'VAT is set when the purchase document is issued', none: 'No items yet',
+    vatLabel: 'Apply VAT (7%)', subtotal: 'Subtotal', vatAmount: 'VAT 7%', grandTotal: 'Total (incl. VAT)',
   },
   sign: {
     title: 'Approval signatures',

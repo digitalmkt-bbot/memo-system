@@ -43,6 +43,8 @@ export class PdfService {
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
     const items = Array.isArray(memo.items) ? memo.items : [];
     const totalAmount = items.reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+    const vatAmount = memo.vat ? totalAmount * 0.07 : 0;
+    const grandTotal = totalAmount + vatAmount;
     const itemsBlock = items.length
       ? `<div class="items-label">รายการสินค้า / บริการ (Items)</div>
         <table class="items">
@@ -61,7 +63,12 @@ export class PdfService {
             <td class="num">${this.fmtMoney((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td>
           </tr>`).join('')}</tbody>
         </table>
-        <div class="total-box">ยอดรวม (ฐานอนุมัติ): <span class="amt">฿${this.fmtMoney(totalAmount)}</span></div>`
+        <div class="total-box">
+          <div>ยอดรวม (ฐานอนุมัติ): ฿${this.fmtMoney(totalAmount)}</div>
+          ${memo.vat
+            ? `<div>VAT 7%: ฿${this.fmtMoney(vatAmount)}</div><div style="margin-top:2px">ยอดรวมสุทธิ: <span class="amt">฿${this.fmtMoney(grandTotal)}</span></div>`
+            : `<div style="margin-top:2px"><span class="amt">฿${this.fmtMoney(totalAmount)}</span></div>`}
+        </div>`
       : '';
 
     return `<!doctype html><html lang="th"><head><meta charset="utf-8">

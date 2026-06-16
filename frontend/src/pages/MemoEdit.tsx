@@ -20,7 +20,7 @@ export function MemoEdit() {
         companyId: data.memo.companyId, departmentId: data.memo.departmentId,
         fromName: data.memo.fromName, subject: data.memo.subject,
         attachment: data.memo.attachment || '', detail: data.memo.detail,
-        items: data.memo.items || [],
+        items: data.memo.items || [], vat: !!data.memo.vat,
       }} />
     </>
   );

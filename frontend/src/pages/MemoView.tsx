@@ -34,7 +34,9 @@ export function MemoView() {
   const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
   const exeAppr = approvals.find((a: any) => a.approverRole === 'executive' && a.status === 'approve');
   const items = memo.items || [];
-  const grandTotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+  const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+  const vatAmount = memo.vat ? subtotal * 0.07 : 0;
+  const grandTotal = subtotal + vatAmount;
   const isCreator = memo.createdBy === user?.id;
   const isOpen = !['approved', 'rejected', 'cancelled'].includes(memo.status);
 
@@ -124,10 +126,15 @@ export function MemoView() {
                   </tbody>
                 </table>
               </div>
-              <div className="text-right mt-3">
-                <div className="text-slate-500 text-xs">{t('items.total')}</div>
-                <div className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</div>
-                <div className="text-slate-400 text-[11px]">{t('items.vatNote')}</div>
+              <div className="mt-3 flex justify-end">
+                <div className="min-w-[220px]">
+                  <div className="flex justify-between gap-8 text-[13px]"><span className="text-slate-500">{t('items.subtotal')}</span><span className="font-semibold">฿{money(subtotal)}</span></div>
+                  {memo.vat && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{t('items.vatAmount')}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
+                  <div className="flex justify-between gap-8 items-baseline mt-2 pt-2 border-t border-slate-200">
+                    <span className="text-slate-500 text-xs">{memo.vat ? t('items.grandTotal') : t('items.total')}</span>
+                    <span className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}

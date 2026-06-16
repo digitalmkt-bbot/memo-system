@@ -14,7 +14,7 @@ export type MemoFormValues = {
 const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const lineTotal = (r: MemoItemRow) => (Number(r.qty) || 0) * (Number(r.unitPrice) || 0);
 
-export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoFormValues> & { items?: MemoItemRow[] }); memoId?: number; status?: string }) {
+export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoFormValues> & { items?: MemoItemRow[]; vat?: boolean }); memoId?: number; status?: string }) {
   const nav = useNavigate();
   const { t, lang } = useI18n();
   const [companies, setCompanies] = useState<any[]>([]);
@@ -23,6 +23,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const [items, setItems] = useState<MemoItemRow[]>(initial?.items?.length
     ? initial.items.map((it) => ({ name: it.name || '', detail: it.detail || '', qty: it.qty ?? '', unit: it.unit || '', unitPrice: it.unitPrice ?? '' }))
     : []);
+  const [vat, setVat] = useState<boolean>(!!initial?.vat);
   const fileRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MemoFormValues>({
     defaultValues: { companyId: 0, departmentId: 0, fromName: '', subject: '', attachment: '', detail: '', ...initial },
@@ -37,10 +38,12 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     });
   }, [companyId]);
 
-  const addRow = () => setItems((xs) => [...xs, { name: '', detail: '', qty: '', unit: '', unitPrice: '' }]);
+  const addRow = () => setItems((xs) => [...xs, { name: '', detail: '', qty: 1, unit: '', unitPrice: '' }]);
   const removeRow = (i: number) => setItems((xs) => xs.filter((_, idx) => idx !== i));
   const setCell = (i: number, k: keyof MemoItemRow, v: any) => setItems((xs) => xs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const grandTotal = items.reduce((s, r) => s + lineTotal(r), 0);
+  const subtotal = items.reduce((s, r) => s + lineTotal(r), 0);
+  const vatAmount = vat ? subtotal * 0.07 : 0;
+  const grandTotal = subtotal + vatAmount;
 
   const cleanItems = () => items
     .filter((r) => String(r.name || '').trim())
@@ -50,6 +53,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     companyId: Number(v.companyId), departmentId: Number(v.departmentId),
     fromName: v.fromName.trim(), subject: v.subject.trim(),
     attachment: v.attachment?.trim() || undefined, detail: v.detail.trim(),
+    vat,
     items: cleanItems(),
   });
 
@@ -168,12 +172,21 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
-            <button type="button" className="btn btn-ghost !py-2 text-[13px]" onClick={addRow}>{t('items.addRow')}</button>
-            <div className="text-right">
-              <div className="text-slate-500 text-xs">{t('items.total')}</div>
-              <div className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</div>
-              <div className="text-slate-400 text-[11px]">{t('items.vatNote')}</div>
+          <div className="flex items-start justify-between mt-3 flex-wrap gap-4">
+            <div className="flex flex-col gap-3">
+              <button type="button" className="btn btn-ghost !py-2 text-[13px] self-start" onClick={addRow}>{t('items.addRow')}</button>
+              <label className="flex items-center gap-2 text-[13px] text-ink cursor-pointer select-none">
+                <input type="checkbox" className="w-4 h-4 accent-ocean" checked={vat} onChange={(e) => setVat(e.target.checked)} />
+                {t('items.vatLabel')}
+              </label>
+            </div>
+            <div className="text-right min-w-[200px]">
+              <div className="flex justify-between gap-8 text-[13px]"><span className="text-slate-500">{t('items.subtotal')}</span><span className="font-semibold">฿{money(subtotal)}</span></div>
+              {vat && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{t('items.vatAmount')}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
+              <div className="flex justify-between gap-8 items-baseline mt-2 pt-2 border-t border-slate-200">
+                <span className="text-slate-500 text-xs">{vat ? t('items.grandTotal') : t('items.total')}</span>
+                <span className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</span>
+              </div>
             </div>
           </div>
         </div>
