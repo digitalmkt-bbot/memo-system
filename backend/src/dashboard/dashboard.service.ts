@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { JwtUser } from '../auth/jwt.strategy';
 
@@ -98,5 +98,84 @@ export class DashboardService {
        ORDER BY count DESC`,
       ...params,
     );
+  }
+  // continuous time-series with zero-filled buckets (for the dashboard line chart)
+  async series(user: JwtUser, range = '30d') {
+    const params: any[] = [];
+    const p = (v: any) => { params.push(v); return `$${params.length}`; };
+    const scope: string[] = [];
+    if (user.role === 'manager') {
+      scope.push(`m.company_id = ${p(user.companyId)}`);
+      scope.push(`m.department_id = ${p(user.departmentId ?? -1)}`);
+    } else if (user.role === 'staff') {
+      scope.push(`m.created_by = ${p(user.id)}`);
+    }
+    const scopeClause = scope.length ? ' AND ' + scope.join(' AND ') : '';
+
+    const dayMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
+    let bucketsCTE: string; let joinTrunc: string; let labelFmt: string;
+    if (range === '12m') {
+      bucketsCTE = `SELECT generate_series(date_trunc('month', now()) - interval '11 months', date_trunc('month', now()), interval '1 month') AS d`;
+      joinTrunc = `date_trunc('month', m.created_at)`;
+      labelFmt = `to_char(b.d, 'YYYY-MM')`;
+    } else {
+      const n = dayMap[range] ?? 30;
+      bucketsCTE = `SELECT generate_series(date_trunc('day', now()) - ((${n} - 1) * interval '1 day'), date_trunc('day', now()), interval '1 day') AS d`;
+      joinTrunc = `date_trunc('day', m.created_at)`;
+      labelFmt = `to_char(b.d, 'DD Mon')`;
+    }
+    return this.prisma.$queryRawUnsafe<any[]>(
+      `WITH b AS (${bucketsCTE})
+       SELECT ${labelFmt} AS label,
+              COUNT(DISTINCT m.id)::int AS count,
+              COUNT(DISTINCT m.id) FILTER (WHERE m.status='approved')::int AS approved,
+              COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
+       FROM b
+       LEFT JOIN memos m ON ${joinTrunc} = b.d${scopeClause}
+       LEFT JOIN memo_items mi ON mi.memo_id = m.id
+       GROUP BY b.d ORDER BY b.d`,
+      ...params,
+    );
+  }
+
+  // demo data spread across the last ~3 months (admin only, idempotent on [DEMO] tag)
+  async demoSeed(user: JwtUser) {
+    if (user.role !== 'admin') throw new ForbiddenException('Admin only');
+    await this.prisma.memo.deleteMany({ where: { subject: { startsWith: '[DEMO]' } } });
+
+    const company = await this.prisma.company.findFirst();
+    if (!company) return { created: 0 };
+    const depts = await this.prisma.department.findMany({ where: { companyId: company.id } });
+    const staff = await this.prisma.user.findFirst({ where: { role: 'staff' } });
+    const mgr = await this.prisma.user.findFirst({ where: { role: 'manager' } });
+    const exe = await this.prisma.user.findFirst({ where: { role: 'executive' } });
+    const statuses = ['approved', 'approved', 'rejected', 'pending_executive', 'approved', 'pending_manager'];
+
+    let created = 0;
+    for (let i = 0; i < 36; i++) {
+      const daysAgo = Math.floor(Math.random() * 95) + 1;
+      const when = new Date(Date.now() - daysAgo * 86400000);
+      const dep = depts[i % depts.length];
+      const st = statuses[i % statuses.length];
+      const price = (Math.floor(Math.random() * 25) + 1) * 5000;
+      const qty = Math.floor(Math.random() * 3) + 1;
+      const closed = st === 'approved' || st === 'rejected';
+      await this.prisma.memo.create({
+        data: {
+          memoNo: `No.DEMO-${String(i + 1).padStart(3, '0')}`,
+          companyId: company.id, departmentId: dep.id,
+          date: when, createdAt: when,
+          fromName: `ฝ่าย${dep.name}`, subject: `[DEMO] ${dep.name} #${i + 1}`,
+          detail: 'ข้อมูลสาธิตย้อนหลังสำหรับกราฟ', status: st as any,
+          createdBy: staff?.id ?? 1,
+          currentApproverId: st === 'pending_manager' ? (mgr?.id ?? null) : st === 'pending_executive' ? (exe?.id ?? null) : null,
+          submittedAt: when, closedAt: closed ? when : null,
+          vat: i % 2 === 0,
+          items: { create: [{ position: 0, name: 'รายการสาธิต', detail: dep.name, qty, unit: 'รายการ', unitPrice: price }] },
+        },
+      });
+      created++;
+    }
+    return { created };
   }
 }

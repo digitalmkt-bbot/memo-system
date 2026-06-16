@@ -7,7 +7,6 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 
-// soft icon badges per metric (path = stroke icon)
 const STAT: Record<string, { color: string; tint: string; d: string }> = {
   inbox:             { color: '#7c6cf5', tint: '#ece9fd', d: 'M4 13h4l2 3h4l2-3h4M4 13l2-7h12l2 7M4 13v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5' },
   approved:          { color: '#10b981', tint: '#d8f6ec', d: 'M20 6 9 17l-5-5' },
@@ -16,8 +15,8 @@ const STAT: Record<string, { color: string; tint: string; d: string }> = {
   rejected:          { color: '#ef4444', tint: '#fbdcdc', d: 'M18 6 6 18M6 6l12 12' },
   total:             { color: '#8b5cf6', tint: '#ebe5fd', d: 'M4 7l8-4 8 4-8 4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4' },
 };
-
 const PIE_COLORS = ['#7c6cf5', '#22b8cf', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6'];
+const RANGES: [string, string][] = [['7d', 'r7d'], ['30d', 'r30d'], ['90d', 'r90d'], ['12m', 'r12m']];
 
 function Badge({ k }: { k: string }) {
   const s = STAT[k];
@@ -35,17 +34,17 @@ export function Dashboard() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [sum, setSum] = useState<Record<string, number>>({});
-  const [monthly, setMonthly] = useState<any[]>([]);
+  const [series, setSeries] = useState<any[]>([]);
+  const [range, setRange] = useState('30d');
   const [byCompany, setByCompany] = useState<any[]>([]);
 
   useEffect(() => {
     api.summary().then(setSum).catch(() => {});
-    api.monthly().then(setMonthly).catch(() => {});
     api.byCompany().then(setByCompany).catch(() => {});
   }, []);
+  useEffect(() => { api.series(range).then(setSeries).catch(() => {}); }, [range]);
 
   const cards = ['inbox', 'approved', 'pending_manager', 'pending_executive', 'rejected', 'total'];
-
   const pieData = byCompany.map((c) => ({ name: c.name || c.company || '—', value: Number(c.count) || 0 }));
   const pieTotal = pieData.reduce((a, b) => a + b.value, 0);
 
@@ -67,34 +66,40 @@ export function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
-        {/* monthly trend — line chart */}
         <div className="card p-5 lg:col-span-2">
-          <div className="font-bold text-ocean-dark text-sm mb-3">{t('dashboard.monthlyTitle')}</div>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="font-bold text-ocean-dark text-sm">{t('dashboard.monthlyTitle')}</div>
+            <div className="flex gap-1 bg-sand rounded-xl p-1 shadow-neu-inset">
+              {RANGES.map(([k, lbl]) => (
+                <button key={k} onClick={() => setRange(k)}
+                  className={'px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ' +
+                    (range === k ? 'bg-surface text-ocean-dark shadow-neu-sm' : 'text-slate-400 hover:text-slate-600')}>
+                  {t('dashboard.' + lbl)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="w-full h-64">
             <ResponsiveContainer>
-              <LineChart data={monthly} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+              <LineChart data={series} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
                 <defs>
                   <linearGradient id="lineTotal" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#9a7df3" />
-                    <stop offset="100%" stopColor="#6354e6" />
+                    <stop offset="0%" stopColor="#9a7df3" /><stop offset="100%" stopColor="#6354e6" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d9deea" vertical={false} />
-                <XAxis dataKey="month" fontSize={11} stroke="#94a3b8" tickLine={false} axisLine={false} />
+                <XAxis dataKey="label" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false}
+                  interval="preserveStartEnd" minTickGap={24} />
                 <YAxis allowDecimals={false} fontSize={11} stroke="#94a3b8" tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(45,50,69,0.15)' }} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(45,50,69,0.15)' }} />
                 <Legend />
-                <Line type="monotone" dataKey="count" name={t('dashboard.barTotal')} stroke="url(#lineTotal)"
-                  strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
-                <Line type="monotone" dataKey="approved" name={t('dashboard.barApproved')} stroke="#10b981"
-                  strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="count" name={t('dashboard.barTotal')} stroke="url(#lineTotal)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="approved" name={t('dashboard.barApproved')} stroke="#10b981" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* by company — donut chart */}
         <div className="card p-5">
           <div className="font-bold text-ocean-dark text-sm mb-3">{t('dashboard.byCompanyTitle')}</div>
           {pieData.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : (
@@ -102,8 +107,7 @@ export function Dashboard() {
               <div className="w-full h-44">
                 <ResponsiveContainer>
                   <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                      innerRadius={48} outerRadius={70} paddingAngle={2} stroke="none">
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={48} outerRadius={70} paddingAngle={2} stroke="none">
                       {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
                     <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(45,50,69,0.15)' }} />
@@ -117,9 +121,7 @@ export function Dashboard() {
                       <span className="w-2.5 h-2.5 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                       {d.name}
                     </span>
-                    <span className="font-semibold text-ocean-dark">
-                      {pieTotal ? Math.round((d.value / pieTotal) * 100) : 0}%
-                    </span>
+                    <span className="font-semibold text-ocean-dark">{pieTotal ? Math.round((d.value / pieTotal) * 100) : 0}%</span>
                   </div>
                 ))}
               </div>

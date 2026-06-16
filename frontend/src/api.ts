@@ -43,6 +43,8 @@ export const api = {
   rejectMemo: (id: number, comment: string) => http.post(`/memos/${id}/reject`, { comment }).then((r) => r.data),
   summary: () => http.get('/dashboard/summary').then((r) => r.data),
   monthly: () => http.get('/dashboard/monthly').then((r) => r.data),
+  series: (range: string) => http.get('/dashboard/series', { params: { range } }).then((r) => r.data),
+  demoSeed: () => http.post('/dashboard/demo-seed').then((r) => r.data),
   byCompany: () => http.get('/dashboard/company').then((r) => r.data),
   byDept: () => http.get('/dashboard/department').then((r) => r.data),
   listAttachments: (memoId: number) => http.get(`/memos/${memoId}/attachments`).then((r) => r.data),
