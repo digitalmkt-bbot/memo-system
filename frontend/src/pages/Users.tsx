@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { api } from '../api';
-import { ROLE_TH } from '../ui';
+import { useI18n } from '../i18n';
 
 export function Users() {
+  const { t, roleLabel } = useI18n();
   const [companies, setCompanies] = useState<any[]>([]);
   const [depts, setDepts] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -12,6 +13,8 @@ export function Users() {
     defaultValues: { role: 'staff', password: 'Password123!' },
   });
   const companyId = watch('companyId');
+
+  const ROLES = ['staff', 'manager', 'executive', 'admin'];
 
   useEffect(() => { api.companies().then((c) => { setCompanies(c); }); }, []);
   useEffect(() => { if (companyId) api.departments(Number(companyId)).then(setDepts); }, [companyId]);
@@ -23,16 +26,16 @@ export function Users() {
         companyId: Number(v.companyId), departmentId: v.departmentId ? Number(v.departmentId) : undefined,
         employeeCode: v.employeeCode, name: v.name, email: v.email, password: v.password, role: v.role,
       });
-      setMsg('เพิ่มผู้ใช้เรียบร้อย'); reset({ role: 'staff', password: 'Password123!' }); setOpen(false);
+      setMsg(t('users.added')); reset({ role: 'staff', password: 'Password123!' }); setOpen(false);
     } catch (e: any) { setMsg(e.message); }
   };
 
   return (
     <>
       <div className="flex items-center justify-between mb-5">
-        <div><h2 className="text-xl font-bold">จัดการผู้ใช้ (Users)</h2>
-          <p className="text-gray-500 text-[13px]">เฉพาะผู้ดูแลระบบ — เพิ่มผู้ใช้และกำหนดบทบาท</p></div>
-        <button className="btn btn-primary" onClick={() => setOpen((o) => !o)}>+ เพิ่มผู้ใช้</button>
+        <div><h2 className="text-xl font-bold">{t('users.title')}</h2>
+          <p className="text-gray-500 text-[13px]">{t('users.subtitle')}</p></div>
+        <button className="btn btn-primary" onClick={() => setOpen((o) => !o)}>{t('users.addUser')}</button>
       </div>
       {msg && <div className="mb-4 text-sm text-ocean-dark">{msg}</div>}
 
@@ -40,36 +43,36 @@ export function Users() {
         <div className="card p-6 max-w-2xl mb-6">
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid sm:grid-cols-2 gap-4">
-              <div><label className="label">รหัสพนักงาน *</label><input className="input" {...register('employeeCode', { required: true })} /></div>
-              <div><label className="label">ชื่อ *</label><input className="input" {...register('name', { required: true })} /></div>
-              <div><label className="label">อีเมล *</label><input className="input" type="email" {...register('email', { required: true })} /></div>
-              <div><label className="label">รหัสผ่าน *</label><input className="input" {...register('password', { required: true })} /></div>
-              <div><label className="label">บริษัท *</label>
+              <div><label className="label">{t('users.employeeCode')}</label><input className="input" {...register('employeeCode', { required: true })} /></div>
+              <div><label className="label">{t('users.name')}</label><input className="input" {...register('name', { required: true })} /></div>
+              <div><label className="label">{t('users.email')}</label><input className="input" type="email" {...register('email', { required: true })} /></div>
+              <div><label className="label">{t('users.password')}</label><input className="input" {...register('password', { required: true })} /></div>
+              <div><label className="label">{t('users.company')}</label>
                 <select className="input" {...register('companyId', { required: true })}>
-                  <option value="">— เลือก —</option>
+                  <option value="">{t('users.select')}</option>
                   {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select></div>
-              <div><label className="label">แผนก</label>
+              <div><label className="label">{t('users.department')}</label>
                 <select className="input" {...register('departmentId')}>
                   <option value="">—</option>
                   {depts.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
                 </select></div>
-              <div><label className="label">บทบาท *</label>
+              <div><label className="label">{t('users.role')}</label>
                 <select className="input" {...register('role', { required: true })}>
-                  {Object.entries(ROLE_TH).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {ROLES.map((k) => <option key={k} value={k}>{roleLabel(k)}</option>)}
                 </select></div>
             </div>
             <div className="flex gap-2.5 mt-4">
-              <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>ยกเลิก</button>
-              <button className="btn btn-primary">บันทึก</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
+              <button className="btn btn-primary">{t('common.save')}</button>
             </div>
           </form>
         </div>
       )}
 
       <div className="card p-5 text-sm text-gray-500">
-        การแสดงรายชื่อผู้ใช้ทั้งหมดต้องการ endpoint <code className="text-ocean">GET /users</code> (อยู่ใน Phase 2).
-        ปัจจุบันรองรับการ <span className="font-semibold text-ink">เพิ่มผู้ใช้</span> ผ่าน <code className="text-ocean">POST /auth/register</code>.
+        {t('users.note1')}<code className="text-ocean">GET /users</code>{t('users.note2')}
+        <span className="font-semibold text-ink">{t('users.note3')}</span>{t('users.note4')}<code className="text-ocean">POST /auth/register</code>.
       </div>
     </>
   );

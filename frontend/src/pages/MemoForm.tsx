@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { fmtDay } from '../ui';
+import { useI18n } from '../i18n';
 
 export type MemoFormValues = {
   companyId: number; departmentId: number;
@@ -11,6 +12,7 @@ export type MemoFormValues = {
 
 export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFormValues>; memoId?: number; status?: string }) {
   const nav = useNavigate();
+  const { t, lang } = useI18n();
   const [companies, setCompanies] = useState<any[]>([]);
   const [depts, setDepts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
@@ -37,8 +39,8 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
   const uploadIfAny = async (id: number) => {
     const f = fileRef.current?.files?.[0];
     if (!f) return;
-    if (f.size > 10 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 10MB — ข้ามการแนบไฟล์'); return; }
-    try { await api.uploadAttachment(id, f); } catch (e: any) { alert('แนบไฟล์ไม่สำเร็จ: ' + e.message); }
+    if (f.size > 10 * 1024 * 1024) { alert(t('form.fileTooBig')); return; }
+    try { await api.uploadAttachment(id, f); } catch (e: any) { alert(t('form.attachFailed') + e.message); }
   };
 
   const saveDraft = handleSubmit(async (v) => {
@@ -67,13 +69,13 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
       <form>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="label">บริษัท (Company) *</label>
+            <label className="label">{t('form.company')}</label>
             <select className="input" {...register('companyId', { required: true })}>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">แผนก (Department) *</label>
+            <label className="label">{t('form.department')}</label>
             <select className="input" {...register('departmentId', { required: true })}>
               {depts.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
             </select>
@@ -82,36 +84,36 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="label">วันที่ (Date)</label>
-            <input className="input bg-gray-50" value={fmtDay(new Date().toISOString())} disabled />
+            <label className="label">{t('form.date')}</label>
+            <input className="input bg-gray-50" value={fmtDay(new Date().toISOString(), lang)} disabled />
           </div>
           <div>
-            <label className="label">เลขที่ (Memo Number)</label>
-            <input className="input bg-gray-50" value={memoId && status !== 'draft' ? '— ออกแล้ว —' : 'ออกอัตโนมัติเมื่อส่ง'} disabled />
+            <label className="label">{t('form.memoNumber')}</label>
+            <input className="input bg-gray-50" value={memoId && status !== 'draft' ? t('form.memoIssued') : t('form.memoAuto')} disabled />
           </div>
         </div>
 
-        <label className="label">จาก (From) *</label>
-        <input className="input" {...register('fromName', { required: true })} placeholder="ชื่อผู้ส่ง / หน่วยงาน" />
+        <label className="label">{t('form.from')}</label>
+        <input className="input" {...register('fromName', { required: true })} placeholder={t('form.fromPlaceholder')} />
 
-        <label className="label">เรื่อง (Subject) *</label>
+        <label className="label">{t('form.subject')}</label>
         <input className="input" {...register('subject', { required: true })} maxLength={200} />
 
-        <label className="label">หมายเหตุไฟล์แนบ (ข้อความ)</label>
-        <input className="input" {...register('attachment')} placeholder="เช่น ใบเสนอราคา 1 ฉบับ (คำอธิบาย)" />
+        <label className="label">{t('form.attachmentNote')}</label>
+        <input className="input" {...register('attachment')} placeholder={t('form.attachmentNotePlaceholder')} />
 
-        <label className="label">แนบไฟล์ (อัปโหลด)</label>
+        <label className="label">{t('form.attachFile')}</label>
         <input ref={fileRef} type="file" className="text-[13px]" />
-        <p className="text-gray-400 text-[11px] mt-1">สูงสุด 10MB · แนบไฟล์เพิ่มได้ในหน้ารายละเอียดหลังบันทึก</p>
+        <p className="text-gray-400 text-[11px] mt-1">{t('form.attachHint')}</p>
 
-        <label className="label">รายละเอียด (Detail) *</label>
+        <label className="label">{t('form.detail')}</label>
         <textarea className="input min-h-[220px] leading-7" {...register('detail', { required: true })}
-          placeholder="แสดงอย่างน้อย 9 บรรทัด…" />
-        {errors.detail && <p className="text-red-500 text-xs mt-1">กรุณากรอกรายละเอียด</p>}
+          placeholder={t('form.detailPlaceholder')} />
+        {errors.detail && <p className="text-red-500 text-xs mt-1">{t('form.detailRequired')}</p>}
 
         <div className="flex gap-2.5 mt-4">
-          <button type="button" className="btn btn-ghost" onClick={saveDraft} disabled={busy}>บันทึกฉบับร่าง</button>
-          <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>ส่งเพื่ออนุมัติ</button>
+          <button type="button" className="btn btn-ghost" onClick={saveDraft} disabled={busy}>{t('form.saveDraft')}</button>
+          <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>{t('form.submit')}</button>
         </div>
       </form>
     </div>

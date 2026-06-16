@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { StatusTag, fmtDate, fmtDay, ROLE_TH } from '../ui';
+import { StatusTag, fmtDate, fmtDay } from '../ui';
 import { useAuth } from '../auth';
+import { useI18n } from '../i18n';
 
 function fmtSize(n: number) {
   if (n < 1024) return n + ' B';
@@ -14,6 +15,7 @@ export function MemoView() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const { t, lang, roleLabel } = useI18n();
   const mid = Number(id);
   const [data, setData] = useState<any>(null);
   const [atts, setAtts] = useState<any[]>([]);
@@ -25,7 +27,7 @@ export function MemoView() {
   const load = () => api.memo(mid).then(setData).catch(() => nav('/memos'));
   const loadAtts = () => api.listAttachments(mid).then(setAtts).catch(() => setAtts([]));
   useEffect(() => { load(); loadAtts(); }, [mid]);
-  if (!data) return <div className="card p-6">กำลังโหลด…</div>;
+  if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
   const isCreator = memo.createdBy === user?.id;
@@ -34,7 +36,7 @@ export function MemoView() {
   const act = async () => {
     try {
       if (modal === 'approve') await api.approveMemo(mid, comment);
-      else if (modal === 'reject') { if (!comment.trim()) return alert('กรุณาระบุเหตุผล'); await api.rejectMemo(mid, comment); }
+      else if (modal === 'reject') { if (!comment.trim()) return alert(t('view.reasonRequired')); await api.rejectMemo(mid, comment); }
       setModal(null); setComment(''); load();
     } catch (e: any) { alert(e.message); }
   };
@@ -43,27 +45,27 @@ export function MemoView() {
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.size > 10 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 10MB'); return; }
+    if (f.size > 10 * 1024 * 1024) { alert(t('view.fileTooBig')); return; }
     setUploading(true);
     try { await api.uploadAttachment(mid, f); await loadAtts(); }
     catch (err: any) { alert(err.message); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
   };
   const del = async (attId: number) => {
-    if (!confirm('ลบไฟล์นี้?')) return;
+    if (!confirm(t('view.delFileConfirm'))) return;
     try { await api.deleteAttachment(mid, attId); await loadAtts(); } catch (e: any) { alert(e.message); }
   };
 
   const steps: any[] = [
-    { c: '#1a9d5a', t: 'สร้างบันทึก', w: memo.creatorName, d: memo.createdAt },
-    ...(memo.submittedAt ? [{ c: '#1a9d5a', t: 'ส่งเพื่ออนุมัติ', w: memo.creatorName, d: memo.submittedAt }] : []),
+    { c: '#1a9d5a', t: t('view.stepCreate'), w: memo.creatorName, d: memo.createdAt },
+    ...(memo.submittedAt ? [{ c: '#1a9d5a', t: t('view.stepSubmit'), w: memo.creatorName, d: memo.submittedAt }] : []),
     ...approvals.map((a: any) => ({
       c: a.status === 'approve' ? '#1a9d5a' : '#d23c3c',
-      t: `${ROLE_TH[a.approverRole] || a.approverRole} ${a.status === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ'}`,
+      t: `${roleLabel(a.approverRole)} ${a.status === 'approve' ? t('view.stepApprove') : t('view.stepReject')}`,
       w: a.approverName, d: a.approvedAt, cm: a.comment,
     })),
-    ...(memo.status === 'pending_manager' ? [{ c: '#b9c4cc', t: 'รอหัวหน้าอนุมัติ', w: memo.currentApproverName, d: null }] : []),
-    ...(memo.status === 'pending_executive' ? [{ c: '#b9c4cc', t: 'รอผู้บริหารอนุมัติ', w: memo.currentApproverName, d: null }] : []),
+    ...(memo.status === 'pending_manager' ? [{ c: '#b9c4cc', t: t('view.waitManager'), w: memo.currentApproverName, d: null }] : []),
+    ...(memo.status === 'pending_executive' ? [{ c: '#b9c4cc', t: t('view.waitExecutive'), w: memo.currentApproverName, d: null }] : []),
   ];
 
   return (
@@ -71,38 +73,38 @@ export function MemoView() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold">{memo.subject}</h2>
-          <p className="text-gray-500 text-[12.5px]">{memo.memoNo || 'ฉบับร่าง'} · {memo.companyCode}/{memo.deptCode} · จาก {memo.fromName}</p>
+          <p className="text-gray-500 text-[12.5px]">{memo.memoNo || t('view.draft')} · {memo.companyCode}/{memo.deptCode} · {t('view.from')} {memo.fromName}</p>
         </div>
-        <button className="btn btn-ghost !py-1.5" onClick={() => nav(-1)}>← กลับ</button>
+        <button className="btn btn-ghost !py-1.5" onClick={() => nav(-1)}>{t('common.back')}</button>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-5">
         <div className="card p-6">
-          <div className="flex items-center gap-2"><StatusTag s={memo.status} /><span className="text-gray-400 text-xs">วันที่ {fmtDay(memo.date)}</span></div>
+          <div className="flex items-center gap-2"><StatusTag s={memo.status} /><span className="text-gray-400 text-xs">{t('view.dateLabel')} {fmtDay(memo.date, lang)}</span></div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm">
-            <div><span className="text-gray-500">จาก:</span> {memo.fromName}</div>
-            <div><span className="text-gray-500">แผนก:</span> {memo.deptName}</div>
-            <div className="col-span-2"><span className="text-gray-500">หมายเหตุไฟล์แนบ:</span> {memo.attachment || '—'}</div>
+            <div><span className="text-gray-500">{t('view.from')}:</span> {memo.fromName}</div>
+            <div><span className="text-gray-500">{t('view.dept')}:</span> {memo.deptName}</div>
+            <div className="col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
           </div>
           <div className="whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-sm leading-7 min-h-[200px]">{memo.detail}</div>
 
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
-              <button className="btn btn-green" onClick={() => setModal('approve')}>✓ อนุมัติ</button>
-              <button className="btn btn-red" onClick={() => setModal('reject')}>✕ ไม่อนุมัติ</button>
+              <button className="btn btn-green" onClick={() => setModal('approve')}>{t('view.approve')}</button>
+              <button className="btn btn-red" onClick={() => setModal('reject')}>{t('view.reject')}</button>
             </>}
             {isCreator && memo.status === 'draft' && <>
-              <button className="btn btn-primary" onClick={submit}>ส่งเพื่ออนุมัติ</button>
-              <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>แก้ไข</button>
+              <button className="btn btn-primary" onClick={submit}>{t('view.submit')}</button>
+              <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             </>}
-            {memo.memoNo && <a className="btn btn-ghost" href={api.pdfUrl(mid)} target="_blank" rel="noreferrer">ดาวน์โหลด PDF</a>}
+            {memo.memoNo && <a className="btn btn-ghost" href={api.pdfUrl(mid)} target="_blank" rel="noreferrer">{t('view.downloadPdf')}</a>}
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="card p-5">
-            <div className="font-bold text-ocean-dark text-sm mb-3">ไฟล์แนบ ({atts.length})</div>
-            {atts.length === 0 && <p className="text-gray-400 text-[13px] mb-2">ยังไม่มีไฟล์แนบ</p>}
+            <div className="font-bold text-ocean-dark text-sm mb-3">{t('view.attachments')} ({atts.length})</div>
+            {atts.length === 0 && <p className="text-gray-400 text-[13px] mb-2">{t('view.noAttachments')}</p>}
             {atts.map((a) => (
               <div key={a.id} className="flex items-center justify-between py-1.5 border-b border-dashed border-gray-200 last:border-0 text-[13px]">
                 <button className="text-ocean hover:underline text-left truncate mr-2" title={a.filename}
@@ -111,26 +113,26 @@ export function MemoView() {
                 </button>
                 <span className="flex items-center gap-2 shrink-0">
                   <span className="text-gray-400 text-[11px]">{fmtSize(a.size)}</span>
-                  {isCreator && isOpen && <button className="text-red-500 text-xs" onClick={() => del(a.id)}>ลบ</button>}
+                  {isCreator && isOpen && <button className="text-red-500 text-xs" onClick={() => del(a.id)}>{t('view.del')}</button>}
                 </span>
               </div>
             ))}
             {isCreator && isOpen && (
               <div className="mt-3">
                 <input ref={fileRef} type="file" onChange={onPick} disabled={uploading} className="text-[12px]" />
-                {uploading && <p className="text-gray-400 text-xs mt-1">กำลังอัปโหลด…</p>}
-                <p className="text-gray-400 text-[11px] mt-1">สูงสุด 10MB ต่อไฟล์</p>
+                {uploading && <p className="text-gray-400 text-xs mt-1">{t('view.uploading')}</p>}
+                <p className="text-gray-400 text-[11px] mt-1">{t('view.maxPerFile')}</p>
               </div>
             )}
           </div>
 
           <div className="card p-5 h-fit">
-            <div className="font-bold text-ocean-dark text-sm mb-3">เส้นทางการอนุมัติ</div>
+            <div className="font-bold text-ocean-dark text-sm mb-3">{t('view.approvalPath')}</div>
             {steps.map((s, i) => (
               <div key={i} className="relative pl-4 pb-3.5 border-l-2 last:border-l-transparent border-gray-200">
                 <span className="absolute -left-[7px] top-0.5 w-3 h-3 rounded-full border-2 border-white" style={{ background: s.c }} />
                 <div className="text-[13px] font-semibold">{s.t}</div>
-                <div className="text-gray-400 text-[11.5px]">{s.w}{s.d ? ' · ' + fmtDate(s.d) : ' · รอดำเนินการ'}</div>
+                <div className="text-gray-400 text-[11.5px]">{s.w}{s.d ? ' · ' + fmtDate(s.d, lang) : ' · ' + t('view.pendingAction')}</div>
                 {s.cm && <div className="bg-ocean-light text-ocean-dark px-2.5 py-1.5 rounded-md mt-1.5 text-[12px]">💬 {s.cm}</div>}
               </div>
             ))}
@@ -141,12 +143,12 @@ export function MemoView() {
       {modal && (
         <div className="fixed inset-0 bg-ink/50 grid place-items-center p-5 z-50" onClick={() => setModal(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold">{modal === 'approve' ? 'ยืนยันการอนุมัติ' : 'ยืนยันการไม่อนุมัติ'}</h3>
-            <p className="text-gray-500 text-[13px] mt-1">{modal === 'approve' ? 'เพิ่มความคิดเห็น (ถ้ามี)' : 'กรุณาระบุเหตุผล'}</p>
+            <h3 className="text-lg font-bold">{modal === 'approve' ? t('view.confirmApprove') : t('view.confirmReject')}</h3>
+            <p className="text-gray-500 text-[13px] mt-1">{modal === 'approve' ? t('view.addComment') : t('view.provideReason')}</p>
             <textarea className="input min-h-[90px] mt-2.5" value={comment} onChange={(e) => setComment(e.target.value)} />
             <div className="flex gap-2.5 justify-end mt-4">
-              <button className="btn btn-ghost" onClick={() => setModal(null)}>ยกเลิก</button>
-              <button className={'btn ' + (modal === 'approve' ? 'btn-green' : 'btn-red')} onClick={act}>{modal === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ'}</button>
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>{t('common.cancel')}</button>
+              <button className={'btn ' + (modal === 'approve' ? 'btn-green' : 'btn-red')} onClick={act}>{modal === 'approve' ? t('view.approveBtn') : t('view.rejectBtn')}</button>
             </div>
           </div>
         </div>

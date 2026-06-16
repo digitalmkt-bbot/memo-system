@@ -1,10 +1,5 @@
-export const STATUS_TH: Record<string, string> = {
-  draft: 'ฉบับร่าง', pending_manager: 'รอหัวหน้า', pending_executive: 'รอผู้บริหาร',
-  approved: 'อนุมัติแล้ว', rejected: 'ไม่อนุมัติ', cancelled: 'ยกเลิก',
-};
-export const ROLE_TH: Record<string, string> = {
-  staff: 'พนักงาน', manager: 'หัวหน้างาน', executive: 'ผู้บริหาร', admin: 'ผู้ดูแลระบบ',
-};
+import { useI18n, getStoredLang, Lang } from './i18n';
+
 const STATUS_CLS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
   pending_manager: 'bg-amber-100 text-amber-700',
@@ -15,12 +10,17 @@ const STATUS_CLS: Record<string, string> = {
 };
 
 export function StatusTag({ s }: { s: string }) {
-  return <span className={'tag ' + (STATUS_CLS[s] || 'bg-gray-100 text-gray-600')}>{STATUS_TH[s] || s}</span>;
+  const { statusLabel } = useI18n();
+  return <span className={'tag ' + (STATUS_CLS[s] || 'bg-gray-100 text-gray-600')}>{statusLabel(s)}</span>;
 }
 
-export function fmtDate(s?: string) {
-  return s ? new Date(s).toLocaleString('th-TH', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+function locale(l: Lang) { return l === 'th' ? 'th-TH' : 'en-GB'; }
+
+export function fmtDate(s?: string, lang?: Lang) {
+  const lc = locale(lang || getStoredLang());
+  return s ? new Date(s).toLocaleString(lc, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 }
-export function fmtDay(s?: string) {
-  return s ? new Date(s).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+export function fmtDay(s?: string, lang?: Lang) {
+  const lc = locale(lang || getStoredLang());
+  return s ? new Date(s).toLocaleDateString(lc, { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 }
