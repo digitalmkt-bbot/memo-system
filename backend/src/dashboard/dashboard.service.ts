@@ -138,6 +138,60 @@ export class DashboardService {
     );
   }
 
+  // filtered overview for the PR/PO-style dashboard (cards + total value + by-dept value + recent)
+  async overview(user: JwtUser, from?: string, to?: string, status?: string) {
+    const where: any = this.scopeWhere(user);
+    const range: any = {};
+    if (from) range.gte = new Date(from);
+    if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); range.lte = d; }
+    if (from || to) where.createdAt = range;
+    if (status && status !== 'all') where.status = status;
+
+    const grouped = await this.prisma.memo.groupBy({ by: ['status'], where, _count: { _all: true } });
+    const counts: any = { draft: 0, pending_manager: 0, pending_executive: 0, approved: 0, rejected: 0, cancelled: 0 };
+    for (const g of grouped) counts[g.status] = g._count._all;
+    counts.total = Object.values(counts).reduce((a: any, b: any) => a + b, 0);
+    counts.inbox = await this.prisma.memo.count({
+      where: { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_executive'] } },
+    });
+
+    // raw conditions (alias m) mirroring the same filters, for amount sums
+    const params: any[] = [];
+    const p = (v: any) => { params.push(v); return `$${params.length}`; };
+    const conds: string[] = ['1=1'];
+    if (user.role === 'manager') { conds.push(`m.company_id = ${p(user.companyId)}`); conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`); }
+    else if (user.role === 'staff') conds.push(`m.created_by = ${p(user.id)}`);
+    if (from) conds.push(`m.created_at >= ${p(new Date(from))}`);
+    if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); conds.push(`m.created_at <= ${p(d)}`); }
+    if (status && status !== 'all') conds.push(`m.status = ${p(status)}`);
+    const clause = conds.join(' AND ');
+
+    const totalRow = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
+       FROM memos m LEFT JOIN memo_items mi ON mi.memo_id = m.id WHERE ${clause}`, ...params);
+    const totalAmount = totalRow[0]?.amount ?? 0;
+
+    const byDept = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT d.name AS department, d.code AS code, COUNT(DISTINCT m.id)::int AS count,
+              COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
+       FROM memos m JOIN departments d ON d.id = m.department_id
+       LEFT JOIN memo_items mi ON mi.memo_id = m.id WHERE ${clause}
+       GROUP BY d.name, d.code ORDER BY amount DESC, count DESC`, ...params);
+
+    const recentRaw = await this.prisma.memo.findMany({
+      where, orderBy: { createdAt: 'desc' }, take: 8,
+      include: { department: { select: { name: true, code: true } }, items: true },
+    });
+    const recent = recentRaw.map((m: any) => ({
+      id: m.id, memoNo: m.memoNo, subject: m.subject, status: m.status,
+      department: m.department?.name ?? null, deptCode: m.department?.code ?? null,
+      amount: (m.items || []).reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
+      createdAt: m.createdAt,
+    }));
+
+    return { summary: counts, totalAmount, byDept, recent };
+  }
+
   // demo data spread across the last ~3 months (admin only, idempotent on [DEMO] tag)
   async demoSeed(user: JwtUser) {
     if (user.role !== 'admin') throw new ForbiddenException('Admin only');

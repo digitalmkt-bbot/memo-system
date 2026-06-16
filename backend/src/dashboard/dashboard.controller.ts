@@ -16,6 +16,11 @@ export class DashboardController {
   @Get('series')
   series(@Req() req: any, @Query('range') range?: string) { return this.svc.series(req.user, range || '30d'); }
 
+  @Get('overview')
+  overview(@Req() req: any, @Query('from') from?: string, @Query('to') to?: string, @Query('status') status?: string) {
+    return this.svc.overview(req.user, from, to, status);
+  }
+
   @Get('company')
   byCompany(@Req() req: any) { return this.svc.byCompany(req.user); }
 

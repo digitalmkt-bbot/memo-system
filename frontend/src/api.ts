@@ -45,6 +45,7 @@ export const api = {
   monthly: () => http.get('/dashboard/monthly').then((r) => r.data),
   series: (range: string) => http.get('/dashboard/series', { params: { range } }).then((r) => r.data),
   demoSeed: () => http.post('/dashboard/demo-seed').then((r) => r.data),
+  overview: (params: Record<string, string> = {}) => http.get('/dashboard/overview', { params }).then((r) => r.data),
   byCompany: () => http.get('/dashboard/company').then((r) => r.data),
   byDept: () => http.get('/dashboard/department').then((r) => r.data),
   listAttachments: (memoId: number) => http.get(`/memos/${memoId}/attachments`).then((r) => r.data),
