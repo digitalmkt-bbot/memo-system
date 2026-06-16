@@ -36,16 +36,16 @@ export function Dashboard() {
   const [sum, setSum] = useState<Record<string, number>>({});
   const [series, setSeries] = useState<any[]>([]);
   const [range, setRange] = useState('30d');
-  const [byCompany, setByCompany] = useState<any[]>([]);
+  const [byDept, setByDept] = useState<any[]>([]);
 
   useEffect(() => {
     api.summary().then(setSum).catch(() => {});
-    api.byCompany().then(setByCompany).catch(() => {});
+    api.byDept().then(setByDept).catch(() => {});
   }, []);
   useEffect(() => { api.series(range).then(setSeries).catch(() => {}); }, [range]);
 
   const cards = ['inbox', 'approved', 'pending_manager', 'pending_executive', 'rejected', 'total'];
-  const pieData = byCompany.map((c) => ({ name: c.name || c.company || '—', value: Number(c.count) || 0 }));
+  const pieData = byDept.map((d) => ({ name: d.department || '—', value: Number(d.count) || 0 }));
   const pieTotal = pieData.reduce((a, b) => a + b.value, 0);
 
   return (
@@ -101,7 +101,7 @@ export function Dashboard() {
         </div>
 
         <div className="card p-5">
-          <div className="font-bold text-ocean-dark text-sm mb-3">{t('dashboard.byCompanyTitle')}</div>
+          <div className="font-bold text-ocean-dark text-sm mb-3">{t('dashboard.byDeptTitle')}</div>
           {pieData.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : (
             <>
               <div className="w-full h-44">
