@@ -41,6 +41,8 @@ export class PdfService {
     const execApproval = approvals.find((a) => a.step === 'executive' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
+    const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
+    const catLabel = memo.category ? (catMap[memo.category] || memo.category) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
     const totalAmount = items.reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
     const vatAmount = memo.vat ? totalAmount * 0.07 : 0;
@@ -114,6 +116,8 @@ export class PdfService {
       <div class="meta">
         <div><div class="k">Date</div><div class="v">${this.fmtDate(memo.date)}</div></div>
         <div><div class="k">Department</div><div class="v">${this.esc(memo.deptName || memo.deptCode || '')}</div></div>
+        <div><div class="k">ประเภท</div><div class="v">${this.esc(catLabel)}</div></div>
+        <div><div class="k">วันที่ต้องการ</div><div class="v">${memo.neededDate ? this.fmtDate(memo.neededDate) : '-'}</div></div>
         <div><div class="k">From</div><div class="v">${this.esc(memo.fromName)}</div></div>
         <div><div class="k">Subject</div><div class="v">${this.esc(memo.subject)}</div></div>
         <div><div class="k">Attachment</div><div class="v">${this.esc(memo.attachment || '-')}</div></div>

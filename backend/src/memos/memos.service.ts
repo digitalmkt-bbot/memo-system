@@ -161,6 +161,8 @@ export class MemosService {
         attachment: dto.attachment?.trim() || null, detail: dto.detail.trim(),
         createdBy: user.id, status: 'draft',
         vat: !!dto.vat,
+        category: dto.category?.trim() || null,
+        neededDate: dto.neededDate ? new Date(dto.neededDate) : null,
         items: { create: items },
       },
       include: INCLUDE,
@@ -184,6 +186,8 @@ export class MemosService {
         attachment: dto.attachment ?? memo.attachment,
         detail: dto.detail ?? memo.detail,
         vat: dto.vat ?? memo.vat,
+        category: dto.category ?? memo.category,
+        neededDate: dto.neededDate !== undefined ? (dto.neededDate ? new Date(dto.neededDate) : null) : memo.neededDate,
         ...(dto.items !== undefined
           ? { items: { deleteMany: {}, create: this.cleanItems(dto.items) } }
           : {}),

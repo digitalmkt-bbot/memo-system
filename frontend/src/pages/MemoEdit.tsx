@@ -21,6 +21,8 @@ export function MemoEdit() {
         fromName: data.memo.fromName, subject: data.memo.subject,
         attachment: data.memo.attachment || '', detail: data.memo.detail,
         items: data.memo.items || [], vat: !!data.memo.vat,
+        category: data.memo.category || 'general',
+        neededDate: data.memo.neededDate ? String(data.memo.neededDate).slice(0, 10) : '',
       }} />
     </>
   );

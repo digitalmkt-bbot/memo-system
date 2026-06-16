@@ -6,6 +6,7 @@ import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 
 function money(n: number) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+const CAT_KEY: Record<string, string> = { general: 'catGeneral', budget: 'catBudget', procurement: 'catProcurement', info: 'catInfo', other: 'catOther' };
 function fmtSize(n: number) {
   if (n < 1024) return n + ' B';
   if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
@@ -91,6 +92,8 @@ export function MemoView() {
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm">
             <div><span className="text-gray-500">{t('view.from')}:</span> {memo.fromName}</div>
             <div><span className="text-gray-500">{t('view.dept')}:</span> {memo.deptName}</div>
+            <div><span className="text-gray-500">{t('form.category')}:</span> {memo.category ? t('form.' + (CAT_KEY[memo.category] || 'catOther')) : '—'}</div>
+            <div><span className="text-gray-500">{t('form.neededDate')}:</span> {memo.neededDate ? fmtDay(memo.neededDate, lang) : '—'}</div>
             <div className="col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
           </div>
           <div className="whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-sm leading-7 min-h-[200px]">{memo.detail}</div>
