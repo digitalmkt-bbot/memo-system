@@ -162,6 +162,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
 
         <div className="mt-7">
           <div className="font-bold text-ocean-dark text-sm mb-3">{t('items.title')}</div>
+          <datalist id="memo-units">{UNITS.map((u) => <option key={u} value={u} />)}</datalist>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -184,10 +185,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                     <td className="px-2 py-1"><input className={cell} value={r.detail} onChange={(e) => setCell(i, 'detail', e.target.value)} /></td>
                     <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.qty} onChange={(e) => setCell(i, 'qty', e.target.value)} /></td>
                     <td className="px-2 py-1">
-                      <select className={cell} value={r.unit} onChange={(e) => setCell(i, 'unit', e.target.value)}>
-                        <option value="">{t('form.unitSelect')}</option>
-                        {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                      </select>
+                      <input className={cell} list="memo-units" value={r.unit} onChange={(e) => setCell(i, 'unit', e.target.value)} placeholder={t('form.unitSelect')} />
                     </td>
                     <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.unitPrice} onChange={(e) => setCell(i, 'unitPrice', e.target.value)} /></td>
                     <td className="px-2 py-1 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(lineTotal(r))}</td>
