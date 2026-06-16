@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 
+const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export function Reports() {
   const { t } = useI18n();
   const [byCompany, setByCompany] = useState<any[]>([]);
@@ -17,11 +19,14 @@ export function Reports() {
   const Table = ({ title, rows, keyName }: { title: string; rows: any[]; keyName: string }) => (
     <div className="card p-5">
       <div className="font-bold text-ocean-dark text-sm mb-3">{title}</div>
-      {rows.length === 0 ? <p className="text-gray-400 text-sm">{t('common.noData')}</p> :
+      {rows.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> :
         rows.map((r, i) => (
-          <div key={i} className="flex justify-between py-2 border-b border-dashed border-gray-200 last:border-0 text-sm">
-            <span>{r[keyName] || '—'}{r.company ? <span className="text-gray-400 text-xs"> ({r.company})</span> : null}</span>
-            <span className="font-semibold text-ocean-dark">{r.count ?? r.month}</span>
+          <div key={i} className="flex justify-between items-center py-2 border-b border-dashed border-slate-200 last:border-0 text-sm">
+            <span>{r[keyName] || '—'}{r.company ? <span className="text-slate-400 text-xs"> ({r.company})</span> : null}</span>
+            <span className="text-right">
+              <span className="font-semibold text-ocean-dark">{r.count}</span>
+              {Number(r.amount) > 0 && <span className="block text-slate-400 text-[11px]">฿{money(r.amount)}</span>}
+            </span>
           </div>
         ))}
     </div>
@@ -30,11 +35,11 @@ export function Reports() {
   return (
     <>
       <div className="mb-5"><h2 className="text-xl font-bold">{t('reports.title')}</h2>
-        <p className="text-gray-500 text-[13px]">{t('reports.subtitle')}</p></div>
+        <p className="text-slate-500 text-[13px]">{t('reports.subtitle')}</p></div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Table title={t('reports.byCompany')} rows={byCompany} keyName="name" />
         <Table title={t('reports.byDept')} rows={byDept} keyName="department" />
-        <Table title={t('reports.monthly')} rows={monthly.map((m) => ({ department: m.month, count: m.count }))} keyName="department" />
+        <Table title={t('reports.monthly')} rows={monthly.map((m) => ({ department: m.month, count: m.count, amount: m.amount }))} keyName="department" />
       </div>
     </>
   );

@@ -13,6 +13,20 @@ export class DashboardService {
     return { createdBy: user.id };
   }
 
+  // raw-SQL scope conditions (aliased table m) + bound params
+  private rawScope(user: JwtUser): { clause: string; params: any[] } {
+    const conds: string[] = ['1=1'];
+    const params: any[] = [];
+    const p = (v: any) => { params.push(v); return `$${params.length}`; };
+    if (user.role === 'manager') {
+      conds.push(`m.company_id = ${p(user.companyId)}`);
+      conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`);
+    } else if (user.role === 'staff') {
+      conds.push(`m.created_by = ${p(user.id)}`);
+    }
+    return { clause: conds.join(' AND '), params };
+  }
+
   async summary(user: JwtUser) {
     const where = this.scopeWhere(user);
     const grouped = await this.prisma.memo.groupBy({ by: ['status'], where, _count: { _all: true } });
@@ -28,53 +42,61 @@ export class DashboardService {
   }
 
   async monthly(user: JwtUser, companyId?: string) {
-    const conds: string[] = ["created_at >= date_trunc('month', now()) - interval '11 months'"];
+    const conds: string[] = ["m.created_at >= date_trunc('month', now()) - interval '11 months'"];
     const params: any[] = [];
     const p = (v: any) => { params.push(v); return `$${params.length}`; };
 
     if (companyId) {
-      conds.push(`company_id = ${p(parseInt(companyId, 10))}`);
+      conds.push(`m.company_id = ${p(parseInt(companyId, 10))}`);
     } else if (user.role === 'manager') {
-      conds.push(`company_id = ${p(user.companyId)}`);
-      conds.push(`department_id = ${p(user.departmentId ?? -1)}`);
+      conds.push(`m.company_id = ${p(user.companyId)}`);
+      conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`);
     } else if (user.role === 'staff') {
-      conds.push(`created_by = ${p(user.id)}`);
+      conds.push(`m.created_by = ${p(user.id)}`);
     }
 
-    const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
-              COUNT(*)::int AS count,
-              COUNT(*) FILTER (WHERE status='approved')::int AS approved
-       FROM memos WHERE ${conds.join(' AND ')}
+    return this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT to_char(date_trunc('month', m.created_at), 'YYYY-MM') AS month,
+              COUNT(DISTINCT m.id)::int AS count,
+              COUNT(DISTINCT m.id) FILTER (WHERE m.status='approved')::int AS approved,
+              COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
+       FROM memos m LEFT JOIN memo_items mi ON mi.memo_id = m.id
+       WHERE ${conds.join(' AND ')}
        GROUP BY 1 ORDER BY 1`,
       ...params,
     );
-    return rows;
   }
 
   async byCompany(user: JwtUser) {
-    const where = this.scopeWhere(user);
-    const grouped = await this.prisma.memo.groupBy({ by: ['companyId'], where, _count: { _all: true } });
-    const companies = await this.prisma.company.findMany();
-    const map = new Map(companies.map((c) => [c.id, c]));
-    return grouped.map((g) => ({
-      companyId: g.companyId,
-      company: map.get(g.companyId)?.code,
-      name: map.get(g.companyId)?.name,
-      count: g._count._all,
-    })).sort((a, b) => b.count - a.count);
+    const { clause, params } = this.rawScope(user);
+    return this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT m.company_id AS "companyId", c.code AS company, c.name AS name,
+              COUNT(DISTINCT m.id)::int AS count,
+              COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
+       FROM memos m
+       JOIN companies c ON c.id = m.company_id
+       LEFT JOIN memo_items mi ON mi.memo_id = m.id
+       WHERE ${clause}
+       GROUP BY m.company_id, c.code, c.name
+       ORDER BY count DESC`,
+      ...params,
+    );
   }
 
   async byDepartment(user: JwtUser) {
-    const where = this.scopeWhere(user);
-    const grouped = await this.prisma.memo.groupBy({ by: ['departmentId'], where, _count: { _all: true } });
-    const depts = await this.prisma.department.findMany({ include: { company: { select: { code: true } } } });
-    const map = new Map(depts.map((d) => [d.id, d]));
-    return grouped.map((g) => ({
-      departmentId: g.departmentId,
-      department: map.get(g.departmentId)?.name,
-      company: map.get(g.departmentId)?.company.code,
-      count: g._count._all,
-    })).sort((a, b) => b.count - a.count);
+    const { clause, params } = this.rawScope(user);
+    return this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT m.department_id AS "departmentId", d.name AS department, c.code AS company,
+              COUNT(DISTINCT m.id)::int AS count,
+              COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
+       FROM memos m
+       JOIN departments d ON d.id = m.department_id
+       JOIN companies c ON c.id = d.company_id
+       LEFT JOIN memo_items mi ON mi.memo_id = m.id
+       WHERE ${clause}
+       GROUP BY m.department_id, d.name, c.code
+       ORDER BY count DESC`,
+      ...params,
+    );
   }
 }
