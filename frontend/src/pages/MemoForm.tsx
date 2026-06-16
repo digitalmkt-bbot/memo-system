@@ -65,53 +65,61 @@ export function MemoForm({ initial, memoId, status }: { initial?: Partial<MemoFo
   });
 
   return (
-    <div className="card p-6 max-w-3xl">
+    <div className="card p-6 lg:p-8">
       <form>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid lg:grid-cols-2 gap-x-8 gap-y-0">
+          {/* left column — meta fields */}
           <div>
-            <label className="label">{t('form.company')}</label>
-            <select className="input" {...register('companyId', { required: true })}>
-              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">{t('form.company')}</label>
+                <select className="input" {...register('companyId', { required: true })}>
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">{t('form.department')}</label>
+                <select className="input" {...register('departmentId', { required: true })}>
+                  {depts.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">{t('form.date')}</label>
+                <input className="input bg-gray-50" value={fmtDay(new Date().toISOString(), lang)} disabled />
+              </div>
+              <div>
+                <label className="label">{t('form.memoNumber')}</label>
+                <input className="input bg-gray-50" value={memoId && status !== 'draft' ? t('form.memoIssued') : t('form.memoAuto')} disabled />
+              </div>
+            </div>
+
+            <label className="label">{t('form.from')}</label>
+            <input className="input" {...register('fromName', { required: true })} placeholder={t('form.fromPlaceholder')} />
+
+            <label className="label">{t('form.subject')}</label>
+            <input className="input" {...register('subject', { required: true })} maxLength={200} />
+
+            <label className="label">{t('form.attachmentNote')}</label>
+            <input className="input" {...register('attachment')} placeholder={t('form.attachmentNotePlaceholder')} />
+
+            <label className="label">{t('form.attachFile')}</label>
+            <input ref={fileRef} type="file" className="text-[13px]" />
+            <p className="text-gray-400 text-[11px] mt-1">{t('form.attachHint')}</p>
           </div>
-          <div>
-            <label className="label">{t('form.department')}</label>
-            <select className="input" {...register('departmentId', { required: true })}>
-              {depts.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
-            </select>
+
+          {/* right column — detail */}
+          <div className="flex flex-col">
+            <label className="label">{t('form.detail')}</label>
+            <textarea className="input flex-1 min-h-[260px] lg:min-h-[440px] leading-7" {...register('detail', { required: true })}
+              placeholder={t('form.detailPlaceholder')} />
+            {errors.detail && <p className="text-red-500 text-xs mt-1">{t('form.detailRequired')}</p>}
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="label">{t('form.date')}</label>
-            <input className="input bg-gray-50" value={fmtDay(new Date().toISOString(), lang)} disabled />
-          </div>
-          <div>
-            <label className="label">{t('form.memoNumber')}</label>
-            <input className="input bg-gray-50" value={memoId && status !== 'draft' ? t('form.memoIssued') : t('form.memoAuto')} disabled />
-          </div>
-        </div>
-
-        <label className="label">{t('form.from')}</label>
-        <input className="input" {...register('fromName', { required: true })} placeholder={t('form.fromPlaceholder')} />
-
-        <label className="label">{t('form.subject')}</label>
-        <input className="input" {...register('subject', { required: true })} maxLength={200} />
-
-        <label className="label">{t('form.attachmentNote')}</label>
-        <input className="input" {...register('attachment')} placeholder={t('form.attachmentNotePlaceholder')} />
-
-        <label className="label">{t('form.attachFile')}</label>
-        <input ref={fileRef} type="file" className="text-[13px]" />
-        <p className="text-gray-400 text-[11px] mt-1">{t('form.attachHint')}</p>
-
-        <label className="label">{t('form.detail')}</label>
-        <textarea className="input min-h-[220px] leading-7" {...register('detail', { required: true })}
-          placeholder={t('form.detailPlaceholder')} />
-        {errors.detail && <p className="text-red-500 text-xs mt-1">{t('form.detailRequired')}</p>}
-
-        <div className="flex gap-2.5 mt-4">
+        <div className="flex gap-2.5 mt-6">
           <button type="button" className="btn btn-ghost" onClick={saveDraft} disabled={busy}>{t('form.saveDraft')}</button>
           <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>{t('form.submit')}</button>
         </div>
