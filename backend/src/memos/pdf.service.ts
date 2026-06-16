@@ -32,11 +32,37 @@ export class PdfService {
     return new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' });
   }
 
+  private fmtMoney(n: any): string {
+    return (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   private html({ memo, approvals }: { memo: any; approvals: any[] }): string {
     const managerApproval = approvals.find((a) => a.step === 'manager' && a.status === 'approve');
     const execApproval = approvals.find((a) => a.step === 'executive' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
+    const items = Array.isArray(memo.items) ? memo.items : [];
+    const totalAmount = items.reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+    const itemsBlock = items.length
+      ? `<div class="items-label">รายการสินค้า / บริการ (Items)</div>
+        <table class="items">
+          <thead><tr>
+            <th class="c" style="width:30px">#</th><th>รายการ</th><th>รายละเอียด</th>
+            <th class="num" style="width:60px">จำนวน</th><th class="c" style="width:60px">หน่วย</th>
+            <th class="num" style="width:90px">ราคา/หน่วย</th><th class="num" style="width:100px">รวม</th>
+          </tr></thead>
+          <tbody>${items.map((it: any, i: number) => `<tr>
+            <td class="c">${i + 1}</td>
+            <td>${this.esc(it.name)}</td>
+            <td>${this.esc(it.detail || '')}</td>
+            <td class="num">${this.fmtMoney(it.qty)}</td>
+            <td class="c">${this.esc(it.unit || '')}</td>
+            <td class="num">${this.fmtMoney(it.unitPrice)}</td>
+            <td class="num">${this.fmtMoney((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+        <div class="total-box">ยอดรวม (ฐานอนุมัติ): <span class="amt">฿${this.fmtMoney(totalAmount)}</span></div>`
+      : '';
 
     return `<!doctype html><html lang="th"><head><meta charset="utf-8">
     <style>
@@ -61,6 +87,15 @@ export class PdfService {
       .sign .line{border-top:1px dotted #888;margin:48px 16px 6px}
       .sign .role{font-weight:700}.sign .who{color:#444;font-size:12px;min-height:16px}
       .sign .date{color:#888;font-size:11px;margin-top:4px}
+      .items-label{font-weight:700;margin:16px 0 6px;color:#0a6e7c}
+      table.items{width:100%;border-collapse:collapse;font-size:12px}
+      table.items th,table.items td{border:1px solid #e2e8ec;padding:6px 8px}
+      table.items th{background:#f6f3ec;color:#5a6b78;font-weight:700;text-align:left}
+      table.items td.num,table.items th.num{text-align:right}
+      table.items td.c,table.items th.c{text-align:center}
+      .total-box{margin-top:8px;text-align:right;font-size:13px}
+      .total-box .amt{font-size:18px;font-weight:800;color:#0a6e7c}
+      .total-box .note{font-size:11px;color:#888}
     </style></head><body>
       <div class="header">
         <div class="logo">${this.esc(initials)}</div>
@@ -80,15 +115,19 @@ export class PdfService {
       <div class="detail-label">Detail</div>
       <div class="detail">${this.esc(memo.detail)}</div>
 
+      ${itemsBlock}
+
+      <div class="items-label">ลายมือชื่ออนุมัติ</div>
       <div class="sign">
-        <div class="col"><div class="line"></div><div class="role">Prepared By</div>
+        <div class="col"><div class="line"></div><div class="role">ผู้ขอ / Requester</div>
           <div class="who">${this.esc(memo.creatorName || '')}</div>
           <div class="date">${this.fmtDate(memo.submittedAt)}</div></div>
-        <div class="col"><div class="line"></div><div class="role">Approved By</div>
-          <div class="who">${this.esc((execApproval && execApproval.approverName) || (managerApproval && managerApproval.approverName) || '')}</div>
-          <div class="date">${this.fmtDate(memo.closedAt)}</div></div>
-        <div class="col"><div class="line"></div><div class="role">Date</div>
-          <div class="who">&nbsp;</div><div class="date">&nbsp;</div></div>
+        <div class="col"><div class="line"></div><div class="role">ผู้จัดการ / Manager</div>
+          <div class="who">${this.esc((managerApproval && managerApproval.approverName) || '')}</div>
+          <div class="date">${managerApproval ? this.fmtDate(managerApproval.approvedAt) : ''}</div></div>
+        <div class="col"><div class="line"></div><div class="role">ผู้บริหาร / Executive</div>
+          <div class="who">${this.esc((execApproval && execApproval.approverName) || '')}</div>
+          <div class="date">${execApproval ? this.fmtDate(execApproval.approvedAt) : ''}</div></div>
       </div>
     </body></html>`;
   }

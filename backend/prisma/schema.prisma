@@ -91,12 +91,13 @@ model Memo {
   submittedAt       DateTime?  @map("submitted_at")
   closedAt          DateTime?  @map("closed_at")
 
-  company         Company    @relation(fields: [companyId], references: [id])
-  department      Department @relation(fields: [departmentId], references: [id])
-  creator         User       @relation("Creator", fields: [createdBy], references: [id])
-  currentApprover User?      @relation("CurrentApprover", fields: [currentApproverId], references: [id])
+  company         Company      @relation(fields: [companyId], references: [id])
+  department      Department   @relation(fields: [departmentId], references: [id])
+  creator         User         @relation("Creator", fields: [createdBy], references: [id])
+  currentApprover User?        @relation("CurrentApprover", fields: [currentApproverId], references: [id])
   approvals       Approval[]
   attachments     Attachment[]
+  items           MemoItem[]
 
   @@index([companyId])
   @@index([departmentId])
@@ -160,4 +161,20 @@ model AuditLog {
 
   @@index([memoId])
   @@map("audit_log")
+}
+
+model MemoItem {
+  id        Int     @id @default(autoincrement())
+  memoId    Int     @map("memo_id")
+  position  Int     @default(0)
+  name      String
+  detail    String?
+  qty       Float   @default(0)
+  unit      String?
+  unitPrice Float   @default(0) @map("unit_price")
+
+  memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+
+  @@index([memoId])
+  @@map("memo_items")
 }

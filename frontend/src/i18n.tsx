@@ -170,6 +170,18 @@ const TH: Dict = {
     company: 'บริษัท',
     companiesInSystem: 'บริษัทในระบบ',
   },
+  items: {
+    title: 'รายการสินค้า / บริการ',
+    colItem: 'รายการ', colDetail: 'รายละเอียด', colQty: 'จำนวน', colUnit: 'หน่วย',
+    colUnitPrice: 'ราคา/หน่วย', colAmount: 'รวม',
+    addRow: '+ เพิ่มรายการ', total: 'ยอดรวม (ฐานอนุมัติ)',
+    vatNote: 'VAT จะกำหนดตอนออกเอกสารจัดซื้อ', none: 'ยังไม่มีรายการ',
+  },
+  sign: {
+    title: 'ลายมือชื่ออนุมัติ',
+    requester: 'ผู้ขอ / Requester', manager: 'ผู้จัดการ / Manager', executive: 'ผู้บริหาร / Executive',
+    signed: 'ลงชื่อ', date: 'วันที่',
+  },
   status: {
     draft: 'ฉบับร่าง', pending_manager: 'รอหัวหน้า', pending_executive: 'รอผู้บริหาร',
     approved: 'อนุมัติแล้ว', rejected: 'ไม่อนุมัติ', cancelled: 'ยกเลิก',
@@ -333,6 +345,18 @@ const EN: Dict = {
     role: 'Role',
     company: 'Company',
     companiesInSystem: 'Companies in system',
+  },
+  items: {
+    title: 'Items / Services',
+    colItem: 'Item', colDetail: 'Description', colQty: 'Qty', colUnit: 'Unit',
+    colUnitPrice: 'Unit price', colAmount: 'Amount',
+    addRow: '+ Add item', total: 'Total (approval base)',
+    vatNote: 'VAT is set when the purchase document is issued', none: 'No items yet',
+  },
+  sign: {
+    title: 'Approval signatures',
+    requester: 'Requester', manager: 'Manager', executive: 'Executive',
+    signed: 'Signed', date: 'Date',
   },
   status: {
     draft: 'Draft', pending_manager: 'Awaiting manager', pending_executive: 'Awaiting executive',

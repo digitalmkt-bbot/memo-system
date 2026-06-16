@@ -10,6 +10,7 @@ const INCLUDE = {
   department: { select: { code: true, name: true } },
   company: { select: { code: true, name: true } },
   currentApprover: { select: { name: true } },
+  items: { orderBy: { position: 'asc' as const } },
 };
 
 @Injectable()
@@ -18,9 +19,16 @@ export class MemosService {
 
   private shape(m: any) {
     if (!m) return m;
-    const { creator, department, company, currentApprover, ...rest } = m;
+    const { creator, department, company, currentApprover, items: rawItems, ...rest } = m;
+    const items = (rawItems ?? []).map((it: any) => ({
+      ...it,
+      lineTotal: (Number(it.qty) || 0) * (Number(it.unitPrice) || 0),
+    }));
+    const totalAmount = items.reduce((s: number, it: any) => s + it.lineTotal, 0);
     return {
       ...rest,
+      items,
+      totalAmount,
       creatorName: creator?.name ?? null,
       deptCode: department?.code ?? null,
       deptName: department?.name ?? null,
@@ -28,6 +36,21 @@ export class MemosService {
       companyName: company?.name ?? null,
       currentApproverName: currentApprover?.name ?? null,
     };
+  }
+
+  /** sanitize incoming line items (drop rows without a name) */
+  private cleanItems(items: any): any[] {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter((it) => it && String(it.name ?? '').trim())
+      .map((it, i) => ({
+        position: i,
+        name: String(it.name).trim(),
+        detail: it.detail ? String(it.detail).trim() : null,
+        qty: Number(it.qty) || 0,
+        unit: it.unit ? String(it.unit).trim() : null,
+        unitPrice: Number(it.unitPrice) || 0,
+      }));
   }
 
   private async audit(memoId: number | null, userId: number, action: string, detail?: string) {
@@ -126,12 +149,14 @@ export class MemosService {
   }
 
   async create(user: JwtUser, dto: CreateMemoDto) {
+    const items = this.cleanItems(dto.items);
     const memo = await this.prisma.memo.create({
       data: {
         companyId: dto.companyId, departmentId: dto.departmentId,
         fromName: dto.fromName.trim(), subject: dto.subject.trim(),
         attachment: dto.attachment?.trim() || null, detail: dto.detail.trim(),
         createdBy: user.id, status: 'draft',
+        items: { create: items },
       },
       include: INCLUDE,
     });
@@ -153,6 +178,9 @@ export class MemosService {
         subject: dto.subject ?? memo.subject,
         attachment: dto.attachment ?? memo.attachment,
         detail: dto.detail ?? memo.detail,
+        ...(dto.items !== undefined
+          ? { items: { deleteMany: {}, create: this.cleanItems(dto.items) } }
+          : {}),
       },
       include: INCLUDE,
     });

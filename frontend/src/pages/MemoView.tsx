@@ -5,6 +5,7 @@ import { StatusTag, fmtDate, fmtDay } from '../ui';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 
+function money(n: number) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtSize(n: number) {
   if (n < 1024) return n + ' B';
   if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
@@ -30,6 +31,10 @@ export function MemoView() {
   if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
+  const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
+  const exeAppr = approvals.find((a: any) => a.approverRole === 'executive' && a.status === 'approve');
+  const items = memo.items || [];
+  const grandTotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const isCreator = memo.createdBy === user?.id;
   const isOpen = !['approved', 'rejected', 'cancelled'].includes(memo.status);
 
@@ -87,6 +92,64 @@ export function MemoView() {
             <div className="col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
           </div>
           <div className="whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-sm leading-7 min-h-[200px]">{memo.detail}</div>
+
+          {items.length > 0 && (
+            <div className="mt-5">
+              <div className="font-bold text-ocean-dark text-sm mb-2">{t('items.title')}</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
+                      <th className="text-left px-3 py-2 w-8">#</th>
+                      <th className="text-left px-3 py-2">{t('items.colItem')}</th>
+                      <th className="text-left px-3 py-2">{t('items.colDetail')}</th>
+                      <th className="text-right px-3 py-2">{t('items.colQty')}</th>
+                      <th className="text-left px-3 py-2">{t('items.colUnit')}</th>
+                      <th className="text-right px-3 py-2">{t('items.colUnitPrice')}</th>
+                      <th className="text-right px-3 py-2">{t('items.colAmount')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((it: any, i: number) => (
+                      <tr key={i} className="border-t border-slate-200/70">
+                        <td className="px-3 py-2 text-slate-400">{i + 1}</td>
+                        <td className="px-3 py-2">{it.name}</td>
+                        <td className="px-3 py-2 text-slate-500">{it.detail || '—'}</td>
+                        <td className="px-3 py-2 text-right">{money(it.qty)}</td>
+                        <td className="px-3 py-2">{it.unit || '—'}</td>
+                        <td className="px-3 py-2 text-right">{money(it.unitPrice)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="text-right mt-3">
+                <div className="text-slate-500 text-xs">{t('items.total')}</div>
+                <div className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</div>
+                <div className="text-slate-400 text-[11px]">{t('items.vatNote')}</div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6">
+            <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { role: t('sign.requester'), who: memo.creatorName, when: memo.submittedAt },
+                { role: t('sign.manager'), who: mgrAppr?.approverName, when: mgrAppr?.approvedAt },
+                { role: t('sign.executive'), who: exeAppr?.approverName, when: exeAppr?.approvedAt },
+              ].map((c, i) => (
+                <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">
+                  <div className="h-10" />
+                  <div className="border-t border-dashed border-slate-300 mx-3 mb-2" />
+                  <div className="text-[13px] font-semibold">{c.role}</div>
+                  <div className="text-slate-500 text-[12px] min-h-[16px]">{c.who || '—'}</div>
+                  <div className="text-slate-400 text-[11px]">{c.when ? fmtDate(c.when, lang) : '—'}</div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
