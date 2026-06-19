@@ -178,8 +178,11 @@ export class DashboardService {
        LEFT JOIN memo_items mi ON mi.memo_id = m.id WHERE ${clause}
        GROUP BY d.name, d.code ORDER BY amount DESC, count DESC`, ...params);
 
+    // recent list: only memos that have been issued a number (exclude drafts unless filtered explicitly)
+    const recentWhere: any = { ...where };
+    if (!recentWhere.status) recentWhere.status = { not: 'draft' };
     const recentRaw = await this.prisma.memo.findMany({
-      where, orderBy: { createdAt: 'desc' }, take: 8,
+      where: recentWhere, orderBy: { createdAt: 'desc' }, take: 8,
       include: { department: { select: { name: true, code: true } }, items: true },
     });
     const recent = recentRaw.map((m: any) => ({
