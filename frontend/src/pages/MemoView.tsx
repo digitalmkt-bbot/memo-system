@@ -24,6 +24,7 @@ export function MemoView() {
   const [uploading, setUploading] = useState(false);
   const [modal, setModal] = useState<'approve' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
+  const [nextRole, setNextRole] = useState<'hrm' | 'md'>('hrm');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => api.memo(mid).then(setData).catch(() => nav('/memos'));
@@ -33,7 +34,8 @@ export function MemoView() {
 
   const { memo, approvals, canApprove } = data;
   const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
-  const exeAppr = approvals.find((a: any) => a.approverRole === 'executive' && a.status === 'approve');
+  const hrmdAppr = approvals.find((a: any) => (a.approverRole === 'hrm' || a.approverRole === 'md') && a.status === 'approve');
+  const fcAppr = approvals.find((a: any) => a.approverRole === 'fc' && a.status === 'approve');
   const items = memo.items || [];
   const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const vatAmount = memo.vat ? subtotal * 0.07 : 0;
@@ -43,7 +45,7 @@ export function MemoView() {
 
   const act = async () => {
     try {
-      if (modal === 'approve') await api.approveMemo(mid, comment);
+      if (modal === 'approve') await api.approveMemo(mid, comment, memo.status === 'pending_manager' ? nextRole : undefined);
       else if (modal === 'reject') { if (!comment.trim()) return alert(t('view.reasonRequired')); await api.rejectMemo(mid, comment); }
       setModal(null); setComment(''); load();
     } catch (e: any) { alert(e.message); }
@@ -73,6 +75,8 @@ export function MemoView() {
       w: a.approverName, d: a.approvedAt, cm: a.comment,
     })),
     ...(memo.status === 'pending_manager' ? [{ c: '#b9c4cc', t: t('view.waitManager'), w: memo.currentApproverName, d: null }] : []),
+    ...(memo.status === 'pending_hrmd' ? [{ c: '#b9c4cc', t: t('view.waitHrmd'), w: memo.currentApproverName, d: null }] : []),
+    ...(memo.status === 'pending_fc' ? [{ c: '#b9c4cc', t: t('view.waitFc'), w: memo.currentApproverName, d: null }] : []),
     ...(memo.status === 'pending_executive' ? [{ c: '#b9c4cc', t: t('view.waitExecutive'), w: memo.currentApproverName, d: null }] : []),
   ];
 
@@ -144,11 +148,12 @@ export function MemoView() {
 
           <div className="mt-6">
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { role: t('sign.requester'), who: memo.creatorName, when: memo.submittedAt },
                 { role: t('sign.manager'), who: mgrAppr?.approverName, when: mgrAppr?.approvedAt },
-                { role: t('sign.executive'), who: exeAppr?.approverName, when: exeAppr?.approvedAt },
+                { role: t('sign.hrmd'), who: hrmdAppr?.approverName, when: hrmdAppr?.approvedAt },
+                { role: t('sign.fc'), who: fcAppr?.approverName, when: fcAppr?.approvedAt },
               ].map((c, i) => (
                 <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">
                   <div className="h-10" />
@@ -218,6 +223,15 @@ export function MemoView() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold">{modal === 'approve' ? t('view.confirmApprove') : t('view.confirmReject')}</h3>
             <p className="text-gray-500 text-[13px] mt-1">{modal === 'approve' ? t('view.addComment') : t('view.provideReason')}</p>
+            {modal === 'approve' && memo.status === 'pending_manager' && (
+              <div className="mt-3">
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t('view.chooseNext')}</label>
+                <select className="input" value={nextRole} onChange={(e) => setNextRole(e.target.value as 'hrm' | 'md')}>
+                  <option value="hrm">{t('view.toHrm')}</option>
+                  <option value="md">{t('view.toMd')}</option>
+                </select>
+              </div>
+            )}
             <textarea className="input min-h-[90px] mt-2.5" value={comment} onChange={(e) => setComment(e.target.value)} />
             <div className="flex gap-2.5 justify-end mt-4">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>{t('common.cancel')}</button>

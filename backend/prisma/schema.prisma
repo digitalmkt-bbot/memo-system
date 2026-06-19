@@ -12,12 +12,17 @@ enum Role {
   manager
   executive
   admin
+  hrm
+  md
+  fc
 }
 
 enum MemoStatus {
   draft
   pending_manager
   pending_executive
+  pending_hrmd
+  pending_fc
   approved
   rejected
   cancelled

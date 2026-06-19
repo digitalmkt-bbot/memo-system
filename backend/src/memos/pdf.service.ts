@@ -39,6 +39,8 @@ export class PdfService {
   private html({ memo, approvals }: { memo: any; approvals: any[] }): string {
     const managerApproval = approvals.find((a) => a.step === 'manager' && a.status === 'approve');
     const execApproval = approvals.find((a) => a.step === 'executive' && a.status === 'approve');
+    const hrmdApproval = approvals.find((a) => (a.step === 'hrm' || a.step === 'md') && a.status === 'approve');
+    const fcApproval = approvals.find((a) => a.step === 'fc' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
@@ -133,12 +135,15 @@ export class PdfService {
         <div class="col"><div class="line"></div><div class="role">ผู้ขอ / Requester</div>
           <div class="who">${this.esc(memo.creatorName || '')}</div>
           <div class="date">${this.fmtDate(memo.submittedAt)}</div></div>
-        <div class="col"><div class="line"></div><div class="role">ผู้จัดการ / Manager</div>
+        <div class="col"><div class="line"></div><div class="role">ผจก.แผนก / Manager</div>
           <div class="who">${this.esc((managerApproval && managerApproval.approverName) || '')}</div>
           <div class="date">${managerApproval ? this.fmtDate(managerApproval.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">ผู้บริหาร / Executive</div>
-          <div class="who">${this.esc((execApproval && execApproval.approverName) || '')}</div>
-          <div class="date">${execApproval ? this.fmtDate(execApproval.approvedAt) : ''}</div></div>
+        <div class="col"><div class="line"></div><div class="role">HRM / MD</div>
+          <div class="who">${this.esc((hrmdApproval && hrmdApproval.approverName) || (execApproval && execApproval.approverName) || '')}</div>
+          <div class="date">${hrmdApproval ? this.fmtDate(hrmdApproval.approvedAt) : ''}</div></div>
+        <div class="col"><div class="line"></div><div class="role">ฝ่ายบัญชี / FC</div>
+          <div class="who">${this.esc((fcApproval && fcApproval.approverName) || '')}</div>
+          <div class="date">${fcApproval ? this.fmtDate(fcApproval.approvedAt) : ''}</div></div>
       </div>
     </body></html>`;
   }

@@ -31,12 +31,12 @@ export class DashboardService {
     const where = this.scopeWhere(user);
     const grouped = await this.prisma.memo.groupBy({ by: ['status'], where, _count: { _all: true } });
     const out: Record<string, number> = {
-      draft: 0, pending_manager: 0, pending_executive: 0, approved: 0, rejected: 0, cancelled: 0,
+      draft: 0, pending_manager: 0, pending_executive: 0, pending_hrmd: 0, pending_fc: 0, approved: 0, rejected: 0, cancelled: 0,
     };
     for (const g of grouped) out[g.status] = g._count._all;
     out.total = Object.values(out).reduce((a, b) => a + b, 0);
     out.inbox = await this.prisma.memo.count({
-      where: { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_executive'] } },
+      where: { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] } },
     });
     return out;
   }
@@ -148,11 +148,11 @@ export class DashboardService {
     if (status && status !== 'all') where.status = status;
 
     const grouped = await this.prisma.memo.groupBy({ by: ['status'], where, _count: { _all: true } });
-    const counts: any = { draft: 0, pending_manager: 0, pending_executive: 0, approved: 0, rejected: 0, cancelled: 0 };
+    const counts: any = { draft: 0, pending_manager: 0, pending_executive: 0, pending_hrmd: 0, pending_fc: 0, approved: 0, rejected: 0, cancelled: 0 };
     for (const g of grouped) counts[g.status] = g._count._all;
     counts.total = Object.values(counts).reduce((a: any, b: any) => a + b, 0);
     counts.inbox = await this.prisma.memo.count({
-      where: { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_executive'] } },
+      where: { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] } },
     });
 
     // raw conditions (alias m) mirroring the same filters, for amount sums

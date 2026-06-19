@@ -13,6 +13,8 @@ const STAT: Record<string, { color: string; tint: string; d: string }> = {
   approved:          { color: '#10b981', tint: '#d8f6ec', d: 'M20 6 9 17l-5-5' },
   pending_manager:   { color: '#f59e0b', tint: '#fdeccf', d: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z' },
   pending_executive: { color: '#3b82f6', tint: '#d8e7fd', d: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z' },
+  pending_hrmd:      { color: '#6366f1', tint: '#e0e7ff', d: 'M16 19a4 4 0 0 0-8 0M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z' },
+  pending_fc:        { color: '#06b6d4', tint: '#cffafe', d: 'M3 7h18v10H3zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z' },
   rejected:          { color: '#ef4444', tint: '#fbdcdc', d: 'M18 6 6 18M6 6l12 12' },
   total:             { color: '#8b5cf6', tint: '#ebe5fd', d: 'M4 7l8-4 8 4-8 4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4' },
 };
@@ -56,7 +58,7 @@ export function Dashboard() {
   const doClear = () => { setFrom(''); setTo(''); setStatus('all'); setApplied({}); };
 
   const sum = ov.summary || {};
-  const cards = ['inbox', 'approved', 'pending_manager', 'pending_executive', 'rejected', 'total'];
+  const cards = ['inbox', 'pending_manager', 'pending_hrmd', 'pending_fc', 'approved', 'rejected'];
   const pieData = (ov.byDept || []).map((d: any) => ({ name: d.department || '—', value: Number(d.count) || 0 }));
   const pieTotal = pieData.reduce((a: number, b: any) => a + b.value, 0);
   const topDept = (ov.byDept || []).filter((d: any) => Number(d.amount) > 0).slice(0, 6)

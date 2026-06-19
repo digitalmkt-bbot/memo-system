@@ -16,7 +16,7 @@ const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimu
 const lineTotal = (r: MemoItemRow) => (Number(r.qty) || 0) * (Number(r.unitPrice) || 0);
 const UNITS = ['ชิ้น', 'กล่อง', 'ชุด', 'แพ็ค', 'ม้วน', 'ลิตร', 'กิโลกรัม', 'เดือน', 'ครั้ง', 'รายการ'];
 const CATS: [string, string][] = [['general', 'catGeneral'], ['budget', 'catBudget'], ['procurement', 'catProcurement'], ['info', 'catInfo'], ['other', 'catOther']];
-const STEPS: [string, string][] = [['create', 'steps.create'], ['pending_manager', 'steps.manager'], ['pending_executive', 'steps.executive'], ['approved', 'steps.done']];
+const STEPS: [string, string][] = [['create', 'steps.create'], ['pending_manager', 'steps.manager'], ['pending_hrmd', 'steps.hrmd'], ['pending_fc', 'steps.fc'], ['approved', 'steps.done']];
 
 export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoFormValues> & Extra); memoId?: number; status?: string }) {
   const nav = useNavigate();

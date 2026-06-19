@@ -109,9 +109,30 @@ async function main() {
       passwordHash: demoPw, role: 'staff', managerId: mgr.id },
   });
 
+  // 5) extra approvers for the 5-step chain: HRM, MD, FC
+  await prisma.user.upsert({
+    where: { email: 'hrm@loveandaman.com' }, update: { role: 'hrm' },
+    create: { companyId: love.id, departmentId: await dept(love.id, 'HR'),
+      employeeCode: 'HRM01', name: 'Kanya (HR Manager)', email: 'hrm@loveandaman.com',
+      passwordHash: demoPw, role: 'hrm' },
+  });
+  await prisma.user.upsert({
+    where: { email: 'md@loveandaman.com' }, update: { role: 'md' },
+    create: { companyId: love.id, departmentId: await dept(love.id, 'SEC'),
+      employeeCode: 'MD001', name: 'Wichai (Managing Director)', email: 'md@loveandaman.com',
+      passwordHash: demoPw, role: 'md' },
+  });
+  await prisma.user.upsert({
+    where: { email: 'fc@loveandaman.com' }, update: { role: 'fc' },
+    create: { companyId: love.id, departmentId: await dept(love.id, 'ACC'),
+      employeeCode: 'FC001', name: 'Suda (Finance Controller)', email: 'fc@loveandaman.com',
+      passwordHash: demoPw, role: 'fc' },
+  });
+
   console.log('Seed complete: 3 companies, departments seeded, 4 users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  ceo@ / ops.manager@ / ploy@loveandaman.com  (Password123!)');
+  console.log('  hrm@ / md@ / fc@loveandaman.com  (Password123!)');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

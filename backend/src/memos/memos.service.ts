@@ -64,28 +64,37 @@ export class MemosService {
   private async pickManager(creatorId: number) {
     const creator = await this.prisma.user.findUnique({ where: { id: creatorId } });
     if (!creator) return null;
+    // 1) manager of the SAME department (requester's department manager)
+    const sameDept = await this.prisma.user.findFirst({
+      where: { role: 'manager', active: true, companyId: creator.companyId, departmentId: creator.departmentId ?? -1 },
+      orderBy: { id: 'asc' },
+    });
+    if (sameDept) return sameDept.id;
+    // 2) explicit managerId
     if (creator.managerId) {
-      const m = await this.prisma.user.findFirst({
-        where: { id: creator.managerId, active: true, role: 'manager' },
-      });
+      const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true, role: 'manager' } });
       if (m) return m.id;
     }
+    // 3) any manager in the company (fallback)
     const fb = await this.prisma.user.findFirst({
       where: { role: 'manager', active: true, companyId: creator.companyId }, orderBy: { id: 'asc' },
     });
     return fb?.id ?? null;
   }
 
-  private async pickExecutive(companyId: number) {
-    const e = await this.prisma.user.findFirst({
-      where: { role: 'executive', active: true, companyId }, orderBy: { id: 'asc' },
+  private async pickByRole(role: string, companyId?: number) {
+    const u = await this.prisma.user.findFirst({
+      where: { role: role as any, active: true, ...(companyId ? { companyId } : {}) }, orderBy: { id: 'asc' },
     });
-    return e?.id ?? null;
+    return u?.id ?? null;
   }
 
   private canApprove(user: JwtUser, memo: any) {
-    if (memo.status === 'pending_manager') return user.role === 'manager' && memo.currentApproverId === user.id;
-    if (memo.status === 'pending_executive') return user.role === 'executive' && memo.currentApproverId === user.id;
+    if (memo.currentApproverId !== user.id) return false;
+    if (memo.status === 'pending_manager') return user.role === 'manager';
+    if (memo.status === 'pending_hrmd') return user.role === 'hrm' || user.role === 'md';
+    if (memo.status === 'pending_fc') return user.role === 'fc';
+    if (memo.status === 'pending_executive') return user.role === 'executive'; // legacy
     return false;
   }
 
@@ -96,7 +105,7 @@ export class MemosService {
    *  - staff             : only memos they created
    */
   private visibilityScope(user: JwtUser): any {
-    if (user.role === 'admin' || user.role === 'executive') return {};
+    if (['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role)) return {};
     if (user.role === 'manager') return { companyId: user.companyId, departmentId: user.departmentId ?? -1 };
     return { createdBy: user.id };
   }
@@ -105,7 +114,7 @@ export class MemosService {
     const where: any = {};
     if (f.box === 'inbox') {
       where.currentApproverId = user.id;
-      where.status = { in: ['pending_manager', 'pending_executive'] };
+      where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
     } else if (f.box === 'sent') {
       where.createdBy = user.id;
     } else {
@@ -129,7 +138,7 @@ export class MemosService {
 
     let participant =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
-      user.role === 'admin' || user.role === 'executive' ||
+      ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role) ||
       (user.role === 'manager' &&
         memo.companyId === user.companyId && memo.departmentId === user.departmentId);
     if (!participant) {
@@ -237,29 +246,37 @@ export class MemosService {
     });
   }
 
-  async approve(user: JwtUser, id: number, comment?: string) {
+  async approve(user: JwtUser, id: number, comment?: string, next?: string) {
     return this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot approve at current step');
 
-      const step = memo.status === 'pending_manager' ? 'manager' : 'executive';
+      const step = memo.status === 'pending_manager' ? 'manager'
+        : memo.status === 'pending_hrmd' ? user.role
+        : memo.status === 'pending_fc' ? 'fc' : 'executive';
       await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'approve', comment: comment ?? null } });
 
-      let updated;
-      if (step === 'manager') {
-        const execId = await this.pickExecutive(memo.companyId);
-        if (!execId) throw new BadRequestException('No executive available');
-        updated = await tx.memo.update({
-          where: { id }, data: { status: 'pending_executive', currentApproverId: execId }, include: INCLUDE,
-        });
-        await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'approved_manager', detail: 'Routed to executive' } });
+      let data: any; let action = 'approved';
+      if (memo.status === 'pending_manager') {
+        // department manager chooses HRM or MD as the next approver
+        const target = next === 'md' ? 'md' : 'hrm';
+        const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
+        if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
+        data = { status: 'pending_hrmd', currentApproverId: nextId };
+        action = `approved_manager_to_${target}`;
+      } else if (memo.status === 'pending_hrmd') {
+        const fcId = (await this.pickByRole('fc', memo.companyId)) ?? (await this.pickByRole('fc'));
+        if (!fcId) throw new BadRequestException('No FC approver available');
+        data = { status: 'pending_fc', currentApproverId: fcId };
+        action = `approved_${user.role}_to_fc`;
       } else {
-        updated = await tx.memo.update({
-          where: { id }, data: { status: 'approved', currentApproverId: null, closedAt: new Date() }, include: INCLUDE,
-        });
-        await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'approved_executive', detail: 'Memo approved' } });
+        // pending_fc (or legacy pending_executive) -> final approval
+        data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+        action = 'approved_final';
       }
+      const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
+      await tx.auditLog.create({ data: { memoId: id, userId: user.id, action, detail: comment ?? null } });
       return this.shape(updated);
     });
   }
@@ -270,7 +287,9 @@ export class MemosService {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot reject at current step');
-      const step = memo.status === 'pending_manager' ? 'manager' : 'executive';
+      const step = memo.status === 'pending_manager' ? 'manager'
+        : memo.status === 'pending_hrmd' ? user.role
+        : memo.status === 'pending_fc' ? 'fc' : 'executive';
       await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'reject', comment: comment.trim() } });
       const updated = await tx.memo.update({
         where: { id }, data: { status: 'rejected', currentApproverId: null, closedAt: new Date() }, include: INCLUDE,
@@ -284,7 +303,7 @@ export class MemosService {
   private async assertCanView(user: JwtUser, memo: any) {
     const ok =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
-      user.role === 'admin' || user.role === 'executive' ||
+      ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role) ||
       (user.role === 'manager' && memo.companyId === user.companyId && memo.departmentId === user.departmentId);
     if (ok) return;
     const ap = await this.prisma.approval.findFirst({ where: { memoId: memo.id, approvedBy: user.id } });
