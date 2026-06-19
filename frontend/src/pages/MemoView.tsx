@@ -96,7 +96,7 @@ export function MemoView() {
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm">
             <div><span className="text-gray-500">{t('view.from')}:</span> {memo.fromName}</div>
             <div><span className="text-gray-500">{t('view.dept')}:</span> {memo.deptName}</div>
-            <div><span className="text-gray-500">{t('form.category')}:</span> {memo.category ? t('form.' + (CAT_KEY[memo.category] || 'catOther')) : '—'}</div>
+            <div><span className="text-gray-500">{t('form.category')}:</span> {memo.category ? t('form.' + (CAT_KEY[memo.category] || 'catOther')) : '—'}{memo.category === 'other' && memo.categoryNote ? ` — ${memo.categoryNote}` : ''}</div>
             <div><span className="text-gray-500">{t('form.neededDate')}:</span> {memo.neededDate ? fmtDay(memo.neededDate, lang) : '—'}</div>
             <div className="col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
           </div>

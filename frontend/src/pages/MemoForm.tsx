@@ -10,7 +10,7 @@ export type MemoFormValues = {
   companyId: number; departmentId: number;
   fromName: string; subject: string; attachment?: string; detail: string;
 };
-type Extra = { items?: MemoItemRow[]; vat?: boolean; category?: string; neededDate?: string };
+type Extra = { items?: MemoItemRow[]; vat?: boolean; category?: string; categoryNote?: string; neededDate?: string };
 
 const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const lineTotal = (r: MemoItemRow) => (Number(r.qty) || 0) * (Number(r.unitPrice) || 0);
@@ -29,6 +29,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     : []);
   const [vat, setVat] = useState<boolean>(!!initial?.vat);
   const [category, setCategory] = useState<string>(initial?.category || 'general');
+  const [categoryNote, setCategoryNote] = useState<string>(initial?.categoryNote || '');
   const [neededDate, setNeededDate] = useState<string>(initial?.neededDate || '');
   const fileRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MemoFormValues>({
@@ -59,7 +60,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     companyId: Number(v.companyId), departmentId: Number(v.departmentId),
     fromName: v.fromName.trim(), subject: v.subject.trim(),
     attachment: v.attachment?.trim() || undefined, detail: v.detail.trim(),
-    vat, category, neededDate: neededDate || undefined, items: cleanItems(),
+    vat, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined, items: cleanItems(),
   });
 
   const uploadIfAny = async (id: number) => {
@@ -133,6 +134,12 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                 <input type="date" className="input" value={neededDate} onChange={(e) => setNeededDate(e.target.value)} />
               </div>
             </div>
+            {category === 'other' && (
+              <div>
+                <label className="label">{t('form.categoryNote')}</label>
+                <input className="input" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} placeholder={t('form.categoryNotePh')} />
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">{t('form.date')}</label>

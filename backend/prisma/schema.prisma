@@ -92,6 +92,7 @@ model Memo {
   status            MemoStatus @default(draft)
   vat               Boolean    @default(false)
   category          String?
+  categoryNote      String?    @map("category_note")
   neededDate        DateTime?  @db.Date @map("needed_date")
   createdBy         Int        @map("created_by")
   currentApproverId Int?       @map("current_approver_id")

@@ -22,6 +22,7 @@ export function MemoEdit() {
         attachment: data.memo.attachment || '', detail: data.memo.detail,
         items: data.memo.items || [], vat: !!data.memo.vat,
         category: data.memo.category || 'general',
+        categoryNote: data.memo.categoryNote || '',
         neededDate: data.memo.neededDate ? String(data.memo.neededDate).slice(0, 10) : '',
       }} />
     </>
