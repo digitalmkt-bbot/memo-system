@@ -191,7 +191,7 @@ export function Dashboard() {
         <div className="card p-5">
           <div className="font-bold text-ocean-dark text-sm mb-3">{t('dashboard.recent')}</div>
           {(ov.recent || []).length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : (
-            <table className="w-full text-[13px]">
+            <div className="overflow-x-auto"><table className="w-full text-[13px] min-w-[460px]">
               <thead>
                 <tr className="text-slate-500 text-[11px] uppercase tracking-wide">
                   <th className="text-left font-semibold py-2">{t('memos.colNo')}</th>
@@ -210,7 +210,7 @@ export function Dashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>

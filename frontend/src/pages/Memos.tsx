@@ -44,10 +44,10 @@ export function Memos() {
         </form>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {loading ? <div className="p-10 text-center text-gray-400">{t('common.loading')}</div> :
           rows.length === 0 ? <div className="p-10 text-center text-gray-400">{t('memos.noMemos')}</div> : (
-            <table className="w-full">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                   <th className="text-left px-4 py-3">{t('memos.colNo')}</th>

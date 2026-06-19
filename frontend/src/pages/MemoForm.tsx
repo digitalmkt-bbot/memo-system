@@ -91,17 +91,19 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   return (
     <div className="card p-6 lg:p-8">
       {/* step indicator */}
-      <div className="flex items-center mb-7">
-        {STEPS.map(([k, lbl], i) => (
-          <div key={k} className="flex items-center flex-1 last:flex-none">
-            <div className="flex items-center gap-2">
-              <div className={'w-8 h-8 rounded-full grid place-items-center text-[13px] font-bold ' +
-                (i <= activeStep ? 'text-white bg-gradient-to-br from-[#8273f7] to-[#6354e6] shadow-neu-sm' : 'bg-surface text-slate-400 shadow-neu-sm')}>{i + 1}</div>
-              <span className={'text-[13px] font-semibold ' + (i <= activeStep ? 'text-ocean-dark' : 'text-slate-400')}>{t(lbl)}</span>
+      <div className="overflow-x-auto pb-1 mb-7">
+        <div className="flex items-center min-w-[600px]">
+          {STEPS.map(([k, lbl], i) => (
+            <div key={k} className="flex items-center flex-1 last:flex-none">
+              <div className="flex items-center gap-2 shrink-0">
+                <div className={'w-8 h-8 rounded-full grid place-items-center text-[13px] font-bold shrink-0 ' +
+                  (i <= activeStep ? 'text-white bg-gradient-to-br from-[#8273f7] to-[#6354e6] shadow-neu-sm' : 'bg-surface text-slate-400 shadow-neu-sm')}>{i + 1}</div>
+                <span className={'text-[13px] font-semibold whitespace-nowrap ' + (i <= activeStep ? 'text-ocean-dark' : 'text-slate-400')}>{t(lbl)}</span>
+              </div>
+              {i < STEPS.length - 1 && <div className={'flex-1 h-0.5 mx-3 rounded ' + (i < activeStep ? 'bg-ocean' : 'bg-slate-200')} />}
             </div>
-            {i < STEPS.length - 1 && <div className={'flex-1 h-0.5 mx-3 rounded ' + (i < activeStep ? 'bg-ocean' : 'bg-slate-200')} />}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <form>

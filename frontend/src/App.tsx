@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useAuth } from './auth';
 import { useI18n } from './i18n';
 import { Login } from './pages/Login';
@@ -12,7 +12,6 @@ import { Reports } from './pages/Reports';
 import { Users } from './pages/Users';
 import { Settings } from './pages/Settings';
 
-// inline line-icons (stroke = currentColor)
 const I = {
   dashboard: 'M3 10.5 12 3l9 7.5M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5',
   memos: 'M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM14 3v5h5M9 12h7M9 16h7',
@@ -58,10 +57,29 @@ function LangToggle() {
 function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t, roleLabel } = useI18n();
+  const [open, setOpen] = useState(false);
   const initial = (user?.name || 'L').trim().charAt(0).toUpperCase();
+
   return (
-    <div className="grid grid-cols-[248px_1fr] min-h-screen bg-sand">
-      <aside className="px-4 py-5 flex flex-col">
+    <div className="min-h-screen bg-sand lg:grid lg:grid-cols-[248px_1fr]">
+      {/* mobile top bar */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-sand/95 backdrop-blur">
+        <button onClick={() => setOpen(true)} aria-label="menu"
+          className="w-10 h-10 rounded-xl grid place-items-center bg-surface shadow-neu-sm text-ocean-dark">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <div className="font-extrabold text-base bg-gradient-to-r from-[#6d5ef0] to-[#9a7df3] bg-clip-text text-transparent">{t('common.appName')}</div>
+      </header>
+
+      {/* backdrop (mobile) */}
+      {open && <div className="lg:hidden fixed inset-0 bg-ink/40 z-40" onClick={() => setOpen(false)} />}
+
+      {/* sidebar — drawer on mobile, static on lg */}
+      <aside className={
+        'bg-sand w-64 px-4 py-5 flex flex-col z-50 fixed inset-y-0 left-0 overflow-y-auto transition-transform duration-200 ' +
+        'lg:static lg:w-auto lg:h-screen lg:translate-x-0 ' +
+        (open ? 'translate-x-0 shadow-2xl' : '-translate-x-full')
+      }>
         <div className="flex items-center gap-3 px-1.5 pb-6">
           <div className="w-11 h-11 rounded-2xl grid place-items-center text-white font-extrabold text-lg bg-gradient-to-br from-[#8273f7] to-[#6354e6] shadow-neu-sm">
             {initial}
@@ -76,7 +94,7 @@ function Layout({ children }: { children: ReactNode }) {
 
         <nav className="flex flex-col gap-1.5">
           {NAV.filter(([, , , role]) => !role || role === user?.role).map(([to, label, icon]) => (
-            <NavLink key={to} to={to} end={to === '/memos'}
+            <NavLink key={to} to={to} end={to === '/memos'} onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ' +
                 (isActive
@@ -88,7 +106,7 @@ function Layout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="flex-1" />
+        <div className="flex-1 min-h-6" />
         <LangToggle />
         <div className="bg-surface rounded-2xl p-3.5 shadow-neu">
           <div className="text-ink font-bold text-sm truncate">{user?.name}</div>
@@ -98,7 +116,8 @@ function Layout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="p-7 overflow-y-auto max-h-screen">{children}</main>
+
+      <main className="min-w-0 p-4 sm:p-6 lg:p-7 lg:max-h-screen lg:overflow-y-auto">{children}</main>
     </div>
   );
 }
