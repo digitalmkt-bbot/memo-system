@@ -24,22 +24,6 @@ const LOVE_DEPTS: [string, string][] = [
   ['RNGP', 'RANONG PIER'],
   ['TLPS', 'TAP LAMU PIER SHOP'],
 ];
-const ANDAMAN_DEPTS: [string, string][] = [
-  ['SA', 'SALES AGENT'],
-  ['HR', 'HUMAN RESOURCES'],
-  ['ACC', 'ACCOUNTING & FINANCE'],
-  ['SRV', 'SERVICE'],
-];
-const PASSION_DEPTS: [string, string][] = [
-  ['SEC', 'SECRETARY'],
-  ['ACC', 'ACCOUNTING & FINANCE'],
-  ['MKT', 'MARKETING'],
-  ['SA', 'SALES AGENT'],
-  ['RSV', 'RESERVATION'],
-  ['SONL', 'SALE ONLINE'],
-  ['SRV', 'SERVICE'],
-  ['HR', 'HUMAN RESOURCES'],
-];
 // legacy code -> new code (rename in place to avoid duplicates)
 const DEPT_RENAME: [string, string][] = [
   ['SAG', 'SA'], ['ONL', 'SONL'], ['SVC', 'SRV'],
@@ -79,8 +63,8 @@ async function main() {
     }
   };
   await seedDepts(love.id, LOVE_DEPTS);
-  await seedDepts(andaman.id, ANDAMAN_DEPTS);
-  await seedDepts(passion.id, PASSION_DEPTS);
+  await seedDepts(andaman.id, LOVE_DEPTS);
+  await seedDepts(passion.id, LOVE_DEPTS);
 
   const dept = async (companyId: number, code: string) =>
     (await prisma.department.findFirst({ where: { companyId, code } }))!.id;
