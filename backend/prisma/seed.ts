@@ -27,6 +27,16 @@ const ANDAMAN_DEPTS: [string, string][] = [
   ['ACC', 'ACCOUNTING & FINANCE'],
   ['SVC', 'SERVICE'],
 ];
+const PASSION_DEPTS: [string, string][] = [
+  ['SEC', 'SECRETARY'],
+  ['ACC', 'ACCOUNTING & FINANCE'],
+  ['MKT', 'MARKETING'],
+  ['SAG', 'SALES AGENT'],
+  ['RSV', 'RESERVATION'],
+  ['ONL', 'ONLINE'],
+  ['SVC', 'SERVICE'],
+  ['HR', 'HUMAN RESOURCES'],
+];
 
 async function main() {
   // 1) install the atomic running-number function
@@ -42,6 +52,10 @@ async function main() {
     where: { code: 'ANDAMAN' }, update: {},
     create: { code: 'ANDAMAN', name: 'ANDAMAN SUNDAY CO., LTD.' },
   });
+  const passion = await prisma.company.upsert({
+    where: { code: 'PASSION' }, update: { name: 'ANDAMAN PASSION CO., LTD.' },
+    create: { code: 'PASSION', name: 'ANDAMAN PASSION CO., LTD.' },
+  });
 
   // 3) departments
   for (const [code, name] of LOVE_DEPTS) {
@@ -54,6 +68,12 @@ async function main() {
     await prisma.department.upsert({
       where: { companyId_code: { companyId: andaman.id, code } },
       update: { name }, create: { companyId: andaman.id, code, name },
+    });
+  }
+  for (const [code, name] of PASSION_DEPTS) {
+    await prisma.department.upsert({
+      where: { companyId_code: { companyId: passion.id, code } },
+      update: { name }, create: { companyId: passion.id, code, name },
     });
   }
 
@@ -89,7 +109,7 @@ async function main() {
       passwordHash: demoPw, role: 'staff', managerId: mgr.id },
   });
 
-  console.log('Seed complete: 2 companies, 18 departments, 4 users.');
+  console.log('Seed complete: 3 companies, departments seeded, 4 users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  ceo@ / ops.manager@ / ploy@loveandaman.com  (Password123!)');
 }
