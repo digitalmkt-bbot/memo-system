@@ -46,6 +46,7 @@ model Department {
   companyId Int     @map("company_id")
   code      String
   name      String
+  position  Int     @default(0)
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   users     User[]
   memos     Memo[]

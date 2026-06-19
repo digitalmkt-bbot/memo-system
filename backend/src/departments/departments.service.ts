@@ -8,7 +8,7 @@ export class DepartmentsService {
     return this.prisma.department.findMany({
       where: companyId ? { companyId } : undefined,
       select: { id: true, companyId: true, code: true, name: true },
-      orderBy: [{ companyId: 'asc' }, { id: 'asc' }],
+      orderBy: [{ companyId: 'asc' }, { position: 'asc' }, { code: 'asc' }],
     });
   }
 }

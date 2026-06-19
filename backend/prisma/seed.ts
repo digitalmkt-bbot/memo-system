@@ -5,37 +5,45 @@ import { join } from 'path';
 
 const prisma = new PrismaClient();
 
+// canonical department list (order matters -> position)
 const LOVE_DEPTS: [string, string][] = [
   ['SEC', 'SECRETARY'],
   ['HR', 'HUMAN RESOURCES'],
   ['ACC', 'ACCOUNTING & FINANCE'],
-  ['BD', 'BUSINESS DEVELOPMENT / PUBLIC RELATIONS'],
+  ['PUR', 'PURCHASE'],
   ['MKT', 'MARKETING'],
-  ['SAG', 'SALES AGENT'],
+  ['BD', 'BUSINESS DEVELOPMENT'],
+  ['PR', 'PUBLIC RELATIONS'],
+  ['SA', 'SALES AGENT'],
   ['RSV', 'RESERVATION'],
-  ['ONL', 'ONLINE'],
-  ['SVC', 'SERVICE'],
+  ['SONL', 'SALE ONLINE'],
+  ['SRV', 'SERVICE'],
   ['MEC', 'MECHANIC'],
-  ['PKT', 'PHUKET PORT'],
-  ['TLM', 'TAP LAMU PORT'],
-  ['RNG', 'RANONG PORT'],
-  ['TLS', 'TAP LAMU PORT SHOP'],
+  ['PKTP', 'PHUKET PIER'],
+  ['TLP', 'TAP LAMU PIER'],
+  ['RNGP', 'RANONG PIER'],
+  ['TLPS', 'TAP LAMU PIER SHOP'],
 ];
 const ANDAMAN_DEPTS: [string, string][] = [
-  ['SAG', 'SALES AGENT'],
+  ['SA', 'SALES AGENT'],
   ['HR', 'HUMAN RESOURCES'],
   ['ACC', 'ACCOUNTING & FINANCE'],
-  ['SVC', 'SERVICE'],
+  ['SRV', 'SERVICE'],
 ];
 const PASSION_DEPTS: [string, string][] = [
   ['SEC', 'SECRETARY'],
   ['ACC', 'ACCOUNTING & FINANCE'],
   ['MKT', 'MARKETING'],
-  ['SAG', 'SALES AGENT'],
+  ['SA', 'SALES AGENT'],
   ['RSV', 'RESERVATION'],
-  ['ONL', 'ONLINE'],
-  ['SVC', 'SERVICE'],
+  ['SONL', 'SALE ONLINE'],
+  ['SRV', 'SERVICE'],
   ['HR', 'HUMAN RESOURCES'],
+];
+// legacy code -> new code (rename in place to avoid duplicates)
+const DEPT_RENAME: [string, string][] = [
+  ['SAG', 'SA'], ['ONL', 'SONL'], ['SVC', 'SRV'],
+  ['PKT', 'PKTP'], ['TLM', 'TLP'], ['RNG', 'RNGP'], ['TLS', 'TLPS'],
 ];
 
 async function main() {
@@ -57,25 +65,22 @@ async function main() {
     create: { code: 'PASSION', name: 'ANDAMAN PASSION CO., LTD.' },
   });
 
-  // 3) departments
-  for (const [code, name] of LOVE_DEPTS) {
-    await prisma.department.upsert({
-      where: { companyId_code: { companyId: love.id, code } },
-      update: { name }, create: { companyId: love.id, code, name },
-    });
+  // 3) departments — first rename legacy codes in place (keeps memo/user references)
+  for (const [oldCode, newCode] of DEPT_RENAME) {
+    await prisma.department.updateMany({ where: { code: oldCode }, data: { code: newCode } });
   }
-  for (const [code, name] of ANDAMAN_DEPTS) {
-    await prisma.department.upsert({
-      where: { companyId_code: { companyId: andaman.id, code } },
-      update: { name }, create: { companyId: andaman.id, code, name },
-    });
-  }
-  for (const [code, name] of PASSION_DEPTS) {
-    await prisma.department.upsert({
-      where: { companyId_code: { companyId: passion.id, code } },
-      update: { name }, create: { companyId: passion.id, code, name },
-    });
-  }
+  const seedDepts = async (companyId: number, list: [string, string][]) => {
+    for (let i = 0; i < list.length; i++) {
+      const [code, name] = list[i];
+      await prisma.department.upsert({
+        where: { companyId_code: { companyId, code } },
+        update: { name, position: i }, create: { companyId, code, name, position: i },
+      });
+    }
+  };
+  await seedDepts(love.id, LOVE_DEPTS);
+  await seedDepts(andaman.id, ANDAMAN_DEPTS);
+  await seedDepts(passion.id, PASSION_DEPTS);
 
   const dept = async (companyId: number, code: string) =>
     (await prisma.department.findFirst({ where: { companyId, code } }))!.id;
@@ -98,7 +103,7 @@ async function main() {
   });
   const mgr = await prisma.user.upsert({
     where: { email: 'ops.manager@loveandaman.com' }, update: {},
-    create: { companyId: love.id, departmentId: await dept(love.id, 'SVC'),
+    create: { companyId: love.id, departmentId: await dept(love.id, 'SRV'),
       employeeCode: 'MG001', name: 'Naree (Service Mgr)', email: 'ops.manager@loveandaman.com',
       passwordHash: demoPw, role: 'manager', managerId: exec.id },
   });
