@@ -50,40 +50,40 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="mb-5">
-        <h2 className="text-2xl">{t('dashboard.hello')}, {user?.name}</h2>
-        <p className="text-slate-500 text-[13px] mt-0.5">{t('dashboard.overview')}</p>
+      <div className="mb-6">
+        <h2 className="text-3xl">{t('dashboard.hello')}, {user?.name}</h2>
+        <p className="text-slate-500 text-sm mt-1">{t('dashboard.overview')}</p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3 lg:auto-rows-min lg:grid-flow-row-dense">
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr_1.25fr] lg:auto-rows-min lg:grid-flow-row-dense">
         {/* Total value */}
-        <div className="card p-5">
+        <div className="card p-6">
           <div className="flex items-start justify-between">
             <div className="text-slate-500 text-[13px]">{t('dashboard.kpiTotalValue')}</div>
             <span className="text-slate-300">•••</span>
           </div>
           <div className="flex items-end gap-3 mt-3 flex-wrap">
-            <div className="text-3xl font-extrabold text-ink">{money(ov.totalAmount)}</div>
+            <div className="text-[40px] leading-none font-extrabold text-ink">{money(ov.totalAmount)}</div>
             <Chip up>{approvalRate}%</Chip>
           </div>
           <div className="text-slate-400 text-[12px] mt-2">{t('dashboard.approvalRate')} · {fill(t('dashboard.ofTotalMemos'), total)}</div>
         </div>
 
         {/* In progress */}
-        <div className="card p-5">
+        <div className="card p-6">
           <div className="flex items-start justify-between">
             <div className="text-slate-500 text-[13px]">{t('dashboard.kpiPending')}</div>
             <span className="text-slate-300">•••</span>
           </div>
           <div className="flex items-end gap-3 mt-3 flex-wrap">
-            <div className="text-3xl font-extrabold text-ink">{num(pending)}</div>
+            <div className="text-[40px] leading-none font-extrabold text-ink">{num(pending)}</div>
             <Chip up={false}>{pendingRate}%</Chip>
           </div>
           <div className="text-slate-400 text-[12px] mt-2">{fill(t('dashboard.ofTotalMemos'), total)}</div>
         </div>
 
         {/* Satisfaction (diverging) */}
-        <div className="card p-5 lg:row-span-2">
+        <div className="card p-6 lg:row-span-2">
           <div className="flex items-center justify-between mb-1">
             <div className="font-bold text-ink text-[15px]">{t('dashboard.satisfTitle')}</div>
             <span className="text-[12px] text-slate-500 bg-slate-100 rounded-full px-3 py-1">Monthly</span>
@@ -111,7 +111,7 @@ export function Dashboard() {
         </div>
 
         {/* Status overview (period style) */}
-        <div className="card p-5 lg:col-span-2">
+        <div className="card p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="text-slate-500 text-[12px]">{t('dashboard.statusOverview')}</div>
@@ -126,7 +126,7 @@ export function Dashboard() {
             ].map((c, i) => (
               <div key={i}>
                 <div className="text-slate-500 text-[12px]">{c.label}</div>
-                <div className="text-2xl font-extrabold text-ink mt-0.5">{num(c.val)}</div>
+                <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(c.val)}</div>
                 <div className="h-2.5 rounded-full bg-slate-100 mt-3 overflow-hidden">
                   <div className={'h-full rounded-full bg-gradient-to-r ' + c.grad} style={{ width: Math.max(4, c.w) + '%' }} />
                 </div>
@@ -136,7 +136,7 @@ export function Dashboard() {
         </div>
 
         {/* Sales analytics (bar) */}
-        <div className="card p-5 lg:col-span-2">
+        <div className="card p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
             <div>
               <div className="font-bold text-ink text-[15px]">{t('dashboard.monthlyTitle')}</div>
@@ -151,12 +151,12 @@ export function Dashboard() {
               ))}
             </div>
           </div>
-          <div className="w-full h-60 mt-3">
+          <div className="w-full h-72 mt-4">
             <ResponsiveContainer>
               <BarChart data={bars} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <XAxis dataKey="label" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
                 <Tooltip cursor={{ fill: 'rgba(16,185,129,0.06)' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(17,24,39,0.12)' }} />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={42}>
+                <Bar dataKey="count" radius={[12, 12, 0, 0]} maxBarSize={64}>
                   {bars.map((_, i) => <Cell key={i} fill={i === lastIdx ? '#10b981' : '#a7f3d0'} />)}
                 </Bar>
               </BarChart>
@@ -167,7 +167,7 @@ export function Dashboard() {
         {/* Smart insights */}
         <div className="card p-0 overflow-hidden lg:col-span-1 relative text-white"
           style={{ background: 'linear-gradient(150deg,#0f766e 0%,#10b981 45%,#7c3aed 100%)' }}>
-          <div className="p-5 h-full flex flex-col">
+          <div className="p-6 h-full flex flex-col">
             <div className="flex gap-2 flex-wrap">
               <span className="text-[11px] font-semibold bg-white/15 backdrop-blur rounded-full px-2.5 py-1">⚡ {t('dashboard.badgeAccuracy')}</span>
               <span className="text-[11px] font-semibold bg-white/15 backdrop-blur rounded-full px-2.5 py-1">↗ {fill(t('dashboard.badgeExpected'), approved)}</span>
