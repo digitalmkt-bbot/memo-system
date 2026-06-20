@@ -135,7 +135,7 @@ function Layout({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-sand lg:grid lg:grid-cols-[252px_1fr]">
+    <div className="min-h-screen bg-[linear-gradient(150deg,#f7f4ec_0%,#f2f5f0_45%,#e9f3ee_100%)] lg:grid lg:grid-cols-[252px_1fr]">
       <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-surface border-b border-slate-200">
         <button onClick={() => setOpen(true)} aria-label="menu"
           className="w-10 h-10 rounded-xl grid place-items-center bg-slate-100 text-ink">

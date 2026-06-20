@@ -136,7 +136,7 @@ export function Dashboard() {
                 <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(45,50,69,0.15)' }} />
                 <Legend />
                 <Line type="monotone" dataKey="count" name={t('dashboard.barTotal')} stroke="url(#lineTotal)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
-                <Line type="monotone" dataKey="approved" name={t('dashboard.barApproved')} stroke="#10b981" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="approved" name={t('dashboard.barApproved')} stroke="#ec4899" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
