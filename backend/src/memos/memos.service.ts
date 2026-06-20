@@ -245,12 +245,14 @@ export class MemosService {
 
       let data: any; let detail: string;
       if (isDeptManager) {
-        const target = next === 'md' ? 'md' : 'hrm';
+        // creator is the department manager → skip the manager step and route
+        // straight to the Managing Director (MD), regardless of `next`.
+        const target = 'md';
         const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
         if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
-        await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: 'ผู้สร้างเป็นผู้จัดการแผนก (ข้ามขั้นอนุมัติหัวหน้า)' } });
+        await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: 'ผู้สร้างเป็นผู้จัดการแผนก (ข้ามขั้นอนุมัติหัวหน้า → ส่งตรงถึง MD)' } });
         data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
-        detail = `Assigned ${memoNo}; creator is dept manager → routed to ${target.toUpperCase()}`;
+        detail = `Assigned ${memoNo}; creator is dept manager → routed to MD`;
       } else {
         const managerId = await this.pickManager(user.id);
         if (!managerId) throw new BadRequestException('No manager available to route to');

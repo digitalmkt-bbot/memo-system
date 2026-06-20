@@ -32,7 +32,6 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const [category, setCategory] = useState<string>(initial?.category || 'general');
   const [categoryNote, setCategoryNote] = useState<string>(initial?.categoryNote || '');
   const [neededDate, setNeededDate] = useState<string>(initial?.neededDate || '');
-  const [submitNext, setSubmitNext] = useState<'hrm' | 'md'>('hrm');
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MemoFormValues>({
@@ -86,7 +85,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       let id = memoId;
       if (id) await api.updateMemo(id, build(v));
       else { const m = await api.createMemo(build(v)); id = m.id; }
-      await uploadIfAny(id!); await api.submitMemo(id!, isSelfManager ? submitNext : undefined); nav(`/memos/view/${id}`);
+      await uploadIfAny(id!); await api.submitMemo(id!, isSelfManager ? 'md' : undefined); nav(`/memos/view/${id}`);
     } finally { setBusy(false); }
   });
 
@@ -231,10 +230,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
         {isSelfManager && (
           <div className="mt-6 flex items-center gap-2 flex-wrap text-[13px] text-ink bg-surface rounded-xl px-3.5 py-2.5 shadow-neu-inset">
             <span className="text-slate-500">{t('form.selfManagerNote')}</span>
-            <select className="rounded-lg bg-sand shadow-neu-sm px-2.5 py-1.5 text-[13px] focus:outline-none" value={submitNext} onChange={(e) => setSubmitNext(e.target.value as 'hrm' | 'md')}>
-              <option value="hrm">{t('view.toHrm')}</option>
-              <option value="md">{t('view.toMd')}</option>
-            </select>
+            <span className="rounded-lg bg-sand shadow-neu-sm px-2.5 py-1.5 text-[13px] font-medium">{t('view.toMd')}</span>
           </div>
         )}
         <div className="flex gap-2.5 mt-4">
