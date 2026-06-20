@@ -98,11 +98,11 @@ export function Dashboard() {
                 <div className="text-[11px] text-slate-400 mb-1.5">{m.label}</div>
                 <div className="flex items-center">
                   <div className="flex-1 flex justify-end">
-                    <div className="h-4 rounded-l-full bg-gradient-to-l from-emerald-400 to-emerald-200" style={{ width: ((m.approved || 0) / divMax * 100) + '%' }} />
+                    <div className="h-6 rounded-l-full bg-gradient-to-l from-emerald-400 to-emerald-200" style={{ width: ((m.approved || 0) / divMax * 100) + '%' }} />
                   </div>
-                  <div className="w-px h-5 bg-slate-300" />
+                  <div className="w-px h-7 bg-slate-300" />
                   <div className="flex-1">
-                    <div className="h-4 rounded-r-full bg-gradient-to-r from-pink-400 to-pink-200" style={{ width: ((m.rejected || 0) / divMax * 100) + '%' }} />
+                    <div className="h-6 rounded-r-full bg-gradient-to-r from-pink-400 to-pink-200" style={{ width: ((m.rejected || 0) / divMax * 100) + '%' }} />
                   </div>
                 </div>
               </div>
