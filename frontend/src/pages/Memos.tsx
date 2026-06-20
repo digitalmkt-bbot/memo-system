@@ -33,7 +33,7 @@ export function Memos() {
         {BOXES.map(([k, l]) => (
           <button key={k} onClick={() => setBox(k)}
             className={'px-4 py-2 rounded-xl text-[13px] font-semibold transition-all ' +
-              (box === k ? 'text-white bg-gradient-to-br from-[#8273f7] to-[#6354e6] shadow-neu-sm' : 'bg-surface text-slate-500 shadow-neu-sm hover:text-ocean-dark')}>
+              (box === k ? 'text-white bg-gradient-to-br from-[#34d399] to-[#10b981] shadow-neu-sm' : 'bg-surface text-slate-500 shadow-neu-sm hover:text-ocean-dark')}>
             {l}
           </button>
         ))}

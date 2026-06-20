@@ -4,20 +4,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        // violet brand (kept under the legacy "ocean" keys so existing classes restyle globally)
-        ocean: { DEFAULT: '#7c6cf5', dark: '#5a48d6', light: '#ece9fd' },
-        sand: '#e6eaf3',       // app background
-        surface: '#eef1f8',    // raised card / control surface
-        ink: '#2b3245',
+        // emerald/mint brand (kept under the legacy "ocean" keys so existing classes restyle globally)
+        ocean: { DEFAULT: '#10b981', dark: '#059669', light: '#d1fae5' },
+        sand: '#f3f4f1',       // app background (warm off-white)
+        surface: '#ffffff',    // cards
+        ink: '#1f2937',        // dark slate
       },
       fontFamily: {
         sans: ['Inter', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        neu: '7px 7px 16px #c7cdda, -7px -7px 16px #ffffff',
-        'neu-sm': '4px 4px 9px #c9cfdc, -4px -4px 9px #ffffff',
-        'neu-inset': 'inset 4px 4px 8px #cbd1de, inset -4px -4px 8px #ffffff',
-        'neu-press': 'inset 3px 3px 7px #c2c8d6, inset -3px -3px 7px #ffffff',
+        neu: '0 8px 30px rgba(17,24,39,0.06)',
+        'neu-sm': '0 1px 2px rgba(17,24,39,0.06), 0 1px 1px rgba(17,24,39,0.04)',
+        'neu-inset': 'inset 0 0 0 1px rgba(17,24,39,0.07)',
+        'neu-press': 'inset 0 1px 2px rgba(17,24,39,0.10)',
       },
       borderRadius: {
         '2xl': '1.1rem',

@@ -9,16 +9,16 @@ import { useI18n } from '../i18n';
 import { StatusTag } from '../ui';
 
 const STAT: Record<string, { color: string; tint: string; d: string }> = {
-  inbox:             { color: '#7c6cf5', tint: '#ece9fd', d: 'M4 13h4l2 3h4l2-3h4M4 13l2-7h12l2 7M4 13v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5' },
+  inbox:             { color: '#10b981', tint: '#d1fae5', d: 'M4 13h4l2 3h4l2-3h4M4 13l2-7h12l2 7M4 13v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5' },
   approved:          { color: '#10b981', tint: '#d8f6ec', d: 'M20 6 9 17l-5-5' },
   pending_manager:   { color: '#f59e0b', tint: '#fdeccf', d: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z' },
   pending_executive: { color: '#3b82f6', tint: '#d8e7fd', d: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z' },
-  pending_hrmd:      { color: '#6366f1', tint: '#e0e7ff', d: 'M16 19a4 4 0 0 0-8 0M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z' },
+  pending_hrmd:      { color: '#14b8a6', tint: '#ccfbf1', d: 'M16 19a4 4 0 0 0-8 0M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z' },
   pending_fc:        { color: '#06b6d4', tint: '#cffafe', d: 'M3 7h18v10H3zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z' },
   rejected:          { color: '#ef4444', tint: '#fbdcdc', d: 'M18 6 6 18M6 6l12 12' },
-  total:             { color: '#8b5cf6', tint: '#ebe5fd', d: 'M4 7l8-4 8 4-8 4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4' },
+  total:             { color: '#14b8a6', tint: '#d1fae5', d: 'M4 7l8-4 8 4-8 4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4' },
 };
-const PIE_COLORS = ['#7c6cf5', '#22b8cf', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6', '#ec4899'];
+const PIE_COLORS = ['#10b981', '#22b8cf', '#10b981', '#f59e0b', '#ef4444', '#14b8a6', '#3b82f6', '#ec4899'];
 const RANGES: [string, string][] = [['7d', 'r7d'], ['30d', 'r30d'], ['90d', 'r90d'], ['12m', 'r12m']];
 const STATUSES = ['draft', 'pending_manager', 'pending_executive', 'approved', 'rejected', 'cancelled'];
 const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -93,12 +93,12 @@ export function Dashboard() {
       </div>
 
       {/* total value */}
-      <div className="card p-5 mb-5 flex items-center justify-between bg-gradient-to-br from-[#efeafe] to-[#eef1f8]">
+      <div className="card p-5 mb-5 flex items-center justify-between bg-gradient-to-br from-[#ecfdf5] to-[#f0fdf4]">
         <div>
           <div className="text-slate-500 text-[13px]">{t('dashboard.totalValue')}</div>
           <div className="text-3xl font-extrabold text-ocean-dark mt-1">฿{money(ov.totalAmount)}</div>
         </div>
-        <div className="w-14 h-14 rounded-2xl grid place-items-center text-white text-2xl font-extrabold bg-gradient-to-br from-[#8273f7] to-[#6354e6] shadow-neu-sm">฿</div>
+        <div className="w-14 h-14 rounded-2xl grid place-items-center text-white text-2xl font-extrabold bg-gradient-to-br from-[#34d399] to-[#10b981] shadow-neu-sm">฿</div>
       </div>
 
       {/* status cards */}
@@ -129,7 +129,7 @@ export function Dashboard() {
           <div className="w-full h-60">
             <ResponsiveContainer>
               <LineChart data={series} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-                <defs><linearGradient id="lineTotal" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#9a7df3" /><stop offset="100%" stopColor="#6354e6" /></linearGradient></defs>
+                <defs><linearGradient id="lineTotal" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#10b981" /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d9deea" vertical={false} />
                 <XAxis dataKey="label" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} />
                 <YAxis allowDecimals={false} fontSize={11} stroke="#94a3b8" tickLine={false} axisLine={false} />
@@ -181,7 +181,7 @@ export function Dashboard() {
                   <XAxis type="number" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" width={150} fontSize={11} stroke="#64748b" tickLine={false} axisLine={false} />
                   <Tooltip formatter={(v: any) => '฿' + money(v)} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(45,50,69,0.15)' }} />
-                  <Bar dataKey="amount" fill="#7c6cf5" radius={[0, 6, 6, 0]} barSize={18} />
+                  <Bar dataKey="amount" fill="#10b981" radius={[0, 6, 6, 0]} barSize={18} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
