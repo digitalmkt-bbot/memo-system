@@ -98,17 +98,23 @@ export function Dashboard() {
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#4ade80]" />{t('dashboard.barApproved')}</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#ff6fb5]" />{t('dashboard.barRejected')}</span>
           </div>
-          <div className="flex-1 flex flex-col justify-around py-2">
+          <div className="relative flex-1 flex flex-col justify-around py-2">
+            {/* vertical dashed gridlines (9 ticks, like Ref) */}
+            <div className="absolute inset-0 flex justify-between pointer-events-none">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="w-px border-l border-dashed border-slate-200/80" />
+              ))}
+            </div>
             {div.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : div.map((m, i) => (
-              <div key={i}>
+              <div key={i} className="relative">
                 <div className="text-[11px] text-slate-400 mb-1.5">{m.label}</div>
                 <div className="flex items-center">
                   <div className="flex-1 flex justify-end">
-                    <div className="h-6 rounded-l-full bg-gradient-to-l from-[#4ade80] to-[#bbf7d0]" style={{ width: ((m.approved || 0) / divMax * 100) + '%' }} />
+                    <div className="h-8 rounded-l-full bg-gradient-to-l from-[#4ade80] to-[#a7f3d0]" style={{ width: ((m.approved || 0) / divMax * 100) + '%' }} />
                   </div>
-                  <div className="w-px h-7 bg-slate-300" />
+                  <div className="w-px h-9 bg-slate-300" />
                   <div className="flex-1">
-                    <div className="h-6 rounded-r-full bg-gradient-to-r from-[#ff6fb5] to-[#ffd9ec]" style={{ width: ((m.rejected || 0) / divMax * 100) + '%' }} />
+                    <div className="h-8 rounded-r-full bg-gradient-to-r from-[#f24d92] to-[#f9c2da]" style={{ width: ((m.rejected || 0) / divMax * 100) + '%' }} />
                   </div>
                 </div>
               </div>
@@ -141,16 +147,14 @@ export function Dashboard() {
           </div>
           <div className="flex items-end gap-3">
             {[
-              { label: t('dashboard.barTotal'), val: total, grad: 'from-[#3f3f46] to-[#1a1a1a]', w: 100, flex: 'flex-[3]' },
-              { label: t('dashboard.barApproved'), val: approved, grad: 'from-[#bbf7d0] to-[#22c55e]', w: total ? approved / total * 100 : 0, flex: 'flex-1' },
-              { label: t('dashboard.barRejected'), val: rejected, grad: 'from-[#ffd9ec] to-[#ff4fa3]', w: total ? rejected / total * 100 : 0, flex: 'flex-1' },
+              { label: t('dashboard.barTotal'), val: total, grad: 'from-[#ededed] to-[#1a1a1a]', flex: 'flex-[3]' },
+              { label: t('dashboard.barApproved'), val: approved, grad: 'from-[#eafff3] to-[#4ade80]', flex: 'flex-1' },
+              { label: t('dashboard.barRejected'), val: rejected, grad: 'from-[#fff0f7] to-[#ff6fb5]', flex: 'flex-1' },
             ].map((c, i) => (
               <div key={i} className={c.flex}>
                 <div className="text-slate-500 text-[12px]">{c.label}</div>
                 <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5 mb-3">{num(c.val)}</div>
-                <div className="h-4 rounded-full bg-slate-100 overflow-hidden">
-                  <div className={'h-full rounded-full bg-gradient-to-r ' + c.grad} style={{ width: Math.max(8, c.w) + '%' }} />
-                </div>
+                <div className={'h-5 w-full rounded-full bg-gradient-to-r ' + c.grad} />
               </div>
             ))}
           </div>
@@ -175,9 +179,9 @@ export function Dashboard() {
           <div className="w-full h-56 mt-4">
             <svg width="0" height="0" className="absolute">
               <defs>
-                <pattern id="memoStripes" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(45)">
-                  <rect width="9" height="9" fill="#bbf7d0" />
-                  <line x1="0" y1="0" x2="0" y2="9" stroke="#4ade80" strokeWidth="5" />
+                <pattern id="memoStripes" patternUnits="userSpaceOnUse" width="11" height="11" patternTransform="rotate(45)">
+                  <rect width="11" height="11" fill="#dcfce7" />
+                  <line x1="0" y1="0" x2="0" y2="11" stroke="#86efac" strokeWidth="6" />
                 </pattern>
               </defs>
             </svg>
@@ -188,7 +192,7 @@ export function Dashboard() {
                 <YAxis fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} width={38}
                   tickFormatter={(v) => (v >= 1000 ? (v / 1000) + 'K' : String(v))} />
                 <Tooltip cursor={{ fill: 'rgba(74,222,128,0.08)' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(17,24,39,0.12)' }} />
-                <Bar dataKey="count" radius={[12, 12, 0, 0]} maxBarSize={64}>
+                <Bar dataKey="count" radius={[14, 14, 14, 14]} maxBarSize={64}>
                   {bars.map((_, i) => <Cell key={i} fill={i === lastIdx ? 'url(#memoStripes)' : '#86efac'} />)}
                 </Bar>
               </BarChart>
