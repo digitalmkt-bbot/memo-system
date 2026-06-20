@@ -223,10 +223,7 @@ export class MemosService {
    * next_memo_no() DB function (INSERT ... ON CONFLICT DO UPDATE RETURNING),
    * executed inside a single interactive transaction.
    */
-  async submit(user: JwtUser, id: number) {
-    const managerId = await this.pickManager(user.id);
-    if (!managerId) throw new BadRequestException('No manager available to route to');
-
+  async submit(user: JwtUser, id: number, next?: string) {
     return this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
@@ -238,12 +235,31 @@ export class MemosService {
         const r = await tx.$queryRaw<{ no: string }[]>`SELECT next_memo_no(${memo.companyId}::int) AS no`;
         memoNo = r[0].no;
       }
-      const updated = await tx.memo.update({
-        where: { id },
-        data: { memoNo, status: 'pending_manager', currentApproverId: managerId, submittedAt: new Date() },
-        include: INCLUDE,
-      });
-      await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail: `Assigned ${memoNo}, routed to manager` } });
+
+      // If the creator is the department manager of this memo's department,
+      // skip the manager-approval step (no self-approval) and go straight to HRM/MD.
+      const creator = await tx.user.findUnique({ where: { id: user.id } });
+      const isDeptManager = creator?.role === 'manager'
+        && memo.companyId === creator.companyId
+        && memo.departmentId === creator.departmentId;
+
+      let data: any; let detail: string;
+      if (isDeptManager) {
+        const target = next === 'md' ? 'md' : 'hrm';
+        const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
+        if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
+        await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: 'ผู้สร้างเป็นผู้จัดการแผนก (ข้ามขั้นอนุมัติหัวหน้า)' } });
+        data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
+        detail = `Assigned ${memoNo}; creator is dept manager → routed to ${target.toUpperCase()}`;
+      } else {
+        const managerId = await this.pickManager(user.id);
+        if (!managerId) throw new BadRequestException('No manager available to route to');
+        data = { memoNo, status: 'pending_manager', currentApproverId: managerId, submittedAt: new Date() };
+        detail = `Assigned ${memoNo}, routed to manager`;
+      }
+
+      const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
+      await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });
       return this.shape(updated);
     });
   }

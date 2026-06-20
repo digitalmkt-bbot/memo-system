@@ -30,7 +30,7 @@ export class MemosController {
   remove(@Req() req: any, @Param('id', ParseIntPipe) id: number) { return this.svc.remove(req.user, id); }
 
   @Post(':id/submit')
-  submit(@Req() req: any, @Param('id', ParseIntPipe) id: number) { return this.svc.submit(req.user, id); }
+  submit(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.submit(req.user, id, dto?.next); }
 
   @Post(':id/approve')
   approve(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.approve(req.user, id, dto.comment, dto.next); }

@@ -38,7 +38,7 @@ export const api = {
   createMemo: (body: any) => http.post('/memos', body).then((r) => r.data),
   updateMemo: (id: number, body: any) => http.put(`/memos/${id}`, body).then((r) => r.data),
   deleteMemo: (id: number) => http.delete(`/memos/${id}`).then((r) => r.data),
-  submitMemo: (id: number) => http.post(`/memos/${id}/submit`).then((r) => r.data),
+  submitMemo: (id: number, next?: string) => http.post(`/memos/${id}/submit`, { next }).then((r) => r.data),
   approveMemo: (id: number, comment?: string, next?: string) => http.post(`/memos/${id}/approve`, { comment, next }).then((r) => r.data),
   rejectMemo: (id: number, comment: string) => http.post(`/memos/${id}/reject`, { comment }).then((r) => r.data),
   summary: () => http.get('/dashboard/summary').then((r) => r.data),
