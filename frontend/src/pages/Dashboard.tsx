@@ -147,7 +147,7 @@ export function Dashboard() {
           </div>
           {/* numbers row */}
           <div className="flex items-end">
-            <div className="flex-[3]">
+            <div className="flex-[4]">
               <div className="text-slate-500 text-[12px]">{t('dashboard.barTotal')}</div>
               <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(total)}</div>
             </div>
@@ -164,11 +164,11 @@ export function Dashboard() {
           </div>
           {/* bar row with thin vertical dividers (like Ref) */}
           <div className="flex items-center mt-3">
-            <div className="flex-[3] h-5 rounded-full bg-gradient-to-r from-[#ededed] to-[#1a1a1a]" />
-            <div className="w-px h-6 bg-slate-200 mx-3" />
-            <div className="flex-1 h-5 rounded-full bg-gradient-to-r from-[#eafff3] to-[#4ade80]" />
-            <div className="w-px h-6 bg-slate-200 mx-3" />
-            <div className="flex-1 h-5 rounded-full bg-gradient-to-r from-[#fff0f7] to-[#ff6fb5]" />
+            <div className="flex-[4] h-6 rounded-full bg-gradient-to-r from-[#ededed] to-[#1a1a1a]" />
+            <div className="w-px h-7 bg-slate-200 mx-3" />
+            <div className="flex-1 h-6 rounded-full bg-gradient-to-r from-[#eafff3] to-[#4ade80]" />
+            <div className="w-px h-7 bg-slate-200 mx-3" />
+            <div className="flex-1 h-6 rounded-full bg-gradient-to-r from-[#fff0f7] to-[#ff6fb5]" />
           </div>
         </div>
 
