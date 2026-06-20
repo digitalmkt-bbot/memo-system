@@ -59,6 +59,7 @@ export class DashboardService {
       `SELECT to_char(date_trunc('month', m.created_at), 'YYYY-MM') AS month,
               COUNT(DISTINCT m.id)::int AS count,
               COUNT(DISTINCT m.id) FILTER (WHERE m.status='approved')::int AS approved,
+              COUNT(DISTINCT m.id) FILTER (WHERE m.status='rejected')::int AS rejected,
               COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
        FROM memos m LEFT JOIN memo_items mi ON mi.memo_id = m.id
        WHERE ${conds.join(' AND ')}
@@ -129,6 +130,7 @@ export class DashboardService {
        SELECT ${labelFmt} AS label,
               COUNT(DISTINCT m.id)::int AS count,
               COUNT(DISTINCT m.id) FILTER (WHERE m.status='approved')::int AS approved,
+              COUNT(DISTINCT m.id) FILTER (WHERE m.status='rejected')::int AS rejected,
               COALESCE(SUM(mi.qty * mi.unit_price), 0)::float AS amount
        FROM b
        LEFT JOIN memos m ON ${joinTrunc} = b.d${scopeClause}

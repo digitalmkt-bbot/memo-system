@@ -137,6 +137,7 @@ export function Dashboard() {
                 <Legend />
                 <Line type="monotone" dataKey="count" name={t('dashboard.barTotal')} stroke="url(#lineTotal)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
                 <Line type="monotone" dataKey="approved" name={t('dashboard.barApproved')} stroke="#ec4899" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="rejected" name={t('dashboard.barRejected')} stroke="#ef4444" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
