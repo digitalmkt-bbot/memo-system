@@ -108,6 +108,13 @@ export function Dashboard() {
               </div>
             ))}
           </div>
+          {div.length > 0 && (
+            <div className="flex justify-between text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-100">
+              {[1, 0.75, 0.5, 0.25, 0, 0.25, 0.5, 0.75, 1].map((f, i) => (
+                <span key={i}>{Math.round(divMax * f)}</span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Status overview (period style) */}
@@ -118,17 +125,17 @@ export function Dashboard() {
               <div className="font-bold text-ink text-[15px]">{fill(t('dashboard.ofTotalMemos'), total).replace('of ', '').replace('จาก ', '')}</div>
             </div>
           </div>
-          <div className="grid sm:grid-cols-3 gap-5">
+          <div className="flex items-end gap-3">
             {[
-              { label: t('dashboard.barTotal'), val: total, grad: 'from-slate-700 to-slate-900', w: 100 },
-              { label: t('dashboard.barApproved'), val: approved, grad: 'from-emerald-200 to-emerald-500', w: total ? approved / total * 100 : 0 },
-              { label: t('dashboard.barRejected'), val: rejected, grad: 'from-pink-200 to-pink-500', w: total ? rejected / total * 100 : 0 },
+              { label: t('dashboard.barTotal'), val: total, grad: 'from-slate-700 to-slate-900', w: 100, flex: 'flex-[3]' },
+              { label: t('dashboard.barApproved'), val: approved, grad: 'from-emerald-200 to-emerald-500', w: total ? approved / total * 100 : 0, flex: 'flex-1' },
+              { label: t('dashboard.barRejected'), val: rejected, grad: 'from-pink-200 to-pink-500', w: total ? rejected / total * 100 : 0, flex: 'flex-1' },
             ].map((c, i) => (
-              <div key={i}>
+              <div key={i} className={c.flex}>
                 <div className="text-slate-500 text-[12px]">{c.label}</div>
-                <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(c.val)}</div>
-                <div className="h-4 rounded-full bg-slate-100 mt-3 overflow-hidden">
-                  <div className={'h-full rounded-full bg-gradient-to-r ' + c.grad} style={{ width: Math.max(4, c.w) + '%' }} />
+                <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5 mb-3">{num(c.val)}</div>
+                <div className="h-4 rounded-full bg-slate-100 overflow-hidden">
+                  <div className={'h-full rounded-full bg-gradient-to-r ' + c.grad} style={{ width: Math.max(8, c.w) + '%' }} />
                 </div>
               </div>
             ))}
