@@ -164,11 +164,11 @@ export function Dashboard() {
           </div>
           {/* bar row with thin vertical dividers (like Ref) */}
           <div className="flex items-center mt-3">
-            <div className="flex-[4] h-5 rounded-lg bg-gradient-to-r from-[#ededed] to-[#1a1a1a]" />
-            <div className="w-px h-6 bg-slate-200 mx-2" />
-            <div className="flex-1 h-5 rounded-lg bg-gradient-to-r from-[#eafff3] to-[#4ade80]" />
-            <div className="w-px h-6 bg-slate-200 mx-2" />
-            <div className="flex-1 h-5 rounded-lg bg-gradient-to-r from-[#fff0f7] to-[#ff6fb5]" />
+            <div className="flex-[4] h-7 rounded-lg bg-gradient-to-r from-[#ededed] to-[#1a1a1a]" />
+            <div className="w-px h-8 bg-slate-200 mx-2" />
+            <div className="flex-1 h-7 rounded-lg bg-gradient-to-r from-[#eafff3] to-[#4ade80]" />
+            <div className="w-px h-8 bg-slate-200 mx-2" />
+            <div className="flex-1 h-7 rounded-lg bg-gradient-to-r from-[#fff0f7] to-[#ff6fb5]" />
           </div>
         </div>
 
