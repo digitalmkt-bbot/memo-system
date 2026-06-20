@@ -70,8 +70,8 @@ function LangToggle() {
 }
 
 function Sidebar({ onNav }: { onNav: () => void }) {
-  const { user, logout } = useAuth();
-  const { t, roleLabel } = useI18n();
+  const { user } = useAuth();
+  const { t } = useI18n();
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const initial = (user?.name || 'L').trim().charAt(0).toUpperCase();
@@ -115,16 +115,11 @@ function Sidebar({ onNav }: { onNav: () => void }) {
 
       <div className="flex-1 min-h-6" />
       <LangToggle />
-      <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full grid place-items-center text-white font-bold text-sm bg-gradient-to-br from-[#34d399] to-[#10b981] shrink-0">{initial}</div>
-          <div className="min-w-0">
-            <div className="text-ink font-bold text-[13px] truncate">{user?.name}</div>
-            <div className="text-ocean-dark text-[11.5px] font-medium">{roleLabel(user?.role || '')}</div>
-          </div>
-        </div>
-        <button onClick={logout} className="btn btn-primary w-full mt-3 !py-2 text-xs">
-          {t('common.logout')}
+      <div className="rounded-2xl p-4 text-white relative overflow-hidden" style={{ background: 'linear-gradient(155deg,#111827 0%,#1f2937 100%)' }}>
+        <div className="font-bold text-[13.5px] leading-snug">{t('dashboard.promoTitle')}</div>
+        <div className="text-white/65 text-[11.5px] mt-1">{t('dashboard.promoSub')}</div>
+        <button onClick={() => { onNav(); nav('/memos/create'); }} className="mt-3 w-full bg-white text-ink rounded-xl py-2 text-xs font-bold hover:bg-slate-100 transition">
+          {t('dashboard.promoBtn')}
         </button>
       </div>
     </>
@@ -132,8 +127,10 @@ function Sidebar({ onNav }: { onNav: () => void }) {
 }
 
 function Layout({ children }: { children: ReactNode }) {
-  const { t } = useI18n();
+  const { t, roleLabel } = useI18n();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const initial = (user?.name || 'L').trim().charAt(0).toUpperCase();
   return (
     <div className="min-h-screen bg-[linear-gradient(150deg,#f7f4ec_0%,#f2f5f0_45%,#e9f3ee_100%)] lg:grid lg:grid-cols-[252px_1fr]">
       <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-surface border-b border-slate-200">
@@ -154,7 +151,24 @@ function Layout({ children }: { children: ReactNode }) {
         <Sidebar onNav={() => setOpen(false)} />
       </aside>
 
-      <main className="min-w-0 p-4 sm:p-6 lg:p-7 lg:max-h-screen lg:overflow-y-auto">{children}</main>
+      <main className="min-w-0 p-4 sm:p-6 lg:p-7 lg:max-h-screen lg:overflow-y-auto">
+        <div className="flex items-center justify-end gap-2.5 mb-5">
+          <button className="w-10 h-10 rounded-full grid place-items-center bg-surface border border-slate-200 text-slate-500 hover:text-ink" aria-label="notifications">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+          </button>
+          <div className="flex items-center gap-2.5 bg-surface border border-slate-200 rounded-full pl-1.5 pr-2.5 py-1.5">
+            <div className="w-8 h-8 rounded-full grid place-items-center text-white font-bold text-[13px] bg-gradient-to-br from-[#34d399] to-[#10b981] shrink-0">{initial}</div>
+            <div className="leading-tight hidden sm:block">
+              <div className="text-ink font-semibold text-[13px] max-w-[140px] truncate">{user?.name}</div>
+              <div className="text-slate-400 text-[11px]">{roleLabel(user?.role || '')}</div>
+            </div>
+            <button onClick={logout} title={t('common.logout')} className="ml-1 w-7 h-7 rounded-full grid place-items-center text-slate-400 hover:text-rose-500 hover:bg-rose-50">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            </button>
+          </div>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
