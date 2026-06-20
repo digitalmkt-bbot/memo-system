@@ -11,7 +11,7 @@ export default {
         ink: '#1f2937',        // dark slate
       },
       fontFamily: {
-        sans: ['Inter', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Anuphan', 'Inter', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         neu: '0 8px 30px rgba(17,24,39,0.06)',
