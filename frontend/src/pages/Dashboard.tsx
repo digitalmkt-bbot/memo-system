@@ -145,18 +145,30 @@ export function Dashboard() {
             </div>
             <span className="text-[12px] text-slate-500 bg-slate-100 rounded-full px-3 py-1">Monthly</span>
           </div>
-          <div className="flex items-end gap-3">
-            {[
-              { label: t('dashboard.barTotal'), val: total, grad: 'from-[#ededed] to-[#1a1a1a]', flex: 'flex-[3]' },
-              { label: t('dashboard.barApproved'), val: approved, grad: 'from-[#eafff3] to-[#4ade80]', flex: 'flex-1' },
-              { label: t('dashboard.barRejected'), val: rejected, grad: 'from-[#fff0f7] to-[#ff6fb5]', flex: 'flex-1' },
-            ].map((c, i) => (
-              <div key={i} className={c.flex}>
-                <div className="text-slate-500 text-[12px]">{c.label}</div>
-                <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5 mb-3">{num(c.val)}</div>
-                <div className={'h-5 w-full rounded-full bg-gradient-to-r ' + c.grad} />
-              </div>
-            ))}
+          {/* numbers row */}
+          <div className="flex items-end">
+            <div className="flex-[3]">
+              <div className="text-slate-500 text-[12px]">{t('dashboard.barTotal')}</div>
+              <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(total)}</div>
+            </div>
+            <div className="w-px mx-3" />
+            <div className="flex-1">
+              <div className="text-slate-500 text-[12px]">{t('dashboard.barApproved')}</div>
+              <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(approved)}</div>
+            </div>
+            <div className="w-px mx-3" />
+            <div className="flex-1">
+              <div className="text-slate-500 text-[12px]">{t('dashboard.barRejected')}</div>
+              <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(rejected)}</div>
+            </div>
+          </div>
+          {/* bar row with thin vertical dividers (like Ref) */}
+          <div className="flex items-center mt-3">
+            <div className="flex-[3] h-5 rounded-full bg-gradient-to-r from-[#ededed] to-[#1a1a1a]" />
+            <div className="w-px h-6 bg-slate-200 mx-3" />
+            <div className="flex-1 h-5 rounded-full bg-gradient-to-r from-[#eafff3] to-[#4ade80]" />
+            <div className="w-px h-6 bg-slate-200 mx-3" />
+            <div className="flex-1 h-5 rounded-full bg-gradient-to-r from-[#fff0f7] to-[#ff6fb5]" />
           </div>
         </div>
 
