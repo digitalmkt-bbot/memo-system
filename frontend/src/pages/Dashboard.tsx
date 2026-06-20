@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
@@ -173,12 +173,23 @@ export function Dashboard() {
             </div>
           </div>
           <div className="w-full h-56 mt-4">
+            <svg width="0" height="0" className="absolute">
+              <defs>
+                <pattern id="memoStripes" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(45)">
+                  <rect width="9" height="9" fill="#bbf7d0" />
+                  <line x1="0" y1="0" x2="0" y2="9" stroke="#4ade80" strokeWidth="5" />
+                </pattern>
+              </defs>
+            </svg>
             <ResponsiveContainer>
-              <BarChart data={bars} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <BarChart data={bars} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                <CartesianGrid vertical={false} strokeDasharray="4 5" stroke="#e5e7eb" />
                 <XAxis dataKey="label" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
-                <Tooltip cursor={{ fill: 'rgba(16,185,129,0.06)' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(17,24,39,0.12)' }} />
+                <YAxis fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} width={38}
+                  tickFormatter={(v) => (v >= 1000 ? (v / 1000) + 'K' : String(v))} />
+                <Tooltip cursor={{ fill: 'rgba(74,222,128,0.08)' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(17,24,39,0.12)' }} />
                 <Bar dataKey="count" radius={[12, 12, 0, 0]} maxBarSize={64}>
-                  {bars.map((_, i) => <Cell key={i} fill={i === lastIdx ? '#4ade80' : '#bbf7d0'} />)}
+                  {bars.map((_, i) => <Cell key={i} fill={i === lastIdx ? 'url(#memoStripes)' : '#86efac'} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
