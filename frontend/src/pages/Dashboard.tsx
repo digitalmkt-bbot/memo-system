@@ -38,8 +38,8 @@ export function Dashboard() {
   const approvalRate = processed ? Math.round((approved / processed) * 100) : 0;
   const pendingRate = total ? Math.round((pending / total) * 100) : 0;
 
-  // diverging satisfaction — last 5 monthly buckets
-  const div = months.slice(-5);
+  // diverging satisfaction — last 3 monthly buckets (Optivue ref shows 3 rows)
+  const div = months.slice(-3);
   const divMax = Math.max(1, ...div.map((m) => Math.max(m.approved || 0, m.rejected || 0)));
 
   // bar chart — monthly counts, highlight last
@@ -83,7 +83,7 @@ export function Dashboard() {
         </div>
 
         {/* Satisfaction (diverging) */}
-        <div className="card p-6 lg:row-span-2">
+        <div className="card p-6 lg:row-span-2 flex flex-col">
           <div className="flex items-center justify-between mb-1">
             <div className="font-bold text-ink text-[15px]">{t('dashboard.satisfTitle')}</div>
             <span className="text-[12px] text-slate-500 bg-slate-100 rounded-full px-3 py-1">Monthly</span>
@@ -92,7 +92,7 @@ export function Dashboard() {
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />{t('dashboard.barApproved')}</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-pink-400" />{t('dashboard.barRejected')}</span>
           </div>
-          <div className="space-y-6">
+          <div className="flex-1 flex flex-col justify-around py-2">
             {div.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : div.map((m, i) => (
               <div key={i}>
                 <div className="text-[11px] text-slate-400 mb-1.5">{m.label}</div>
@@ -127,7 +127,7 @@ export function Dashboard() {
               <div key={i}>
                 <div className="text-slate-500 text-[12px]">{c.label}</div>
                 <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(c.val)}</div>
-                <div className="h-2.5 rounded-full bg-slate-100 mt-3 overflow-hidden">
+                <div className="h-4 rounded-full bg-slate-100 mt-3 overflow-hidden">
                   <div className={'h-full rounded-full bg-gradient-to-r ' + c.grad} style={{ width: Math.max(4, c.w) + '%' }} />
                 </div>
               </div>
@@ -151,7 +151,7 @@ export function Dashboard() {
               ))}
             </div>
           </div>
-          <div className="w-full h-72 mt-4">
+          <div className="w-full h-56 mt-4">
             <ResponsiveContainer>
               <BarChart data={bars} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <XAxis dataKey="label" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={20} />
