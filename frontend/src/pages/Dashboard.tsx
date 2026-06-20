@@ -92,17 +92,17 @@ export function Dashboard() {
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />{t('dashboard.barApproved')}</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-pink-400" />{t('dashboard.barRejected')}</span>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {div.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : div.map((m, i) => (
               <div key={i}>
-                <div className="text-[11px] text-slate-400 mb-1">{m.label}</div>
+                <div className="text-[11px] text-slate-400 mb-1.5">{m.label}</div>
                 <div className="flex items-center">
                   <div className="flex-1 flex justify-end">
-                    <div className="h-3 rounded-l-full bg-gradient-to-l from-emerald-400 to-emerald-200" style={{ width: ((m.approved || 0) / divMax * 100) + '%' }} />
+                    <div className="h-4 rounded-l-full bg-gradient-to-l from-emerald-400 to-emerald-200" style={{ width: ((m.approved || 0) / divMax * 100) + '%' }} />
                   </div>
-                  <div className="w-px h-4 bg-slate-300" />
+                  <div className="w-px h-5 bg-slate-300" />
                   <div className="flex-1">
-                    <div className="h-3 rounded-r-full bg-gradient-to-r from-pink-400 to-pink-200" style={{ width: ((m.rejected || 0) / divMax * 100) + '%' }} />
+                    <div className="h-4 rounded-r-full bg-gradient-to-r from-pink-400 to-pink-200" style={{ width: ((m.rejected || 0) / divMax * 100) + '%' }} />
                   </div>
                 </div>
               </div>
