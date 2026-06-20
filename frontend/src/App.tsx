@@ -80,7 +80,7 @@ function Sidebar({ onNav }: { onNav: () => void }) {
   return (
     <>
       <div className="flex items-center gap-3 px-1.5 pb-5">
-        <div className="w-10 h-10 rounded-xl grid place-items-center text-white font-extrabold text-lg bg-gradient-to-br from-[#34d399] to-[#10b981]">
+        <div className="w-10 h-10 rounded-xl grid place-items-center text-white font-extrabold text-lg bg-gradient-to-br from-[#4ade80] to-[#22c55e]">
           {initial}
         </div>
         <div className="leading-tight">
@@ -157,7 +157,7 @@ function Layout({ children }: { children: ReactNode }) {
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /></svg>
           </button>
           <div className="flex items-center gap-2.5 bg-surface border border-slate-200 rounded-full pl-1.5 pr-2.5 py-1.5">
-            <div className="w-8 h-8 rounded-full grid place-items-center text-white font-bold text-[13px] bg-gradient-to-br from-[#34d399] to-[#10b981] shrink-0">{initial}</div>
+            <div className="w-8 h-8 rounded-full grid place-items-center text-white font-bold text-[13px] bg-gradient-to-br from-[#4ade80] to-[#22c55e] shrink-0">{initial}</div>
             <div className="leading-tight hidden sm:block">
               <div className="text-ink font-semibold text-[13px] max-w-[140px] truncate">{user?.name}</div>
               <div className="text-slate-400 text-[11px]">{roleLabel(user?.role || '')}</div>

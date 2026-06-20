@@ -4,9 +4,9 @@
 
 @layer components {
   .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150; }
-  .btn-primary { @apply text-white bg-gradient-to-br from-[#34d399] to-[#10b981] shadow-neu-sm hover:brightness-[1.03] active:brightness-95; }
+  .btn-primary { @apply text-white bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-neu-sm hover:brightness-[1.03] active:brightness-95; }
   .btn-ghost { @apply bg-surface text-ink border border-slate-200 hover:bg-slate-50 active:bg-slate-100; }
-  .btn-green { @apply text-white bg-gradient-to-br from-[#34d399] to-[#10b981] shadow-neu-sm hover:brightness-[1.03]; }
+  .btn-green { @apply text-white bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-neu-sm hover:brightness-[1.03]; }
   .btn-red { @apply text-white bg-gradient-to-br from-rose-400 to-red-500 shadow-neu-sm hover:brightness-[1.03]; }
   .input { @apply w-full rounded-xl bg-[#f5f6f7] border border-slate-200 px-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-ocean/30 focus:border-ocean/40; }
   .label { @apply block text-xs font-semibold text-slate-500 mb-1.5 mt-3.5; }

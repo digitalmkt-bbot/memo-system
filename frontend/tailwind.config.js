@@ -4,11 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        // emerald/mint brand (kept under the legacy "ocean" keys so existing classes restyle globally)
-        ocean: { DEFAULT: '#10b981', dark: '#059669', light: '#d1fae5' },
-        sand: '#f3f4f1',       // app background (warm off-white)
+        // Optivue design system palette
+        ocean: { DEFAULT: '#4ade80', dark: '#22c55e', light: '#dcfce7' }, // green mint (primary)
+        blush: { DEFAULT: '#ff6fb5', dark: '#ff4fa3', light: '#ffd9ec' },  // pink (secondary)
+        sand: '#f5f5f5',       // app background
         surface: '#ffffff',    // cards
-        ink: '#1f2937',        // dark slate
+        ink: '#1a1a1a',        // text
       },
       fontFamily: {
         sans: ['Prompt', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
