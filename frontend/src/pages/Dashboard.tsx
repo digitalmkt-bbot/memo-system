@@ -59,27 +59,33 @@ export function Dashboard() {
         {/* Total value */}
         <div className="card p-6">
           <div className="flex items-start justify-between">
-            <div className="text-slate-500 text-[13px]">{t('dashboard.kpiTotalValue')}</div>
+            <div>
+              <div className="text-ink font-semibold text-[16px]">{t('dashboard.kpiTotalValue')}</div>
+              <div className="text-slate-400 text-[12px] mt-1">{t('dashboard.approvalRate')} · {fill(t('dashboard.ofTotalMemos'), total)}</div>
+            </div>
             <span className="text-slate-300">•••</span>
           </div>
-          <div className="flex items-end gap-3 mt-3 flex-wrap">
+          <div className="flex items-center gap-2.5 mt-4 flex-wrap">
             <div className="text-[40px] leading-none font-extrabold text-ink">{money(ov.totalAmount)}</div>
             <Chip up>{approvalRate}%</Chip>
+            <span className="rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-semibold px-2.5 py-1">{num(approved)} {t('dashboard.barApproved')}</span>
           </div>
-          <div className="text-slate-400 text-[12px] mt-2">{t('dashboard.approvalRate')} · {fill(t('dashboard.ofTotalMemos'), total)}</div>
         </div>
 
         {/* In progress */}
         <div className="card p-6">
           <div className="flex items-start justify-between">
-            <div className="text-slate-500 text-[13px]">{t('dashboard.kpiPending')}</div>
+            <div>
+              <div className="text-ink font-semibold text-[16px]">{t('dashboard.kpiPending')}</div>
+              <div className="text-slate-400 text-[12px] mt-1">{fill(t('dashboard.ofTotalMemos'), total)}</div>
+            </div>
             <span className="text-slate-300">•••</span>
           </div>
-          <div className="flex items-end gap-3 mt-3 flex-wrap">
+          <div className="flex items-center gap-2.5 mt-4 flex-wrap">
             <div className="text-[40px] leading-none font-extrabold text-ink">{num(pending)}</div>
             <Chip up={false}>{pendingRate}%</Chip>
+            <span className="rounded-full bg-rose-100 text-rose-600 text-[12px] font-semibold px-2.5 py-1">{num(rejected)} {t('dashboard.barRejected')}</span>
           </div>
-          <div className="text-slate-400 text-[12px] mt-2">{fill(t('dashboard.ofTotalMemos'), total)}</div>
         </div>
 
         {/* Satisfaction (diverging) */}
@@ -119,11 +125,19 @@ export function Dashboard() {
 
         {/* Status overview (period style) */}
         <div className="card p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-slate-500 text-[12px]">{t('dashboard.statusOverview')}</div>
-              <div className="font-bold text-ink text-[15px]">{fill(t('dashboard.ofTotalMemos'), total).replace('of ', '').replace('จาก ', '')}</div>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 grid place-items-center text-slate-500">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-slate-500 text-[12px]">{t('dashboard.statusOverview')}</div>
+                <div className="font-bold text-ink text-[15px]">{fill(t('dashboard.ofTotalMemos'), total).replace('of ', '').replace('จาก ', '')}</div>
+              </div>
             </div>
+            <span className="text-[12px] text-slate-500 bg-slate-100 rounded-full px-3 py-1">Monthly</span>
           </div>
           <div className="flex items-end gap-3">
             {[
