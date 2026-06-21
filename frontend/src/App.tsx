@@ -46,7 +46,7 @@ function NavItem({ to, label, icon, end, onClick }: { to: string; label: string;
   return (
     <NavLink to={to} end={end} onClick={onClick}
       className={({ isActive }) =>
-        'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[18.5px] font-light transition-all ' +
+        'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[16px] font-light transition-all ' +
         (isActive ? 'bg-ink text-white shadow-neu-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-ink')}>
       <Icon d={I[icon]} />
       {t(label)}
