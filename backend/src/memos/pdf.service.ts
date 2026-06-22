@@ -38,8 +38,8 @@ export class PdfService {
 
   private html({ memo, approvals }: { memo: any; approvals: any[] }): string {
     const managerApproval = approvals.find((a) => a.step === 'manager' && a.status === 'approve');
-    const execApproval = approvals.find((a) => a.step === 'executive' && a.status === 'approve');
-    const hrmdApproval = approvals.find((a) => (a.step === 'hrm' || a.step === 'md') && a.status === 'approve');
+    const hrmApproval = approvals.find((a) => a.step === 'hrm' && a.status === 'approve');
+    const mdApproval = approvals.find((a) => a.step === 'md' && a.status === 'approve');
     const fcApproval = approvals.find((a) => a.step === 'fc' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
@@ -93,10 +93,10 @@ export class PdfService {
       .meta .v{flex:1;padding:7px 10px}
       .detail-label{font-weight:700;margin:14px 0 6px;color:#0a6e7c}
       .detail{border:1px solid #e2e8ec;border-radius:6px;padding:12px;white-space:pre-wrap;min-height:${detailRows * 1.7}em;line-height:1.7}
-      .sign{display:flex;gap:40px;margin-top:36px}
+      .sign{display:flex;gap:18px;margin-top:36px}
       .sign .col{flex:1;text-align:center}
-      .sign .line{border-top:1px dotted #888;margin:48px 16px 6px}
-      .sign .role{font-weight:700}.sign .who{color:#444;font-size:12px;min-height:16px}
+      .sign .line{border-top:1px dotted #888;margin:48px 8px 6px}
+      .sign .role{font-weight:700;font-size:12px}.sign .who{color:#444;font-size:12px;min-height:16px}
       .sign .date{color:#888;font-size:11px;margin-top:4px}
       .items-label{font-weight:700;margin:16px 0 6px;color:#0a6e7c}
       table.items{width:100%;border-collapse:collapse;font-size:12px}
@@ -138,9 +138,12 @@ export class PdfService {
         <div class="col"><div class="line"></div><div class="role">ผจก.แผนก / Manager</div>
           <div class="who">${this.esc((managerApproval && managerApproval.approverName) || '')}</div>
           <div class="date">${managerApproval ? this.fmtDate(managerApproval.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">HRM / MD</div>
-          <div class="who">${this.esc((hrmdApproval && hrmdApproval.approverName) || (execApproval && execApproval.approverName) || '')}</div>
-          <div class="date">${hrmdApproval ? this.fmtDate(hrmdApproval.approvedAt) : ''}</div></div>
+        <div class="col"><div class="line"></div><div class="role">ผจก.ฝ่ายบุคคล / HRM</div>
+          <div class="who">${this.esc((hrmApproval && hrmApproval.approverName) || '')}</div>
+          <div class="date">${hrmApproval ? this.fmtDate(hrmApproval.approvedAt) : ''}</div></div>
+        <div class="col"><div class="line"></div><div class="role">กรรมการผู้จัดการ / MD</div>
+          <div class="who">${this.esc((mdApproval && mdApproval.approverName) || '')}</div>
+          <div class="date">${mdApproval ? this.fmtDate(mdApproval.approvedAt) : ''}</div></div>
         <div class="col"><div class="line"></div><div class="role">ฝ่ายบัญชี / FC</div>
           <div class="who">${this.esc((fcApproval && fcApproval.approverName) || '')}</div>
           <div class="date">${fcApproval ? this.fmtDate(fcApproval.approvedAt) : ''}</div></div>

@@ -34,7 +34,8 @@ export function MemoView() {
 
   const { memo, approvals, canApprove } = data;
   const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
-  const hrmdAppr = approvals.find((a: any) => (a.approverRole === 'hrm' || a.approverRole === 'md') && a.status === 'approve');
+  const hrmAppr = approvals.find((a: any) => a.approverRole === 'hrm' && a.status === 'approve');
+  const mdAppr = approvals.find((a: any) => a.approverRole === 'md' && a.status === 'approve');
   const fcAppr = approvals.find((a: any) => a.approverRole === 'fc' && a.status === 'approve');
   const items = memo.items || [];
   const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
@@ -148,11 +149,12 @@ export function MemoView() {
 
           <div className="mt-6">
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {[
                 { role: t('sign.requester'), who: memo.creatorName, when: memo.submittedAt },
                 { role: t('sign.manager'), who: mgrAppr?.approverName, when: mgrAppr?.approvedAt },
-                { role: t('sign.hrmd'), who: hrmdAppr?.approverName, when: hrmdAppr?.approvedAt },
+                { role: t('sign.hrm'), who: hrmAppr?.approverName, when: hrmAppr?.approvedAt },
+                { role: t('sign.md'), who: mdAppr?.approverName, when: mdAppr?.approvedAt },
                 { role: t('sign.fc'), who: fcAppr?.approverName, when: fcAppr?.approvedAt },
               ].map((c, i) => (
                 <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">

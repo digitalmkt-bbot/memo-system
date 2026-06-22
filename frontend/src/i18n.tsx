@@ -219,7 +219,7 @@ const TH: Dict = {
   sign: {
     title: 'ลายมือชื่ออนุมัติ',
     requester: 'ผู้ขอ / Requester', manager: 'ผจก.แผนก / Manager', executive: 'ผู้บริหาร / Executive',
-    hrmd: 'HRM / MD', fc: 'ฝ่ายบัญชี / FC',
+    hrmd: 'HRM / MD', hrm: 'ผจก.ฝ่ายบุคคล / HRM', md: 'กรรมการผู้จัดการ / MD', fc: 'ฝ่ายบัญชี / FC',
     signed: 'ลงชื่อ', date: 'วันที่',
   },
   steps: { create: 'สร้าง', manager: 'ผจก.แผนก', hrmd: 'HRM / MD', fc: 'ฝ่ายบัญชี', executive: 'ผู้บริหาร', done: 'อนุมัติ' },
@@ -438,7 +438,7 @@ const EN: Dict = {
   sign: {
     title: 'Approval signatures',
     requester: 'Requester', manager: 'Dept Manager', executive: 'Executive',
-    hrmd: 'HRM / MD', fc: 'Finance / FC',
+    hrmd: 'HRM / MD', hrm: 'HRM', md: 'Managing Director / MD', fc: 'Finance / FC',
     signed: 'Signed', date: 'Date',
   },
   steps: { create: 'Create', manager: 'Dept manager', hrmd: 'HRM / MD', fc: 'Finance', executive: 'Executive', done: 'Approved' },
