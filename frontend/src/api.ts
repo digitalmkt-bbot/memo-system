@@ -68,4 +68,10 @@ export const api = {
     a.remove(); URL.revokeObjectURL(url);
   },
   pdfUrl: (id: number) => `${BASE}/memos/${id}/pdf`,
+  openPdf: async (id: number) => {
+    const res = await http.get(`/memos/${id}/pdf`, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data as Blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
 };
