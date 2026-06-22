@@ -100,14 +100,17 @@ export class MemosService {
 
   /**
    * Department-level visibility:
-   *  - executive / admin : all memos
-   *  - manager           : memos in their own department (same company)
-   *  - staff             : only memos they created
+   *  - executive / admin / hrm / md / fc : all memos
+   *  - manager & staff : memos in their OWN department only (same company);
+   *    other people's drafts are hidden (only own drafts are visible).
    */
   private visibilityScope(user: JwtUser): any {
     if (['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role)) return {};
-    if (user.role === 'manager') return { companyId: user.companyId, departmentId: user.departmentId ?? -1 };
-    return { createdBy: user.id };
+    return {
+      companyId: user.companyId,
+      departmentId: user.departmentId ?? -1,
+      OR: [{ status: { not: 'draft' } }, { createdBy: user.id }],
+    };
   }
 
   async list(user: JwtUser, f: { box?: string; status?: string; companyId?: string; departmentId?: string; q?: string }) {
@@ -139,8 +142,9 @@ export class MemosService {
     let participant =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
       ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role) ||
-      (user.role === 'manager' &&
-        memo.companyId === user.companyId && memo.departmentId === user.departmentId);
+      (['manager', 'staff'].includes(user.role) &&
+        memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
+        (memo.status !== 'draft' || memo.createdBy === user.id));
     if (!participant) {
       const ap = await this.prisma.approval.findFirst({ where: { memoId: id, approvedBy: user.id } });
       if (!ap) throw new ForbiddenException('Not allowed');
@@ -324,7 +328,8 @@ export class MemosService {
     const ok =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
       ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role) ||
-      (user.role === 'manager' && memo.companyId === user.companyId && memo.departmentId === user.departmentId);
+      (['manager', 'staff'].includes(user.role) && memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
+        (memo.status !== 'draft' || memo.createdBy === user.id));
     if (ok) return;
     const ap = await this.prisma.approval.findFirst({ where: { memoId: memo.id, approvedBy: user.id } });
     if (!ap) throw new ForbiddenException('Not allowed');

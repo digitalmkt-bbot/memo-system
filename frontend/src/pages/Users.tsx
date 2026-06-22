@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import { PasswordInput } from '../components/PasswordInput';
 
 const ROLES = ['staff', 'manager', 'executive', 'hrm', 'md', 'fc', 'admin'];
 
@@ -83,7 +84,7 @@ export function Users() {
               <div><label className="label">{t('users.employeeCode')}</label><input className="input" {...register('employeeCode', { required: true })} /></div>
               <div><label className="label">{t('users.name')}</label><input className="input" {...register('name', { required: true })} /></div>
               <div><label className="label">{t('users.email')}</label><input className="input" type="email" {...register('email', { required: true })} /></div>
-              <div><label className="label">{editId ? t('users.passwordEdit') : t('users.password')}</label><input className="input" {...register('password', { required: !editId })} placeholder={editId ? t('users.passwordKeep') : ''} /></div>
+              <div><label className="label">{editId ? t('users.passwordEdit') : t('users.password')}</label><PasswordInput reg={register('password', { required: !editId })} placeholder={editId ? t('users.passwordKeep') : ''} /></div>
               <div><label className="label">{t('users.company')}</label>
                 <select className="input" {...register('companyId', { required: true })}>
                   <option value="">{t('users.select')}</option>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import { api } from '../api';
+import { PasswordInput } from '../components/PasswordInput';
 
 type Form = { email: string; password: string };
 type PwForm = { email: string; currentPassword: string; newPassword: string };
@@ -51,7 +52,7 @@ export function Login() {
             <label className="label">{t('login.email')}</label>
             <input className="input" type="email" {...register('email', { required: true })} />
             <label className="label">{t('login.password')}</label>
-            <input className="input" type="password" {...register('password', { required: true })} />
+            <PasswordInput reg={register('password', { required: true })} />
             <div className="text-red-500 text-[13px] mt-2.5 min-h-[18px]">{err}</div>
             <button className="btn btn-primary w-full mt-2" disabled={isSubmitting}>
               {isSubmitting ? t('login.signingIn') : t('login.signIn')}
@@ -66,9 +67,9 @@ export function Login() {
             <label className="label">{t('login.email')}</label>
             <input className="input" type="email" {...pw.register('email', { required: true })} />
             <label className="label">{t('login.currentPassword')}</label>
-            <input className="input" type="password" {...pw.register('currentPassword', { required: true })} />
+            <PasswordInput reg={pw.register('currentPassword', { required: true })} />
             <label className="label">{t('login.newPassword')}</label>
-            <input className="input" type="password" {...pw.register('newPassword', { required: true, minLength: 6 })} />
+            <PasswordInput reg={pw.register('newPassword', { required: true, minLength: 6 })} />
             <div className="text-red-500 text-[13px] mt-2.5 min-h-[18px]">{err}</div>
             <button className="btn btn-primary w-full mt-2" disabled={pw.formState.isSubmitting}>
               {pw.formState.isSubmitting ? t('login.changing') : t('login.changeBtn')}
