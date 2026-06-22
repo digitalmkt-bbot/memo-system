@@ -7,8 +7,11 @@ export function Users() {
   const { t, roleLabel } = useI18n();
   const [companies, setCompanies] = useState<any[]>([]);
   const [depts, setDepts] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState('');
+
+  const loadUsers = () => api.users().then(setUsers).catch(() => {});
   const { register, handleSubmit, watch, reset } = useForm<any>({
     defaultValues: { role: 'staff', password: 'Password123!' },
   });
@@ -16,7 +19,7 @@ export function Users() {
 
   const ROLES = ['staff', 'manager', 'executive', 'admin'];
 
-  useEffect(() => { api.companies().then((c) => { setCompanies(c); }); }, []);
+  useEffect(() => { api.companies().then((c) => { setCompanies(c); }); loadUsers(); }, []);
   useEffect(() => { if (companyId) api.departments(Number(companyId)).then(setDepts); }, [companyId]);
 
   const onSubmit = async (v: any) => {
@@ -26,7 +29,7 @@ export function Users() {
         companyId: Number(v.companyId), departmentId: v.departmentId ? Number(v.departmentId) : undefined,
         employeeCode: v.employeeCode, name: v.name, email: v.email, password: v.password, role: v.role,
       });
-      setMsg(t('users.added')); reset({ role: 'staff', password: 'Password123!' }); setOpen(false);
+      setMsg(t('users.added')); reset({ role: 'staff', password: 'Password123!' }); setOpen(false); loadUsers();
     } catch (e: any) { setMsg(e.message); }
   };
 
@@ -70,9 +73,44 @@ export function Users() {
         </div>
       )}
 
-      <div className="card p-5 text-sm text-gray-500">
-        {t('users.note1')}<code className="text-ocean">GET /users</code>{t('users.note2')}
-        <span className="font-semibold text-ink">{t('users.note3')}</span>{t('users.note4')}<code className="text-ocean">POST /auth/register</code>.
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500 text-[12px] border-b border-slate-100">
+                <th className="px-5 py-3 font-semibold">{t('users.employeeCode')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.name')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.email')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.company')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.department')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.role')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.status')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">{t('common.noData')}</td></tr>
+              ) : users.map((u) => (
+                <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50/60">
+                  <td className="px-5 py-3 text-slate-500">{u.employeeCode}</td>
+                  <td className="px-5 py-3 font-medium text-ink">{u.name}</td>
+                  <td className="px-5 py-3 text-slate-500">{u.email}</td>
+                  <td className="px-5 py-3 text-slate-500">{u.companyCode || '—'}</td>
+                  <td className="px-5 py-3 text-slate-500">{u.deptCode ? `${u.deptCode}` : '—'}</td>
+                  <td className="px-5 py-3">
+                    <span className="inline-block rounded-full bg-slate-100 text-slate-600 text-[12px] font-semibold px-2.5 py-1">{roleLabel(u.role)}</span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className={'inline-flex items-center gap-1.5 text-[12px] font-semibold ' + (u.active ? 'text-emerald-600' : 'text-slate-400')}>
+                      <span className={'w-2 h-2 rounded-full ' + (u.active ? 'bg-emerald-500' : 'bg-slate-300')} />
+                      {u.active ? t('users.active') : t('users.inactive')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

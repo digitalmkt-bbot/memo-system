@@ -31,6 +31,7 @@ export const api = {
   login: (email: string, password: string) => http.post('/auth/login', { email, password }).then((r) => r.data),
   logout: () => http.post('/auth/logout').then((r) => r.data),
   register: (body: any) => http.post('/auth/register', body).then((r) => r.data),
+  users: () => http.get('/users').then((r) => r.data),
   companies: () => http.get('/companies').then((r) => r.data),
   departments: (companyId?: number) => http.get('/departments', { params: companyId ? { companyId } : {} }).then((r) => r.data),
   memos: (params: Record<string, string> = {}) => http.get('/memos', { params }).then((r) => r.data),

@@ -180,6 +180,9 @@ const TH: Dict = {
     note2: ' (อยู่ใน Phase 2). ปัจจุบันรองรับการ ',
     note3: 'เพิ่มผู้ใช้',
     note4: ' ผ่าน ',
+    status: 'สถานะ',
+    active: 'ใช้งาน',
+    inactive: 'ปิดใช้งาน',
   },
   settings: {
     title: 'ตั้งค่า (Settings)',
@@ -380,6 +383,9 @@ const EN: Dict = {
     note2: ' (planned for Phase 2). Currently you can ',
     note3: 'add users',
     note4: ' via ',
+    status: 'Status',
+    active: 'Active',
+    inactive: 'Inactive',
   },
   settings: {
     title: 'Settings',
