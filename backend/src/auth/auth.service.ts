@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../db/prisma.service';
-import { LoginDto, RegisterDto } from './dto';
+import { ChangePasswordDto, LoginDto, RegisterDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +24,18 @@ export class AuthService {
         companyId: user.companyId, departmentId: user.departmentId,
       },
     };
+  }
+
+  async changePassword(dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase().trim() } });
+    if (!user || !bcrypt.compareSync(dto.currentPassword, user.passwordHash)) {
+      throw new UnauthorizedException('อีเมลหรือรหัสผ่านปัจจุบันไม่ถูกต้อง');
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: bcrypt.hashSync(dto.newPassword, 10) },
+    });
+    return { ok: true };
   }
 
   async register(dto: RegisterDto) {
