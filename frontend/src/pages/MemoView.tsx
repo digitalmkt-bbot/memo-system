@@ -175,7 +175,7 @@ export function MemoView() {
               <button className="btn btn-primary" onClick={submit}>{t('view.submit')}</button>
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             </>}
-            {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
+            {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
           </div>
         </div>
 
