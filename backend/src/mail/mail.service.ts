@@ -2,36 +2,38 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 
 /**
- * Email notifications via company SMTP (configured through env vars):
- *   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE ("true"/"false"),
- *   MAIL_FROM (e.g. "MEMO System <no-reply@loveandaman.com>"),
- *   APP_URL  (frontend base url, e.g. https://memo-system-production-001.up.railway.app)
- * If SMTP is not configured the service no-ops (logs and skips) so the
+ * Email notifications via SendGrid Web API (configured through env vars):
+ *   SENDGRID_API_KEY  — SendGrid API key (starts with "SG.")
+ *   MAIL_FROM         — verified sender, e.g. "MEMO System <no-reply@loveandaman.com>"
+ *   APP_URL           — frontend base url (e.g. https://memo-system-production-001.up.railway.app)
+ * If SendGrid is not configured the service no-ops (logs and skips) so the
  * approval flow never breaks because of email.
  */
 @Injectable()
 export class MailService {
   private readonly log = new Logger('MailService');
-  private transporter: any = null;
+  private client: any = null;
 
   constructor(private prisma: PrismaService) {}
 
   private get enabled(): boolean {
-    return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    return !!(process.env.SENDGRID_API_KEY && process.env.MAIL_FROM);
   }
 
-  private getTransporter() {
-    if (this.transporter) return this.transporter;
+  private getClient() {
+    if (this.client) return this.client;
     if (!this.enabled) return null;
-    const nodemailer = require('nodemailer');
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-    return this.transporter;
+    const sg = require('@sendgrid/mail');
+    sg.setApiKey(process.env.SENDGRID_API_KEY);
+    this.client = sg;
+    return this.client;
+  }
+
+  /** Parse "Name <email>" into a SendGrid from object. */
+  private from(): any {
+    const raw = process.env.MAIL_FROM || '';
+    const m = raw.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/);
+    return m ? { name: m[1] || undefined, email: m[2] } : { email: raw.trim() };
   }
 
   private appUrl() {
@@ -41,16 +43,14 @@ export class MailService {
   /** Fire-and-forget; never throws. */
   async send(to: string, subject: string, html: string) {
     if (!to) return;
-    const t = this.getTransporter();
-    if (!t) { this.log.warn(`SMTP not configured — skip mail to ${to} (${subject})`); return; }
+    const sg = this.getClient();
+    if (!sg) { this.log.warn(`SendGrid not configured — skip mail to ${to} (${subject})`); return; }
     try {
-      await t.sendMail({
-        from: process.env.MAIL_FROM || process.env.SMTP_USER,
-        to, subject, html,
-      });
+      await sg.send({ to, from: this.from(), subject, html });
       this.log.log(`mail sent → ${to} (${subject})`);
     } catch (e: any) {
-      this.log.error(`mail failed → ${to}: ${e.message}`);
+      const detail = e?.response?.body?.errors?.map((x: any) => x.message).join('; ') || e.message;
+      this.log.error(`mail failed → ${to}: ${detail}`);
     }
   }
 
