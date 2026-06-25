@@ -4,6 +4,7 @@ import {
 import { PrismaService } from '../db/prisma.service';
 import { JwtUser } from '../auth/jwt.strategy';
 import { CreateMemoDto, UpdateMemoDto } from './dto/memo.dto';
+import { MailService } from '../mail/mail.service';
 
 const INCLUDE = {
   creator: { select: { name: true } },
@@ -15,7 +16,7 @@ const INCLUDE = {
 
 @Injectable()
 export class MemosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private mail: MailService) {}
 
   private shape(m: any) {
     if (!m) return m;
@@ -228,7 +229,7 @@ export class MemosService {
    * executed inside a single interactive transaction.
    */
   async submit(user: JwtUser, id: number, next?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
@@ -268,10 +269,13 @@ export class MemosService {
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });
       return this.shape(updated);
     });
+    // notify the next approver (after commit, never blocks the flow)
+    try { await this.mail.notifyPendingApprover(result); } catch { /* noop */ }
+    return result;
   }
 
   async approve(user: JwtUser, id: number, comment?: string, next?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot approve at current step');
@@ -303,11 +307,17 @@ export class MemosService {
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action, detail: comment ?? null } });
       return this.shape(updated);
     });
+    // notify: creator on final approval, otherwise the next approver
+    try {
+      if (result.status === 'approved') await this.mail.notifyCreator(result, 'approved');
+      else await this.mail.notifyPendingApprover(result);
+    } catch { /* noop */ }
+    return result;
   }
 
   async reject(user: JwtUser, id: number, comment?: string) {
     if (!comment || !comment.trim()) throw new BadRequestException('A reason is required to reject');
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot reject at current step');
@@ -321,6 +331,8 @@ export class MemosService {
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'rejected', detail: `${step} rejected: ${comment.trim()}` } });
       return this.shape(updated);
     });
+    try { await this.mail.notifyCreator(result, 'rejected', comment.trim()); } catch { /* noop */ }
+    return result;
   }
 
   // ---- Attachments (stored in Postgres as bytea) ----

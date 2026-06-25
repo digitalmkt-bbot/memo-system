@@ -13,6 +13,8 @@ export class PdfService {
     try {
       const page = await browser.newPage();
       await page.setContent(this.html(data), { waitUntil: 'networkidle0' });
+      // make sure the Thai web fonts are fully loaded before rendering the PDF
+      try { await page.evaluate(() => (document as any).fonts.ready); } catch { /* noop */ }
       const pdf = await page.pdf({
         format: 'A4', printBackground: true,
         margin: { top: '16mm', bottom: '16mm', left: '18mm', right: '18mm' },
@@ -76,9 +78,12 @@ export class PdfService {
       : '';
 
     return `<!doctype html><html lang="th"><head><meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box}
-      body{font-family:'Sarabun','TH Sarabun New','Helvetica',sans-serif;color:#1d2733;font-size:13px;margin:0}
+      body{font-family:'Sarabun','Noto Sans Thai','Helvetica',sans-serif;color:#1d2733;font-size:13px;margin:0}
       .header{display:flex;align-items:center;gap:14px;border-bottom:2px solid #0a6e7c;padding-bottom:12px}
       .logo{width:54px;height:54px;border-radius:50%;background:#0a6e7c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;flex:0 0 auto}
       .company{flex:1}
