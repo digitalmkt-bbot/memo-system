@@ -14,6 +14,7 @@ const LOVE_DEPTS: [string, string][] = [
   ['MKT', 'MARKETING'],
   ['BD', 'BUSINESS DEVELOPMENT'],
   ['PR', 'PUBLIC RELATIONS'],
+  ['GFX', 'GRAPHIC'],
   ['SA', 'SALES AGENT'],
   ['RSV', 'RESERVATION'],
   ['SONL', 'SALE ONLINE'],
