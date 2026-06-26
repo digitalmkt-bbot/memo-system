@@ -119,10 +119,57 @@ async function main() {
       passwordHash: demoPw, role: 'fc' },
   });
 
-  console.log('Seed complete: 3 companies, departments seeded, 4 users.');
+  // 6) import real staff (LOVE) from Name.csv — Employee code auto-generated per department,
+  //    default password "Password123!" (to be changed later). Upsert by email = idempotent,
+  //    and won't overwrite an existing user's employee code / password.
+  const IMPORT_USERS: [string, string, string, string][] = [
+    ['นายต่อพงษ์ วงศ์เสถียรชัย', 'SEC', 'thaitornado@gmail.com', 'executive'],
+    ['นายอรรควิชญ์ หาญนวโชค', 'SEC', 'md@loveandaman.com', 'md'],
+    ['นายดิชยพงศ์ แก้วทา', 'HR', 'hr@loveandaman.com', 'hrm'],
+    ['HUMAN RESOURCES STAFF', 'HR', 'hrd@loveandaman.com', 'staff'],
+    ['นางสาวศริยา รัตนภูมิ', 'SRV', 'dsm@loveandaman.com', 'manager'],
+    ['นางสาวปิยกมล คงพิรอด', 'SRV', 'dsa@loveandaman.com', 'manager'],
+    ['นายอัมพรชัย สุวรรณสุทธิ์', 'GFX', 'graphic@loveandaman.com', 'staff'],
+    ['นางสาวจุฑาทิพย์ จรุงจิตร', 'ACC', 'fc@loveandaman.com', 'fc'],
+    ['ACCOUNTING & FINANCE STAFF', 'ACC', 'ac@loveandaman.com', 'staff'],
+    ['นางสาวกรรณกนก เต็มสั้น', 'ACC', 'ar@loveandaman.com', 'staff'],
+    ['นางสาวภัทราภรณ์ แว่นพิมาย', 'PUR', 'apm@loveandaman.com', 'manager'],
+    ['นางสาวอาทิตยา รัตนบุรีนล', 'PUR', 'adminstorepk@loveandaman.com', 'staff'],
+    ['นางสาวนนทิยา เนาว์สุวรรณ', 'MKT', 'digital.mkt@loveandaman.com', 'manager'],
+    ['CONTENT CREATOR DEVELOPER STAFF', 'MKT', 'contentcreator@loveandaman.com', 'staff'],
+    ['นางสาวปวีณา ฤทธยานนท์', 'SEC', 'marcom@loveandaman.com', 'manager'],
+    ['นางสาวกฤติกา เพิ่ม', 'BD', 'asst_marcom@loveandaman.com', 'manager'],
+    ['นายอาทิตย์ เคียมเค้า', 'BD', 'admin.mkt@loveandaman.com', 'manager'],
+    ['นางสาวโสพิศ ส้มส้า', 'SA', 'dos@loveandaman.com', 'manager'],
+    ['นางแสงสุนีย์ เพทรี', 'SA', 'sales.eu@loveandaman.com', 'staff'],
+    ['นางสาวร่มธรรม ตั้นเส้ง', 'SA', 'salesexe@loveandaman.com', 'staff'],
+    ['นางสาวณิชารัศม์ ธนาทรัพย์โศภิต', 'SA', 'salescounter@loveandaman.com', 'staff'],
+    ['นายณัฐพัชร์ โชติจิราวราฉัตร', 'SA', 'sales.global@loveandaman.com', 'staff'],
+    ['นายมิคาเอล มาร์ทูเอเซฟ', 'SA', 'sales.ru@loveandaman.com', 'staff'],
+    ['นายสุนทร รายารักษ์', 'SONL', 'csm@loveandaman.com', 'manager'],
+    ['SALE ONLINE STAFF', 'SONL', 'sale-fb@loveandaman.com', 'staff'],
+    ['นางสาวกชวรรณ ครรินทร์', 'SONL', 'crs@loveandaman.com', 'staff'],
+    ['นายอานนท์ ปินไชย', 'RSV', 'rm@loveandaman.com', 'manager'],
+    ['RESERVATION STAFF', 'RSV', 'book@loveandaman.com', 'staff'],
+    ['นางสาวนฤมน ซ้วนเซ่ง', 'PKTP', 'pier.phuket@loveandaman.com', 'manager'],
+    ['นางสาวทัศน์วรรณ โต๊ะเดาะละ', 'TLP', 'pier.khaolak@loveandaman.com', 'manager'],
+  ];
+  const empSeq: Record<string, number> = {};
+  for (const [name, deptCode, email, role] of IMPORT_USERS) {
+    const departmentId = await dept(love.id, deptCode);
+    empSeq[deptCode] = (empSeq[deptCode] || 0) + 1;
+    const employeeCode = `${deptCode}${String(empSeq[deptCode]).padStart(2, '0')}`;
+    await prisma.user.upsert({
+      where: { email },
+      update: { name, departmentId, role: role as any },
+      create: { companyId: love.id, departmentId, employeeCode, name, email, passwordHash: demoPw, role: role as any },
+    });
+  }
+  console.log(`Imported ${IMPORT_USERS.length} staff from Name.csv`);
+
+  console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
-  console.log('  ceo@ / ops.manager@ / ploy@loveandaman.com  (Password123!)');
-  console.log('  hrm@ / md@ / fc@loveandaman.com  (Password123!)');
+  console.log('  imported users default password: Password123!');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
