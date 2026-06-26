@@ -81,8 +81,8 @@ async function main() {
       passwordHash: adminPw, role: 'admin' },
   });
   const exec = await prisma.user.upsert({
-    where: { email: 'ceo@loveandaman.com' }, update: {},
-    create: { companyId: love.id, departmentId: await dept(love.id, 'SEC'),
+    where: { email: 'ceo@loveandaman.com' }, update: { departmentId: null },
+    create: { companyId: love.id, departmentId: null,
       employeeCode: 'EX001', name: 'Somchai (CEO)', email: 'ceo@loveandaman.com',
       passwordHash: demoPw, role: 'executive' },
   });
@@ -156,7 +156,9 @@ async function main() {
   ];
   const empSeq: Record<string, number> = {};
   for (const [name, deptCode, email, role] of IMPORT_USERS) {
-    const departmentId = await dept(love.id, deptCode);
+    // executives (CEO / MD) do not belong to a department
+    const noDept = role === 'executive' || role === 'md';
+    const departmentId = noDept ? null : await dept(love.id, deptCode);
     empSeq[deptCode] = (empSeq[deptCode] || 0) + 1;
     const employeeCode = `${deptCode}${String(empSeq[deptCode]).padStart(2, '0')}`;
     await prisma.user.upsert({
