@@ -28,6 +28,7 @@ export function Users() {
     setEditId(null); setMsg('');
     reset({ role: 'staff', password: 'Password123!', employeeCode: '', name: '', email: '', companyId: '', departmentId: '', managerId: '' });
     setOpen(true);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
   };
 
   const openEdit = (u: any) => {
@@ -38,6 +39,7 @@ export function Users() {
       managerId: u.managerId ?? '',
     });
     setOpen(true);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
   };
 
   const onSubmit = async (v: any) => {
