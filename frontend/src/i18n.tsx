@@ -199,6 +199,8 @@ const TH: Dict = {
     updated: 'อัปเดตผู้ใช้เรียบร้อย',
     deleted: 'ลบผู้ใช้เรียบร้อย',
     confirmDelete: 'ต้องการลบผู้ใช้ "{name}" ใช่หรือไม่?',
+    firstApprover: 'ผู้อนุมัติขั้นแรก (หัวหน้า)',
+    firstApproverAuto: '— อัตโนมัติ (หัวหน้าแผนกเดียวกัน) —',
   },
   settings: {
     title: 'ตั้งค่า (Settings)',
@@ -418,6 +420,8 @@ const EN: Dict = {
     updated: 'User updated',
     deleted: 'User deleted',
     confirmDelete: 'Delete user "{name}"?',
+    firstApprover: 'First approver (manager)',
+    firstApproverAuto: '— Auto (same-dept manager) —',
   },
   settings: {
     title: 'Settings',

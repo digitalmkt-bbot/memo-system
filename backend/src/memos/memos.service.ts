@@ -65,17 +65,17 @@ export class MemosService {
   private async pickManager(creatorId: number) {
     const creator = await this.prisma.user.findUnique({ where: { id: creatorId } });
     if (!creator) return null;
-    // 1) manager of the SAME department (requester's department manager)
+    // 1) explicit "first approver" assigned to this user (managerId) — admin's choice wins
+    if (creator.managerId) {
+      const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true, role: 'manager' } });
+      if (m) return m.id;
+    }
+    // 2) manager of the SAME department (requester's department manager)
     const sameDept = await this.prisma.user.findFirst({
       where: { role: 'manager', active: true, companyId: creator.companyId, departmentId: creator.departmentId ?? -1 },
       orderBy: { id: 'asc' },
     });
     if (sameDept) return sameDept.id;
-    // 2) explicit managerId
-    if (creator.managerId) {
-      const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true, role: 'manager' } });
-      if (m) return m.id;
-    }
     // 3) any manager in the company (fallback)
     const fb = await this.prisma.user.findFirst({
       where: { role: 'manager', active: true, companyId: creator.companyId }, orderBy: { id: 'asc' },

@@ -26,7 +26,7 @@ export function Users() {
 
   const openAdd = () => {
     setEditId(null); setMsg('');
-    reset({ role: 'staff', password: 'Password123!', employeeCode: '', name: '', email: '', companyId: '', departmentId: '' });
+    reset({ role: 'staff', password: 'Password123!', employeeCode: '', name: '', email: '', companyId: '', departmentId: '', managerId: '' });
     setOpen(true);
   };
 
@@ -35,6 +35,7 @@ export function Users() {
     reset({
       employeeCode: u.employeeCode, name: u.name, email: u.email, password: '',
       companyId: u.companyId, departmentId: u.departmentId ?? '', role: u.role,
+      managerId: u.managerId ?? '',
     });
     setOpen(true);
   };
@@ -46,6 +47,7 @@ export function Users() {
         companyId: Number(v.companyId),
         departmentId: v.departmentId ? Number(v.departmentId) : undefined,
         employeeCode: v.employeeCode, name: v.name, email: v.email, role: v.role,
+        managerId: v.managerId ? Number(v.managerId) : undefined,
       };
       if (editId) {
         if (v.password) payload.password = v.password;
@@ -98,6 +100,13 @@ export function Users() {
               <div><label className="label">{t('users.role')}</label>
                 <select className="input" {...register('role', { required: true })}>
                   {ROLES.map((k) => <option key={k} value={k}>{roleLabel(k)}</option>)}
+                </select></div>
+              <div><label className="label">{t('users.firstApprover')}</label>
+                <select className="input" {...register('managerId')}>
+                  <option value="">{t('users.firstApproverAuto')}</option>
+                  {users
+                    .filter((u) => u.role === 'manager' && u.id !== editId)
+                    .map((u) => <option key={u.id} value={u.id}>{u.name}{u.deptCode ? ` (${u.deptCode})` : ''}</option>)}
                 </select></div>
             </div>
             <div className="flex gap-2.5 mt-4">
