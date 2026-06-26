@@ -2,38 +2,21 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 
 /**
- * Email notifications via SendGrid Web API (configured through env vars):
- *   SENDGRID_API_KEY  — SendGrid API key (starts with "SG.")
+ * Email notifications via SMTP2GO Web API (configured through env vars):
+ *   SMTP2GO_API_KEY   — SMTP2GO API key (starts with "api-")
  *   MAIL_FROM         — verified sender, e.g. "MEMO System <no-reply@loveandaman.com>"
  *   APP_URL           — frontend base url (e.g. https://memo-system-production-001.up.railway.app)
- * If SendGrid is not configured the service no-ops (logs and skips) so the
+ * If SMTP2GO is not configured the service no-ops (logs and skips) so the
  * approval flow never breaks because of email.
  */
 @Injectable()
 export class MailService {
   private readonly log = new Logger('MailService');
-  private client: any = null;
 
   constructor(private prisma: PrismaService) {}
 
   private get enabled(): boolean {
-    return !!(process.env.SENDGRID_API_KEY && process.env.MAIL_FROM);
-  }
-
-  private getClient() {
-    if (this.client) return this.client;
-    if (!this.enabled) return null;
-    const sg = require('@sendgrid/mail');
-    sg.setApiKey(process.env.SENDGRID_API_KEY);
-    this.client = sg;
-    return this.client;
-  }
-
-  /** Parse "Name <email>" into a SendGrid from object. */
-  private from(): any {
-    const raw = process.env.MAIL_FROM || '';
-    const m = raw.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/);
-    return m ? { name: m[1] || undefined, email: m[2] } : { email: raw.trim() };
+    return !!(process.env.SMTP2GO_API_KEY && process.env.MAIL_FROM);
   }
 
   private appUrl() {
@@ -43,14 +26,27 @@ export class MailService {
   /** Fire-and-forget; never throws. */
   async send(to: string, subject: string, html: string) {
     if (!to) return;
-    const sg = this.getClient();
-    if (!sg) { this.log.warn(`SendGrid not configured — skip mail to ${to} (${subject})`); return; }
+    if (!this.enabled) { this.log.warn(`SMTP2GO not configured — skip mail to ${to} (${subject})`); return; }
     try {
-      await sg.send({ to, from: this.from(), subject, html });
-      this.log.log(`mail sent → ${to} (${subject})`);
+      const res = await fetch('https://api.smtp2go.com/v3/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: process.env.SMTP2GO_API_KEY,
+          to: [to],
+          sender: process.env.MAIL_FROM,
+          subject,
+          html_body: html,
+        }),
+      });
+      const data: any = await res.json();
+      if (data?.data?.succeeded) {
+        this.log.log(`mail sent → ${to} (${subject})`);
+      } else {
+        this.log.error(`mail failed → ${to}: ${JSON.stringify(data?.data?.failures ?? data)}`);
+      }
     } catch (e: any) {
-      const detail = e?.response?.body?.errors?.map((x: any) => x.message).join('; ') || e.message;
-      this.log.error(`mail failed → ${to}: ${detail}`);
+      this.log.error(`mail error → ${to}: ${e.message}`);
     }
   }
 
