@@ -3,14 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { StatusTag } from '../ui';
 import { useI18n } from '../i18n';
+import { useAuth } from '../auth';
 
 export function Memos() {
   const nav = useNavigate();
   const { t } = useI18n();
+  const { user } = useAuth();
   const [box, setBox] = useState('sent');
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [companyId, setCompanyId] = useState('');
+  const canFilterCompany = ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user?.role || '');
 
   const BOXES: [string, string][] = [['sent', t('memos.boxSent')], ['inbox', t('memos.boxInbox')], ['all', t('memos.boxAll')]];
 
@@ -18,9 +23,11 @@ export function Memos() {
     setLoading(true);
     const params: Record<string, string> = box === 'all' ? {} : { box };
     if (q) params.q = q;
+    if (companyId) params.companyId = companyId;
     api.memos(params).then(setRows).catch(() => setRows([])).finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, [box]);
+  useEffect(() => { if (canFilterCompany) api.companies().then(setCompanies).catch(() => {}); }, [canFilterCompany]);
+  useEffect(() => { load(); }, [box, companyId]);
 
   return (
     <>
@@ -38,6 +45,12 @@ export function Memos() {
           </button>
         ))}
         <div className="flex-1" />
+        {canFilterCompany && (
+          <select className="input !w-auto !py-1.5" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+            <option value="">{t('dashboard.allCompanies')}</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
         <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex gap-2">
           <input className="input !py-1.5 w-56" placeholder={t('memos.searchPlaceholder')} value={q} onChange={(e) => setQ(e.target.value)} />
           <button className="btn btn-ghost !py-1.5">{t('common.search')}</button>

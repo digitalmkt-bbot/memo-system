@@ -14,11 +14,13 @@ export class DashboardController {
   monthly(@Req() req: any, @Query('companyId') companyId?: string) { return this.svc.monthly(req.user, companyId); }
 
   @Get('series')
-  series(@Req() req: any, @Query('range') range?: string) { return this.svc.series(req.user, range || '30d'); }
+  series(@Req() req: any, @Query('range') range?: string, @Query('companyId') companyId?: string) {
+    return this.svc.series(req.user, range || '30d', companyId);
+  }
 
   @Get('overview')
-  overview(@Req() req: any, @Query('from') from?: string, @Query('to') to?: string, @Query('status') status?: string) {
-    return this.svc.overview(req.user, from, to, status);
+  overview(@Req() req: any, @Query('from') from?: string, @Query('to') to?: string, @Query('status') status?: string, @Query('companyId') companyId?: string) {
+    return this.svc.overview(req.user, from, to, status, companyId);
   }
 
   @Get('company')

@@ -101,7 +101,7 @@ export class DashboardService {
     );
   }
   // continuous time-series with zero-filled buckets (for the dashboard line chart)
-  async series(user: JwtUser, range = '30d') {
+  async series(user: JwtUser, range = '30d', companyId?: string) {
     const params: any[] = [];
     const p = (v: any) => { params.push(v); return `$${params.length}`; };
     const scope: string[] = [];
@@ -111,6 +111,9 @@ export class DashboardService {
     } else if (user.role === 'staff') {
       scope.push(`m.created_by = ${p(user.id)}`);
     }
+    // optional company filter (only meaningful for roles that see all companies)
+    const cid = companyId && (user.role === 'admin' || user.role === 'executive') ? parseInt(companyId, 10) : undefined;
+    if (cid) scope.push(`m.company_id = ${p(cid)}`);
     const scopeClause = scope.length ? ' AND ' + scope.join(' AND ') : '';
 
     const dayMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
@@ -141,8 +144,10 @@ export class DashboardService {
   }
 
   // filtered overview for the PR/PO-style dashboard (cards + total value + by-dept value + recent)
-  async overview(user: JwtUser, from?: string, to?: string, status?: string) {
+  async overview(user: JwtUser, from?: string, to?: string, status?: string, companyId?: string) {
     const where: any = this.scopeWhere(user);
+    const cid = companyId && (user.role === 'admin' || user.role === 'executive') ? parseInt(companyId, 10) : undefined;
+    if (cid) where.companyId = cid;
     const range: any = {};
     if (from) range.gte = new Date(from);
     if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); range.lte = d; }
@@ -163,6 +168,7 @@ export class DashboardService {
     const conds: string[] = ['1=1'];
     if (user.role === 'manager') { conds.push(`m.company_id = ${p(user.companyId)}`); conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`); }
     else if (user.role === 'staff') conds.push(`m.created_by = ${p(user.id)}`);
+    if (cid) conds.push(`m.company_id = ${p(cid)}`);
     if (from) conds.push(`m.created_at >= ${p(new Date(from))}`);
     if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); conds.push(`m.created_at <= ${p(d)}`); }
     if (status && status !== 'all') conds.push(`m.status = ${p(status)}`);

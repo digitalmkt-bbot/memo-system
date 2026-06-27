@@ -25,9 +25,13 @@ export function Dashboard() {
   const [ov, setOv] = useState<any>({ summary: {}, totalAmount: 0 });
   const [months, setMonths] = useState<any[]>([]);
   const [range, setRange] = useState('12m');
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [companyId, setCompanyId] = useState('');
+  const canFilterCompany = user?.role === 'admin' || user?.role === 'executive';
 
-  useEffect(() => { api.overview({}).then(setOv).catch(() => {}); }, []);
-  useEffect(() => { api.series(range).then(setMonths).catch(() => {}); }, [range]);
+  useEffect(() => { if (canFilterCompany) api.companies().then(setCompanies).catch(() => {}); }, [canFilterCompany]);
+  useEffect(() => { api.overview(companyId ? { companyId } : {}).then(setOv).catch(() => {}); }, [companyId]);
+  useEffect(() => { api.series(range, companyId || undefined).then(setMonths).catch(() => {}); }, [range, companyId]);
 
   const sum = ov.summary || {};
   const total = sum.total || 0;
@@ -50,9 +54,17 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-3xl">{t('dashboard.hello')}, {user?.name}</h2>
-        <p className="text-slate-500 text-sm mt-1">{t('dashboard.overview')}</p>
+      <div className="mb-6 flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-3xl">{t('dashboard.hello')}, {user?.name}</h2>
+          <p className="text-slate-500 text-sm mt-1">{t('dashboard.overview')}</p>
+        </div>
+        {canFilterCompany && (
+          <select className="input !w-auto !py-2" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+            <option value="">{t('dashboard.allCompanies')}</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr_1.25fr] lg:auto-rows-min lg:grid-flow-row-dense">
