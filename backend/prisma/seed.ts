@@ -80,32 +80,7 @@ async function main() {
       employeeCode: 'ADMIN', name: 'System Admin', email: 'admin@loveandaman.com',
       passwordHash: adminPw, role: 'admin' },
   });
-  const exec = await prisma.user.upsert({
-    where: { email: 'ceo@loveandaman.com' }, update: { departmentId: null },
-    create: { companyId: love.id, departmentId: null,
-      employeeCode: 'EX001', name: 'Somchai (CEO)', email: 'ceo@loveandaman.com',
-      passwordHash: demoPw, role: 'executive' },
-  });
-  const mgr = await prisma.user.upsert({
-    where: { email: 'ops.manager@loveandaman.com' }, update: {},
-    create: { companyId: love.id, departmentId: await dept(love.id, 'SRV'),
-      employeeCode: 'MG001', name: 'Naree (Service Mgr)', email: 'ops.manager@loveandaman.com',
-      passwordHash: demoPw, role: 'manager', managerId: exec.id },
-  });
-  await prisma.user.upsert({
-    where: { email: 'ploy@loveandaman.com' }, update: {},
-    create: { companyId: love.id, departmentId: await dept(love.id, 'RSV'),
-      employeeCode: 'ST001', name: 'Ploy', email: 'ploy@loveandaman.com',
-      passwordHash: demoPw, role: 'staff', managerId: mgr.id },
-  });
-
-  // 5) extra approvers for the 5-step chain: HRM, MD, FC
-  await prisma.user.upsert({
-    where: { email: 'hrm@loveandaman.com' }, update: { role: 'hrm' },
-    create: { companyId: love.id, departmentId: await dept(love.id, 'HR'),
-      employeeCode: 'HRM01', name: 'Kanya (HR Manager)', email: 'hrm@loveandaman.com',
-      passwordHash: demoPw, role: 'hrm' },
-  });
+  // 5) approvers MD, FC (emails overwritten with real data by the Name.csv import below)
   await prisma.user.upsert({
     where: { email: 'md@loveandaman.com' }, update: { role: 'md' },
     create: { companyId: love.id, departmentId: await dept(love.id, 'SEC'),
@@ -168,6 +143,30 @@ async function main() {
     });
   }
   console.log(`Imported ${IMPORT_USERS.length} staff from Name.csv`);
+
+  // 7) remove leftover MOCKUP/demo users (and any test data tied to them).
+  //    Real staff use loveandaman.com emails; these demo accounts are no longer needed.
+  const MOCK_EMAILS = ['ceo@loveandaman.com', 'ops.manager@loveandaman.com', 'ploy@loveandaman.com', 'hrm@loveandaman.com'];
+  const mocks = await prisma.user.findMany({ where: { email: { in: MOCK_EMAILS } }, select: { id: true } });
+  const mockIds = mocks.map((m) => m.id);
+  if (mockIds.length) {
+    const memos = await prisma.memo.findMany({ where: { createdBy: { in: mockIds } }, select: { id: true } });
+    const memoIds = memos.map((m) => m.id);
+    if (memoIds.length) {
+      await prisma.approval.deleteMany({ where: { memoId: { in: memoIds } } });
+      await prisma.memoItem.deleteMany({ where: { memoId: { in: memoIds } } });
+      await prisma.attachment.deleteMany({ where: { memoId: { in: memoIds } } });
+      await prisma.auditLog.deleteMany({ where: { memoId: { in: memoIds } } });
+      await prisma.memo.deleteMany({ where: { id: { in: memoIds } } });
+    }
+    // remove their approvals / audit on OTHER memos, and unlink them as current approver / manager
+    await prisma.approval.deleteMany({ where: { approvedBy: { in: mockIds } } });
+    await prisma.auditLog.deleteMany({ where: { userId: { in: mockIds } } });
+    await prisma.memo.updateMany({ where: { currentApproverId: { in: mockIds } }, data: { currentApproverId: null } });
+    await prisma.user.updateMany({ where: { managerId: { in: mockIds } }, data: { managerId: null } });
+    await prisma.user.deleteMany({ where: { id: { in: mockIds } } });
+    console.log(`Removed ${mockIds.length} mockup users (+ their test data)`);
+  }
 
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
