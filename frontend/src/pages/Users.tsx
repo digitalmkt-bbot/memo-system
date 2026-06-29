@@ -73,7 +73,7 @@ export function Users() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div><h2 className="text-xl font-bold">{t('users.title')}</h2>
           <p className="text-gray-500 text-[13px]">{t('users.subtitle')}</p></div>
         <button className="btn btn-primary" onClick={openAdd}>{t('users.addUser')}</button>
@@ -121,7 +121,7 @@ export function Users() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[860px]">
             <thead>
               <tr className="text-left text-slate-500 text-[12px] border-b border-slate-100">
                 <th className="px-5 py-3 font-semibold">{t('users.employeeCode')}</th>

@@ -31,12 +31,12 @@ export function Memos() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <h2 className="text-xl font-bold">{t('memos.title')}</h2>
         <button className="btn btn-primary" onClick={() => nav('/memos/create')}>{t('memos.newMemo')}</button>
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         {BOXES.map(([k, l]) => (
           <button key={k} onClick={() => setBox(k)}
             className={'px-4 py-2 rounded-xl text-[13px] font-semibold transition-all ' +
@@ -44,16 +44,16 @@ export function Memos() {
             {l}
           </button>
         ))}
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
         {canFilterCompany && (
           <select className="input !w-auto !py-1.5" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
             <option value="">{t('dashboard.allCompanies')}</option>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
-        <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex gap-2">
-          <input className="input !py-1.5 w-56" placeholder={t('memos.searchPlaceholder')} value={q} onChange={(e) => setQ(e.target.value)} />
-          <button className="btn btn-ghost !py-1.5">{t('common.search')}</button>
+        <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex gap-2 flex-1 sm:flex-none min-w-[180px]">
+          <input className="input !py-1.5 flex-1 sm:w-56" placeholder={t('memos.searchPlaceholder')} value={q} onChange={(e) => setQ(e.target.value)} />
+          <button className="btn btn-ghost !py-1.5 shrink-0">{t('common.search')}</button>
         </form>
       </div>
 

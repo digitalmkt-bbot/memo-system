@@ -96,23 +96,23 @@ export function MemoView() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-xl font-bold">{memo.subject}</h2>
+      <div className="flex items-start justify-between gap-3 mb-5 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold break-words">{memo.subject}</h2>
           <p className="text-gray-500 text-[12.5px]">{memo.memoNo || t('view.draft')} · {memo.companyCode}/{memo.deptCode} · {t('view.from')} {memo.fromName}</p>
         </div>
-        <button className="btn btn-ghost !py-1.5" onClick={() => nav(-1)}>{t('common.back')}</button>
+        <button className="btn btn-ghost !py-1.5 shrink-0" onClick={() => nav(-1)}>{t('common.back')}</button>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-5">
         <div className="card p-6">
           <div className="flex items-center gap-2"><StatusTag s={memo.status} /><span className="text-gray-400 text-xs">{t('view.dateLabel')} {fmtDay(memo.date, lang)}</span></div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm">
             <div><span className="text-gray-500">{t('view.from')}:</span> {memo.fromName}</div>
             <div><span className="text-gray-500">{t('view.dept')}:</span> {memo.deptName}</div>
             <div><span className="text-gray-500">{t('form.category')}:</span> {memo.category ? t('form.' + (CAT_KEY[memo.category] || 'catOther')) : '—'}{memo.category === 'other' && memo.categoryNote ? ` — ${memo.categoryNote}` : ''}</div>
             <div><span className="text-gray-500">{t('form.neededDate')}:</span> {memo.neededDate ? fmtDay(memo.neededDate, lang) : '—'}</div>
-            <div className="col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
+            <div className="sm:col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
           </div>
           <div className="whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-sm leading-7 min-h-[200px]">{memo.detail}</div>
 
