@@ -175,6 +175,8 @@ const TH: Dict = {
     byCompany: 'ตามบริษัท',
     byDept: 'ตามแผนก',
     monthly: 'รายเดือน',
+    trend: 'แนวโน้มรายช่วงเวลา',
+    statusBreakdown: 'สัดส่วนสถานะ',
   },
   users: {
     title: 'จัดการผู้ใช้ (Users)',
@@ -402,6 +404,8 @@ const EN: Dict = {
     byCompany: 'By company',
     byDept: 'By department',
     monthly: 'By month',
+    trend: 'Trend over time',
+    statusBreakdown: 'Status breakdown',
   },
   users: {
     title: 'Users',
