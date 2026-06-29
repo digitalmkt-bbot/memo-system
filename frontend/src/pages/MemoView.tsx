@@ -25,7 +25,20 @@ export function MemoView() {
   const [modal, setModal] = useState<'approve' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
   const [nextRole, setNextRole] = useState<'hrm' | 'md'>('hrm');
+  const [preview, setPreview] = useState<{ url: string; mime: string; name: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const canPreview = (mime: string) => !!mime && (mime.startsWith('image/') || mime === 'application/pdf');
+  const openPreview = async (a: any) => {
+    try {
+      const url = await api.attachmentBlobUrl(mid, a.id);
+      setPreview({ url, mime: a.mimeType, name: a.filename });
+    } catch (e: any) { alert(e.message); }
+  };
+  const closePreview = () => {
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
 
   const load = () => api.memo(mid).then(setData).catch(() => nav('/memos'));
   const loadAtts = () => api.listAttachments(mid).then(setAtts).catch(() => setAtts([]));
@@ -192,6 +205,7 @@ export function MemoView() {
                   📎 {a.filename}
                 </button>
                 <span className="flex items-center gap-2 shrink-0">
+                  {canPreview(a.mimeType) && <button className="text-ocean text-xs hover:underline" onClick={() => openPreview(a)}>{t('view.preview')}</button>}
                   <span className="text-gray-400 text-[11px]">{fmtSize(a.size)}</span>
                   {isCreator && isOpen && <button className="text-red-500 text-xs" onClick={() => del(a.id)}>{t('view.del')}</button>}
                 </span>
@@ -238,6 +252,25 @@ export function MemoView() {
             <div className="flex gap-2.5 justify-end mt-4">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>{t('common.cancel')}</button>
               <button className={'btn ' + (modal === 'approve' ? 'btn-green' : 'btn-red')} onClick={act}>{modal === 'approve' ? t('view.approveBtn') : t('view.rejectBtn')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {preview && (
+        <div className="fixed inset-0 bg-ink/70 grid place-items-center p-5 z-50" onClick={closePreview}>
+          <div className="bg-white rounded-2xl overflow-hidden w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+              <div className="font-semibold text-[13px] truncate mr-2">📎 {preview.name}</div>
+              <div className="flex items-center gap-3 shrink-0">
+                <a className="text-ocean text-[13px] hover:underline" href={preview.url} download={preview.name}>{t('view.downloadPdf')}</a>
+                <button className="text-gray-500 hover:text-ink text-lg leading-none" onClick={closePreview}>✕</button>
+              </div>
+            </div>
+            <div className="bg-gray-50 flex-1 overflow-auto grid place-items-center">
+              {preview.mime.startsWith('image/')
+                ? <img src={preview.url} alt={preview.name} className="max-w-full max-h-[80vh] object-contain" />
+                : <iframe src={preview.url} title={preview.name} className="w-full h-[80vh] border-0" />}
             </div>
           </div>
         </div>

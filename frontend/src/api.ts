@@ -67,6 +67,10 @@ export const api = {
     a.href = url; a.download = filename; document.body.appendChild(a); a.click();
     a.remove(); URL.revokeObjectURL(url);
   },
+  attachmentBlobUrl: async (memoId: number, attId: number) => {
+    const res = await http.get(`/memos/${memoId}/attachments/${attId}`, { responseType: 'blob' });
+    return URL.createObjectURL(res.data as Blob);
+  },
   pdfUrl: (id: number) => `${BASE}/memos/${id}/pdf`,
   openPdf: async (id: number, memoNo?: string) => {
     const res = await http.get(`/memos/${id}/pdf`, { responseType: 'blob' });
