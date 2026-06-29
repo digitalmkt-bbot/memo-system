@@ -49,27 +49,27 @@ export function Reports() {
     </div>
   );
 
-  const BarList = ({ title, rows, keyName }: { title: string; rows: any[]; keyName: string }) => {
-    const max = Math.max(1, ...rows.map((r) => Number(r.amount) || 0));
+  const ChartBars = ({ title, rows, keyName, color }: { title: string; rows: any[]; keyName: string; color: string }) => {
+    const data = rows.map((r) => ({ name: (r[keyName] || '—') + (r.company ? ` (${r.company})` : ''), amount: Number(r.amount) || 0, count: Number(r.count) || 0 }));
+    const h = Math.max(180, data.length * 40 + 20);
+    const trunc = (s: string) => (s.length > 22 ? s.slice(0, 21) + '…' : s);
     return (
       <div className="card p-5">
-        <div className="font-bold text-ink text-[15px] mb-4">{title}</div>
-        {rows.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : (
-          <div className="space-y-3">
-            {rows.map((r, i) => (
-              <div key={i}>
-                <div className="flex justify-between items-baseline text-[13px] mb-1 gap-2">
-                  <span className="font-medium text-ink truncate">{r[keyName] || '—'}{r.company ? <span className="text-slate-400 text-[11px]"> ({r.company})</span> : null}</span>
-                  <span className="shrink-0 text-right">
-                    <span className="font-semibold text-ink">{num(r.count)}</span>
-                    <span className="text-slate-400 text-[11px] ml-2">{money(r.amount)}</span>
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#86efac] to-[#10b981]" style={{ width: Math.max(3, (Number(r.amount) || 0) / max * 100) + '%' }} />
-                </div>
-              </div>
-            ))}
+        <div className="font-bold text-ink text-[15px] mb-3">{title}</div>
+        {data.length === 0 ? <p className="text-slate-400 text-sm">{t('common.noData')}</p> : (
+          <div className="w-full" style={{ height: h }}>
+            <ResponsiveContainer>
+              <BarChart layout="vertical" data={data} margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+                <CartesianGrid horizontal={false} strokeDasharray="4 5" stroke="#eef1f3" />
+                <XAxis type="number" fontSize={10} stroke="#94a3b8" tickLine={false} axisLine={false} tickFormatter={(v) => (v >= 1000 ? (v / 1000) + 'K' : String(v))} />
+                <YAxis type="category" dataKey="name" width={140} fontSize={11} stroke="#64748b" tickLine={false} axisLine={false} tickFormatter={trunc} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(17,24,39,0.12)' }}
+                  formatter={(v: any, _n: any, p: any) => [money(v) + `  ·  ${num(p.payload.count)} ` + t('memos.title'), '']}
+                  labelFormatter={(l) => l} />
+                <Bar dataKey="amount" radius={[0, 8, 8, 0]} maxBarSize={26} fill={color} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
@@ -155,8 +155,8 @@ export function Reports() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <BarList title={t('reports.byCompany')} rows={byCompany} keyName="name" />
-        <BarList title={t('reports.byDept')} rows={byDept} keyName="department" />
+        <ChartBars title={t('reports.byCompany')} rows={byCompany} keyName="name" color="#10b981" />
+        <ChartBars title={t('reports.byDept')} rows={byDept} keyName="department" color="#7c9cf5" />
       </div>
     </>
   );
