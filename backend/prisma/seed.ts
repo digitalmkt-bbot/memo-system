@@ -168,6 +168,19 @@ async function main() {
     console.log(`Removed ${mockIds.length} mockup users (+ their test data)`);
   }
 
+  // 8) GO LIVE: wipe ALL memos/attachments/history + reset running numbers.
+  //    Guarded by env flag so it never runs accidentally after launch.
+  //    Set GO_LIVE_RESET=true once, deploy, then REMOVE the flag.
+  if (process.env.GO_LIVE_RESET === 'true') {
+    await prisma.approval.deleteMany({});
+    await prisma.memoItem.deleteMany({});
+    await prisma.attachment.deleteMany({});
+    await prisma.auditLog.deleteMany({});
+    await prisma.memo.deleteMany({});
+    await prisma.memoRunning.deleteMany({});
+    console.log('GO_LIVE_RESET: wiped all memos, attachments, history; running numbers reset to start fresh.');
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
