@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { api } from '../api';
 import { useI18n } from '../i18n';
@@ -14,6 +14,8 @@ export function Users() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [msg, setMsg] = useState('');
+  const formRef = useRef<HTMLDivElement>(null);
+  const focusForm = () => setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
 
   const loadUsers = () => api.users().then(setUsers).catch(() => {});
   const { register, handleSubmit, watch, reset } = useForm<any>({
@@ -28,7 +30,7 @@ export function Users() {
     setEditId(null); setMsg('');
     reset({ role: 'staff', password: 'Password123!', employeeCode: '', name: '', email: '', companyId: '', departmentId: '', managerId: '' });
     setOpen(true);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
+    focusForm();
   };
 
   const openEdit = (u: any) => {
@@ -39,7 +41,7 @@ export function Users() {
       managerId: u.managerId ?? '',
     });
     setOpen(true);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
+    focusForm();
   };
 
   const onSubmit = async (v: any) => {
@@ -81,7 +83,7 @@ export function Users() {
       {msg && <div className="mb-4 text-sm text-ocean-dark">{msg}</div>}
 
       {open && (
-        <div className="card p-6 max-w-2xl mb-6">
+        <div ref={formRef} className="card p-6 max-w-2xl mb-6 scroll-mt-4">
           <div className="font-bold text-ink mb-4">{editId ? t('users.editTitle') : t('users.addUser')}</div>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid sm:grid-cols-2 gap-4">
