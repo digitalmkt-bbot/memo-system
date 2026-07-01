@@ -8,7 +8,9 @@ import { api } from '../api';
 type Form = { email: string; password: string };
 type PwForm = { email: string; currentPassword: string; newPassword: string };
 
-const pill = 'w-full rounded-full bg-white/95 px-5 py-3 text-[15px] text-slate-800 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-white border border-white/60';
+const field =
+  'w-full rounded-2xl bg-slate-50 px-4 py-3.5 text-[15px] text-slate-800 placeholder:text-slate-400 ' +
+  'border border-slate-200 focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-400 transition';
 
 function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
   return (
@@ -23,43 +25,41 @@ function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
   );
 }
 
-function Scenery() {
-  // calm misty-mountain landscape (inline SVG, fills the screen)
+/* Original brand panel — soft aurora gradient + abstract island / wave motif. */
+function BrandPanel() {
   return (
-    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#cfe2e8" /><stop offset="1" stopColor="#b6d0d7" />
-        </linearGradient>
-      </defs>
-      <rect width="800" height="600" fill="url(#sky)" />
-      {/* clouds */}
-      <g fill="#eef5f7" opacity="0.9">
-        <ellipse cx="560" cy="120" rx="140" ry="46" />
-        <ellipse cx="660" cy="150" rx="120" ry="40" />
-        <ellipse cx="470" cy="150" rx="90" ry="32" />
-        <ellipse cx="200" cy="90" rx="110" ry="36" opacity="0.7" />
-      </g>
-      {/* birds */}
-      <g stroke="#1c2b2b" strokeWidth="2.5" fill="none" strokeLinecap="round">
-        <path d="M610 215 q10 -10 20 0 q10 -10 20 0" />
-        <path d="M650 240 q8 -8 16 0 q8 -8 16 0" />
-      </g>
-      {/* mountains, far -> near */}
-      <path d="M0 360 L150 250 L300 360 L470 230 L640 360 L800 280 L800 600 L0 600 Z" fill="#9ab6bb" />
-      <path d="M0 420 L180 300 L360 430 L540 300 L720 430 L800 360 L800 600 L0 600 Z" fill="#7aa0a6" opacity="0.95" />
-      <path d="M0 470 L160 370 L340 480 L520 370 L700 480 L800 430 L800 600 L0 600 Z" fill="#5d878d" opacity="0.95" />
-      {/* foreground hills */}
-      <path d="M0 540 L220 460 L430 540 L640 470 L800 540 L800 600 L0 600 Z" fill="#3f6b6f" />
-      <path d="M0 600 L0 560 L260 600 Z" fill="#274c4d" />
-      {/* pine trees */}
-      <g fill="#16302f">
-        <g transform="translate(60 520) scale(1.1)"><path d="M0 70 L14 30 L28 70 Z" /><path d="M2 50 L14 14 L26 50 Z" /><path d="M4 34 L14 4 L24 34 Z" /><rect x="11" y="66" width="6" height="14" /></g>
-        <g transform="translate(720 500) scale(1.4)"><path d="M0 70 L14 30 L28 70 Z" /><path d="M2 50 L14 14 L26 50 Z" /><path d="M4 34 L14 4 L24 34 Z" /><rect x="11" y="66" width="6" height="16" /></g>
-        <g transform="translate(640 545) scale(0.9)"><path d="M0 70 L14 30 L28 70 Z" /><path d="M2 50 L14 14 L26 50 Z" /><rect x="11" y="66" width="6" height="12" /></g>
-        <g transform="translate(560 560) scale(0.7)"><path d="M0 70 L14 30 L28 70 Z" /><path d="M2 50 L14 14 L26 50 Z" /><rect x="11" y="66" width="6" height="12" /></g>
-      </g>
-    </svg>
+    <div className="relative h-full w-full overflow-hidden bg-[#0e3b3a]">
+      {/* aurora blobs */}
+      <div className="absolute -top-24 -left-16 h-96 w-96 rounded-full bg-[#34d399] opacity-40 blur-3xl" />
+      <div className="absolute top-1/3 -right-20 h-[26rem] w-[26rem] rounded-full bg-[#22d3ee] opacity-30 blur-3xl" />
+      <div className="absolute bottom-[-6rem] left-1/4 h-80 w-80 rounded-full bg-[#a7f3d0] opacity-25 blur-3xl" />
+
+      {/* abstract island / horizon */}
+      <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 600 260" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="470" cy="70" r="42" fill="#e9fff6" opacity="0.85" />
+        <path d="M0 150 C120 110 200 150 300 140 C420 128 500 160 600 138 L600 260 L0 260 Z" fill="#0b524d" opacity="0.55" />
+        <path d="M0 190 C140 160 240 200 360 186 C470 174 540 200 600 188 L600 260 L0 260 Z" fill="#083f3b" opacity="0.7" />
+        <path d="M0 224 C160 204 260 232 380 222 C480 214 560 232 600 224 L600 260 L0 260 Z" fill="#062f2c" />
+      </svg>
+
+      {/* content */}
+      <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
+        <div className="flex items-center gap-3 text-white">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 backdrop-blur-sm">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#a7f3d0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 15c2 0 2-1.6 4-1.6S9 15 11 15s2-1.6 4-1.6S17 15 19 15s2-1.6 4-1.6" /><path d="M3 20c2 0 2-1.6 4-1.6S9 20 11 20s2-1.6 4-1.6S17 20 19 20" /><circle cx="12" cy="6" r="3" fill="#a7f3d0" stroke="none" /></svg>
+          </div>
+          <span className="text-[17px] font-bold tracking-wide">Love Andaman</span>
+        </div>
+
+        <div className="max-w-md text-white">
+          <div className="text-[13px] font-semibold uppercase tracking-[0.25em] text-emerald-200/90">MEMO System</div>
+          <h2 className="mt-3 text-[34px] xl:text-[40px] font-extrabold leading-[1.1]">ระบบบันทึกข้อความ<br />และการอนุมัติ</h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-white/70">สร้าง ส่ง และติดตามการอนุมัติบันทึกข้อความได้ในที่เดียว รวดเร็ว โปร่งใส ทุกขั้นตอน</p>
+        </div>
+
+        <div className="text-[12.5px] text-white/50">© {new Date().getFullYear()} Love Andaman. All rights reserved.</div>
+      </div>
+    </div>
   );
 }
 
@@ -93,65 +93,79 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <Scenery />
-      <div className="relative z-10 min-h-screen flex">
-        <div className="w-full lg:max-w-[560px] bg-white/25 backdrop-blur-xl border-r border-white/30 flex items-center px-7 sm:px-14">
-          <div className="w-full max-w-sm py-12">
-            <h1 className="text-[40px] leading-none font-extrabold text-slate-900">{t('login.welcome')} 👋</h1>
-            <p className="text-slate-600/90 text-[15px] mt-3 mb-8">{t('login.subtitle')}</p>
-            {ok && <div className="text-emerald-700 bg-emerald-50/80 rounded-xl px-3 py-2 text-[13px] mb-4">{ok}</div>}
-
-            {mode === 'login' ? (
-              <form onSubmit={handleSubmit(onSubmit)}>
-                <label className="block text-[14px] font-semibold text-slate-700 mb-2">{t('login.email')}</label>
-                <input className={pill} type="email" placeholder={t('login.emailPlaceholder')} {...register('email', { required: true })} />
-
-                <label className="block text-[14px] font-semibold text-slate-700 mb-2 mt-5">{t('login.password')}</label>
-                <div className="relative">
-                  <input className={pill + ' pr-12'} type={showPw ? 'text' : 'password'} placeholder="••••••••" {...register('password', { required: true })} />
-                  <EyeBtn on={showPw} toggle={() => setShowPw((s) => !s)} />
-                </div>
-
-                <div className="flex items-center justify-between mt-4">
-                  <label className="flex items-center gap-2 text-[13px] text-slate-700 select-none cursor-pointer">
-                    <input type="checkbox" defaultChecked className="accent-slate-700 w-4 h-4" />
-                    {t('login.rememberMe')}
-                  </label>
-                  <button type="button" onClick={() => { setMode('pw'); setErr(''); setOk(''); }}
-                    className="text-[13px] text-slate-700 font-medium hover:underline">{t('login.forgot')}</button>
-                </div>
-
-                <div className="text-rose-600 text-[13px] mt-3 min-h-[18px]">{err}</div>
-                <button className="w-full rounded-full bg-[#2c3b40] text-white font-bold py-3.5 hover:brightness-125 transition disabled:opacity-60" disabled={isSubmitting}>
-                  {isSubmitting ? t('login.signingIn') : t('login.signIn')}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={pw.handleSubmit(onChangePw)}>
-                <label className="block text-[14px] font-semibold text-slate-700 mb-2">{t('login.email')}</label>
-                <input className={pill} type="email" placeholder={t('login.emailPlaceholder')} {...pw.register('email', { required: true })} />
-                <label className="block text-[14px] font-semibold text-slate-700 mb-2 mt-5">{t('login.currentPassword')}</label>
-                <div className="relative">
-                  <input className={pill + ' pr-12'} type={showCur ? 'text' : 'password'} {...pw.register('currentPassword', { required: true })} />
-                  <EyeBtn on={showCur} toggle={() => setShowCur((s) => !s)} />
-                </div>
-                <label className="block text-[14px] font-semibold text-slate-700 mb-2 mt-5">{t('login.newPassword')}</label>
-                <div className="relative">
-                  <input className={pill + ' pr-12'} type={showNew ? 'text' : 'password'} {...pw.register('newPassword', { required: true, minLength: 6 })} />
-                  <EyeBtn on={showNew} toggle={() => setShowNew((s) => !s)} />
-                </div>
-                <div className="text-rose-600 text-[13px] mt-3 min-h-[18px]">{err}</div>
-                <button className="w-full rounded-full bg-[#2c3b40] text-white font-bold py-3.5 hover:brightness-125 transition disabled:opacity-60" disabled={pw.formState.isSubmitting}>
-                  {pw.formState.isSubmitting ? t('login.changing') : t('login.changeBtn')}
-                </button>
-                <button type="button" onClick={() => { setMode('login'); setErr(''); }}
-                  className="block w-full text-center text-[13px] text-slate-600 mt-4 hover:underline">{t('login.backToLogin')}</button>
-              </form>
-            )}
+    <div className="min-h-screen w-full bg-white lg:grid lg:grid-cols-[1fr_1.05fr]">
+      {/* form side */}
+      <div className="flex min-h-screen items-center justify-center px-6 py-10 sm:px-10">
+        <div className="w-full max-w-[400px]">
+          {/* brand mark (mobile + all) */}
+          <div className="mb-9 flex items-center gap-2.5">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#34d399] to-[#10b981] shadow-sm">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 15c2 0 2-1.6 4-1.6S9 15 11 15s2-1.6 4-1.6S17 15 19 15s2-1.6 4-1.6 4-1.6" /><circle cx="12" cy="6.5" r="2.5" fill="#fff" stroke="none" /></svg>
+            </div>
+            <div className="leading-tight">
+              <div className="text-[15px] font-bold text-slate-900">Love Andaman</div>
+              <div className="text-[11px] text-slate-400">MEMO System</div>
+            </div>
           </div>
+
+          <h1 className="text-[30px] font-extrabold tracking-tight text-slate-900">{t('login.welcome')}</h1>
+          <p className="mt-2 mb-8 text-[14.5px] text-slate-500">{t('login.subtitle')}</p>
+
+          {ok && <div className="mb-5 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-700">{ok}</div>}
+
+          {mode === 'login' ? (
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <label className="mb-2 block text-[13.5px] font-semibold text-slate-700">{t('login.email')}</label>
+              <input className={field} type="email" placeholder={t('login.emailPlaceholder')} {...register('email', { required: true })} />
+
+              <label className="mb-2 mt-5 block text-[13.5px] font-semibold text-slate-700">{t('login.password')}</label>
+              <div className="relative">
+                <input className={field + ' pr-12'} type={showPw ? 'text' : 'password'} placeholder="••••••••" {...register('password', { required: true })} />
+                <EyeBtn on={showPw} toggle={() => setShowPw((s) => !s)} />
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                <label className="flex cursor-pointer select-none items-center gap-2 text-[13px] text-slate-600">
+                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-emerald-500" />
+                  {t('login.rememberMe')}
+                </label>
+                <button type="button" onClick={() => { setMode('pw'); setErr(''); setOk(''); }}
+                  className="text-[13px] font-medium text-emerald-600 hover:underline">{t('login.forgot')}</button>
+              </div>
+
+              <div className="mt-3 min-h-[18px] text-[13px] text-rose-600">{err}</div>
+              <button className="w-full rounded-2xl bg-gradient-to-br from-[#34d399] to-[#10b981] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={isSubmitting}>
+                {isSubmitting ? t('login.signingIn') : t('login.signIn')}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={pw.handleSubmit(onChangePw)}>
+              <label className="mb-2 block text-[13.5px] font-semibold text-slate-700">{t('login.email')}</label>
+              <input className={field} type="email" placeholder={t('login.emailPlaceholder')} {...pw.register('email', { required: true })} />
+              <label className="mb-2 mt-5 block text-[13.5px] font-semibold text-slate-700">{t('login.currentPassword')}</label>
+              <div className="relative">
+                <input className={field + ' pr-12'} type={showCur ? 'text' : 'password'} {...pw.register('currentPassword', { required: true })} />
+                <EyeBtn on={showCur} toggle={() => setShowCur((s) => !s)} />
+              </div>
+              <label className="mb-2 mt-5 block text-[13.5px] font-semibold text-slate-700">{t('login.newPassword')}</label>
+              <div className="relative">
+                <input className={field + ' pr-12'} type={showNew ? 'text' : 'password'} {...pw.register('newPassword', { required: true, minLength: 6 })} />
+                <EyeBtn on={showNew} toggle={() => setShowNew((s) => !s)} />
+              </div>
+              <div className="mt-3 min-h-[18px] text-[13px] text-rose-600">{err}</div>
+              <button className="w-full rounded-2xl bg-gradient-to-br from-[#34d399] to-[#10b981] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={pw.formState.isSubmitting}>
+                {pw.formState.isSubmitting ? t('login.changing') : t('login.changeBtn')}
+              </button>
+              <button type="button" onClick={() => { setMode('login'); setErr(''); }}
+                className="mt-4 block w-full text-center text-[13px] text-slate-500 hover:underline">{t('login.backToLogin')}</button>
+            </form>
+          )}
         </div>
-        <div className="hidden lg:block flex-1" />
+      </div>
+
+      {/* brand side (desktop only) */}
+      <div className="hidden lg:block">
+        <BrandPanel />
       </div>
     </div>
   );
