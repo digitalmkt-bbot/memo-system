@@ -25,6 +25,46 @@ function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
   );
 }
 
+/* Original friendly mascot — a cheerful character waving and holding a memo. */
+function Mascot() {
+  return (
+    <svg viewBox="0 0 220 280" className="h-full w-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <ellipse cx="110" cy="267" rx="60" ry="9" fill="#062f2c" opacity="0.35" />
+      {/* legs + shoes */}
+      <rect x="92" y="196" width="16" height="58" rx="8" fill="#0b3b38" />
+      <rect x="113" y="196" width="16" height="58" rx="8" fill="#0b3b38" />
+      <rect x="82" y="250" width="28" height="13" rx="6" fill="#e9fff6" />
+      <rect x="111" y="250" width="28" height="13" rx="6" fill="#e9fff6" />
+      {/* torso */}
+      <path d="M78 150 q32 -14 64 0 v40 q-32 12 -64 0 Z" fill="#2dd4bf" />
+      <rect x="78" y="150" width="64" height="52" rx="24" fill="#2dd4bf" />
+      {/* waving arm */}
+      <path d="M136 158 q28 -4 36 -34" stroke="#2dd4bf" strokeWidth="16" fill="none" strokeLinecap="round" />
+      <circle cx="174" cy="120" r="9" fill="#f2c8a0" />
+      {/* holding arm */}
+      <path d="M84 160 q-16 10 -14 32" stroke="#2dd4bf" strokeWidth="16" fill="none" strokeLinecap="round" />
+      <circle cx="72" cy="196" r="8" fill="#f2c8a0" />
+      {/* neck + head */}
+      <rect x="102" y="130" width="16" height="18" fill="#f2c8a0" />
+      <circle cx="110" cy="104" r="30" fill="#f2c8a0" />
+      <path d="M80 106 C80 74 140 74 140 106 C140 92 128 80 110 80 C92 80 80 92 80 106 Z" fill="#33261f" />
+      <circle cx="100" cy="105" r="3.2" fill="#2b2b2b" />
+      <circle cx="120" cy="105" r="3.2" fill="#2b2b2b" />
+      <circle cx="93" cy="113" r="4" fill="#f7a6a6" opacity="0.6" />
+      <circle cx="127" cy="113" r="4" fill="#f7a6a6" opacity="0.6" />
+      <path d="M101 115 q9 8 18 0" stroke="#2b2b2b" strokeWidth="3" fill="none" strokeLinecap="round" />
+      {/* memo / clipboard */}
+      <rect x="86" y="176" width="46" height="56" rx="6" fill="#ffffff" stroke="#d1d5db" strokeWidth="1.5" />
+      <rect x="100" y="170" width="18" height="9" rx="3" fill="#0e7490" />
+      <rect x="94" y="192" width="30" height="4" rx="2" fill="#cbd5e1" />
+      <rect x="94" y="202" width="30" height="4" rx="2" fill="#cbd5e1" />
+      <rect x="94" y="212" width="20" height="4" rx="2" fill="#cbd5e1" />
+      <circle cx="116" cy="224" r="7" fill="#34d399" />
+      <path d="M112.5 224 l2.5 2.5 l4 -5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* Original brand panel — soft aurora gradient + abstract island / wave motif. */
 function BrandPanel() {
   return (
@@ -41,6 +81,11 @@ function BrandPanel() {
         <path d="M0 190 C140 160 240 200 360 186 C470 174 540 200 600 188 L600 260 L0 260 Z" fill="#083f3b" opacity="0.7" />
         <path d="M0 224 C160 204 260 232 380 222 C480 214 560 232 600 224 L600 260 L0 260 Z" fill="#062f2c" />
       </svg>
+
+      {/* mascot */}
+      <div className="pointer-events-none absolute bottom-6 right-6 z-10 w-40 xl:bottom-10 xl:right-12 xl:w-52">
+        <Mascot />
+      </div>
 
       {/* content */}
       <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
