@@ -72,6 +72,7 @@ export class MailService {
     if (!memo?.currentApproverId) return;
     const approver = await this.prisma.user.findUnique({ where: { id: memo.currentApproverId } });
     if (!approver?.email) return;
+    if (approver.role === 'executive') return; // executives are view-only — never notify
     const html = this.layout(
       'มีบันทึกข้อความรออนุมัติ',
       [
@@ -92,6 +93,7 @@ export class MailService {
     if (!memo?.createdBy) return;
     const creator = await this.prisma.user.findUnique({ where: { id: memo.createdBy } });
     if (!creator?.email) return;
+    if (creator.role === 'executive') return; // executives are view-only — never notify
     const approved = kind === 'approved';
     const html = this.layout(
       approved ? 'บันทึกข้อความได้รับการอนุมัติแล้ว' : 'บันทึกข้อความถูกตีกลับ (ไม่อนุมัติ)',
