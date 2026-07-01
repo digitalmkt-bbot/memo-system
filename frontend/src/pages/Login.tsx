@@ -107,22 +107,8 @@ function BrandPanel() {
       </svg>
 
       {/* mascot on the path */}
-      <div className="pointer-events-none absolute bottom-[8%] right-[12%] z-10 w-40 xl:w-52">
+      <div className="pointer-events-none absolute bottom-[7%] right-[10%] z-10 w-40 xl:w-48">
         <Mascot />
-      </div>
-
-      {/* wordmark */}
-      <div className="absolute left-8 top-8 z-10 flex items-center gap-2.5 rounded-full bg-white/70 px-4 py-2 backdrop-blur-sm xl:left-12 xl:top-12">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[#a3e635] to-[#65a30d]">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 15c2 0 2-1.6 4-1.6S9 15 11 15s2-1.6 4-1.6S17 15 19 15s2-1.6 4-1.6 4-1.6" /><circle cx="12" cy="6.5" r="2.5" fill="#fff" stroke="none" /></svg>
-        </span>
-        <span className="text-[14px] font-bold text-[#3f6212]">Love Andaman</span>
-      </div>
-
-      {/* tagline */}
-      <div className="absolute bottom-8 left-8 z-10 max-w-[300px] xl:left-12 xl:bottom-12">
-        <div className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#3f6212]/80">MEMO System</div>
-        <div className="mt-1 text-[19px] font-extrabold leading-tight text-[#365314]">ระบบบันทึกข้อความและการอนุมัติ</div>
       </div>
     </div>
   );
@@ -158,10 +144,11 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-white lg:grid lg:grid-cols-[1fr_1.05fr]">
-      {/* form side */}
-      <div className="flex min-h-screen items-center justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-[400px]">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-[#eef8cf] to-[#d6ee9a] p-4 sm:p-8">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-[0_30px_80px_-20px_rgba(54,83,20,0.35)] lg:min-h-[600px] lg:grid-cols-2">
+        {/* form side */}
+        <div className="flex items-center justify-center px-6 py-12 sm:px-12">
+          <div className="w-full max-w-[380px]">
           {/* brand mark (mobile + all) */}
           <div className="mb-9 flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] shadow-sm">
@@ -228,9 +215,12 @@ export function Login() {
         </div>
       </div>
 
-      {/* brand side (desktop only) */}
-      <div className="hidden lg:block">
-        <BrandPanel />
+        {/* illustration side (desktop only) */}
+        <div className="hidden p-3.5 lg:block">
+          <div className="h-full w-full overflow-hidden rounded-[24px]">
+            <BrandPanel />
+          </div>
+        </div>
       </div>
     </div>
   );
