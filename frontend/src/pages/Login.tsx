@@ -12,6 +12,26 @@ const field =
   'w-full rounded-2xl bg-slate-50 px-4 py-3.5 text-[15px] text-slate-800 placeholder:text-slate-400 ' +
   'border border-slate-200 focus:outline-none focus:ring-4 focus:ring-lime-100 focus:border-lime-400 transition';
 
+const loCss = `
+@keyframes loGradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes loRise{from{opacity:0;transform:translateY(26px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes loSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes loBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.lo-rise{animation:loRise .7s cubic-bezier(.22,1,.36,1) both}
+.lo-bob{animation:loBob 4.5s ease-in-out infinite}
+.lo-form>*{opacity:0;animation:loSlide .5s ease forwards}
+.lo-form>*:nth-child(1){animation-delay:.14s}
+.lo-form>*:nth-child(2){animation-delay:.20s}
+.lo-form>*:nth-child(3){animation-delay:.26s}
+.lo-form>*:nth-child(4){animation-delay:.32s}
+.lo-form>*:nth-child(5){animation-delay:.38s}
+.lo-form>*:nth-child(6){animation-delay:.44s}
+.lo-form>*:nth-child(7){animation-delay:.50s}
+.lo-form>*:nth-child(8){animation-delay:.56s}
+.lo-form>*:nth-child(9){animation-delay:.62s}
+@media (prefers-reduced-motion:reduce){.lo-rise,.lo-bob,.lo-form>*{animation:none!important;opacity:1!important}}
+`;
+
 function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
   return (
     <button type="button" tabIndex={-1} onClick={toggle} aria-label="toggle"
@@ -107,7 +127,7 @@ function BrandPanel() {
       </svg>
 
       {/* mascot on the path */}
-      <div className="pointer-events-none absolute bottom-[7%] right-[10%] z-10 w-40 xl:w-48">
+      <div className="lo-bob pointer-events-none absolute bottom-[7%] right-[10%] z-10 w-40 xl:w-48">
         <Mascot />
       </div>
     </div>
@@ -144,8 +164,10 @@ export function Login() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-[#eef8cf] to-[#d6ee9a] p-4 sm:p-8">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-[0_30px_80px_-20px_rgba(54,83,20,0.35)] lg:min-h-[600px] lg:grid-cols-2">
+    <div className="flex min-h-screen w-full items-center justify-center p-4 sm:p-8"
+      style={{ background: 'linear-gradient(120deg,#eef8cf,#d9f0a3,#c6ebb4,#e9f4ab)', backgroundSize: '300% 300%', animation: 'loGradient 18s ease infinite' }}>
+      <style>{loCss}</style>
+      <div className="lo-rise grid w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-[0_30px_80px_-20px_rgba(54,83,20,0.35)] lg:min-h-[600px] lg:grid-cols-2">
         {/* form side */}
         <div className="flex items-center justify-center px-6 py-12 sm:px-12">
           <div className="w-full max-w-[380px]">
@@ -166,7 +188,7 @@ export function Login() {
           {ok && <div className="mb-5 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-700">{ok}</div>}
 
           {mode === 'login' ? (
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)} className="lo-form">
               <label className="mb-2 block text-[13.5px] font-semibold text-slate-700">{t('login.email')}</label>
               <input className={field} type="email" placeholder={t('login.emailPlaceholder')} {...register('email', { required: true })} />
 
@@ -195,7 +217,7 @@ export function Login() {
               </button>
             </form>
           ) : (
-            <form onSubmit={pw.handleSubmit(onChangePw)}>
+            <form onSubmit={pw.handleSubmit(onChangePw)} className="lo-form">
               <label className="mb-2 block text-[13.5px] font-semibold text-slate-700">{t('login.email')}</label>
               <input className={field} type="email" placeholder={t('login.emailPlaceholder')} {...pw.register('email', { required: true })} />
               <label className="mb-2 mt-5 block text-[13.5px] font-semibold text-slate-700">{t('login.currentPassword')}</label>
