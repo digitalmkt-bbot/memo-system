@@ -9,8 +9,8 @@ type Form = { email: string; password: string };
 type PwForm = { email: string; currentPassword: string; newPassword: string };
 
 const field =
-  'w-full rounded-2xl bg-slate-50 px-4 py-3.5 text-[15px] text-slate-800 placeholder:text-slate-400 ' +
-  'border border-slate-200 focus:outline-none focus:ring-4 focus:ring-lime-100 focus:border-lime-400 transition';
+  'w-full border-0 border-b-2 border-slate-200 bg-transparent px-1 py-2.5 text-[15px] text-slate-800 ' +
+  'placeholder:text-slate-400 focus:outline-none focus:border-slate-900 transition-colors';
 
 const loCss = `
 @keyframes loGradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
@@ -29,7 +29,11 @@ const loCss = `
 .lo-form>*:nth-child(7){animation-delay:.50s}
 .lo-form>*:nth-child(8){animation-delay:.56s}
 .lo-form>*:nth-child(9){animation-delay:.62s}
-@media (prefers-reduced-motion:reduce){.lo-rise,.lo-bob,.lo-form>*{animation:none!important;opacity:1!important}}
+@keyframes loWiggle{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-6px) rotate(2deg)}}
+.lo-wig{transform-box:fill-box;transform-origin:center bottom;animation:loWiggle 3.4s ease-in-out infinite}
+.lo-wig.d2{animation-duration:4.2s;animation-delay:.3s}
+.lo-wig.d3{animation-duration:3s;animation-delay:.15s}
+@media (prefers-reduced-motion:reduce){.lo-rise,.lo-bob,.lo-wig,.lo-form>*{animation:none!important;opacity:1!important}}
 `;
 
 function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
@@ -45,91 +49,50 @@ function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
   );
 }
 
-/* Original friendly mascot — a cheerful character waving and holding a memo. */
-function Mascot() {
-  return (
-    <svg viewBox="0 0 220 280" className="h-full w-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <ellipse cx="110" cy="267" rx="60" ry="9" fill="#062f2c" opacity="0.35" />
-      {/* legs + shoes */}
-      <rect x="92" y="196" width="16" height="58" rx="8" fill="#0b3b38" />
-      <rect x="113" y="196" width="16" height="58" rx="8" fill="#0b3b38" />
-      <rect x="82" y="250" width="28" height="13" rx="6" fill="#e9fff6" />
-      <rect x="111" y="250" width="28" height="13" rx="6" fill="#e9fff6" />
-      {/* torso */}
-      <path d="M78 150 q32 -14 64 0 v40 q-32 12 -64 0 Z" fill="#2dd4bf" />
-      <rect x="78" y="150" width="64" height="52" rx="24" fill="#2dd4bf" />
-      {/* waving arm */}
-      <path d="M136 158 q28 -4 36 -34" stroke="#2dd4bf" strokeWidth="16" fill="none" strokeLinecap="round" />
-      <circle cx="174" cy="120" r="9" fill="#f2c8a0" />
-      {/* holding arm */}
-      <path d="M84 160 q-16 10 -14 32" stroke="#2dd4bf" strokeWidth="16" fill="none" strokeLinecap="round" />
-      <circle cx="72" cy="196" r="8" fill="#f2c8a0" />
-      {/* neck + head */}
-      <rect x="102" y="130" width="16" height="18" fill="#f2c8a0" />
-      <circle cx="110" cy="104" r="30" fill="#f2c8a0" />
-      <path d="M80 106 C80 74 140 74 140 106 C140 92 128 80 110 80 C92 80 80 92 80 106 Z" fill="#33261f" />
-      <circle cx="100" cy="105" r="3.2" fill="#2b2b2b" />
-      <circle cx="120" cy="105" r="3.2" fill="#2b2b2b" />
-      <circle cx="93" cy="113" r="4" fill="#f7a6a6" opacity="0.6" />
-      <circle cx="127" cy="113" r="4" fill="#f7a6a6" opacity="0.6" />
-      <path d="M101 115 q9 8 18 0" stroke="#2b2b2b" strokeWidth="3" fill="none" strokeLinecap="round" />
-      {/* memo / clipboard */}
-      <rect x="86" y="176" width="46" height="56" rx="6" fill="#ffffff" stroke="#d1d5db" strokeWidth="1.5" />
-      <rect x="100" y="170" width="18" height="9" rx="3" fill="#0e7490" />
-      <rect x="94" y="192" width="30" height="4" rx="2" fill="#cbd5e1" />
-      <rect x="94" y="202" width="30" height="4" rx="2" fill="#cbd5e1" />
-      <rect x="94" y="212" width="20" height="4" rx="2" fill="#cbd5e1" />
-      <circle cx="116" cy="224" r="7" fill="#34d399" />
-      <path d="M112.5 224 l2.5 2.5 l4 -5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-/* Original brand panel — bright daytime landscape (sky, hills, warm path). */
+/* Original playful characters — friendly flat blob creatures (our own design). */
 function BrandPanel() {
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 600 820" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="loSky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#bfe4fb" /><stop offset="1" stopColor="#e9f7ff" />
-          </linearGradient>
-          <linearGradient id="loFg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#e4f2a6" /><stop offset="1" stopColor="#cfe888" />
-          </linearGradient>
-        </defs>
-        <rect width="600" height="820" fill="url(#loSky)" />
-        {/* sun */}
-        <circle cx="472" cy="150" r="72" fill="#ffe58a" opacity="0.4" />
-        <circle cx="472" cy="150" r="52" fill="#ffd75e" opacity="0.95" />
-        {/* clouds */}
-        <g fill="#ffffff" opacity="0.92">
-          <ellipse cx="150" cy="120" rx="80" ry="26" />
-          <ellipse cx="210" cy="140" rx="60" ry="20" />
-          <ellipse cx="360" cy="90" rx="66" ry="22" opacity="0.8" />
-        </g>
-        {/* distant blue hills */}
-        <path d="M0 330 Q150 260 320 320 T600 300 L600 500 L0 500 Z" fill="#a9d0e8" opacity="0.85" />
-        {/* green hills */}
-        <path d="M0 385 Q180 305 360 385 T600 360 L600 820 L0 820 Z" fill="#a6d968" />
-        <path d="M0 455 Q200 380 420 455 T600 430 L600 820 L0 820 Z" fill="#8bc850" />
-        <path d="M0 545 Q220 470 440 545 T600 520 L600 820 L0 820 Z" fill="#74b23f" />
-        {/* warm foreground */}
-        <path d="M0 625 Q220 560 600 635 L600 820 L0 820 Z" fill="url(#loFg)" />
-        {/* winding path */}
-        <path d="M300 820 C312 725 236 690 306 638 C366 596 452 610 496 582" fill="none" stroke="#eef3c6" strokeWidth="72" strokeLinecap="round" opacity="0.95" />
-        {/* tree */}
-        <rect x="94" y="452" width="15" height="70" rx="4" fill="#8a5a3b" />
-        <circle cx="101" cy="436" r="40" fill="#6fae3d" />
-        <circle cx="74" cy="454" r="26" fill="#7cba46" />
-        <circle cx="128" cy="452" r="26" fill="#66a437" />
-        <circle cx="92" cy="420" r="18" fill="#8fca55" opacity="0.8" />
-      </svg>
+    <div className="relative h-full w-full overflow-hidden bg-[#eef0f2]">
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 480 560" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <ellipse cx="240" cy="560" rx="270" ry="72" fill="#e3e6ec" />
 
-      {/* mascot on the path */}
-      <div className="lo-bob pointer-events-none absolute bottom-[7%] right-[10%] z-10 w-40 xl:w-48">
-        <Mascot />
-      </div>
+        {/* tall periwinkle character (back) */}
+        <g className="lo-wig d2">
+          <path d="M170 545 L170 305 a80 80 0 0 1 160 0 L330 545 Z" fill="#9aa7e6" />
+          <circle cx="250" cy="300" r="42" fill="#fff" />
+          <circle cx="262" cy="308" r="21" fill="#2b2b2b" />
+          <circle cx="314" cy="330" r="16" fill="#fff" />
+          <circle cx="320" cy="335" r="8" fill="#2b2b2b" />
+          <ellipse cx="250" cy="372" rx="13" ry="9" fill="#5b64a8" />
+        </g>
+
+        {/* teal fluffy character (left) */}
+        <g className="lo-wig">
+          <rect x="96" y="470" width="13" height="82" rx="6" fill="#7fc9c2" />
+          <rect x="126" y="470" width="13" height="82" rx="6" fill="#7fc9c2" />
+          <g fill="#7fc9c2">
+            <circle cx="118" cy="432" r="52" />
+            <circle cx="78" cy="442" r="34" />
+            <circle cx="158" cy="442" r="34" />
+            <circle cx="100" cy="402" r="30" />
+            <circle cx="140" cy="404" r="30" />
+          </g>
+          <circle cx="104" cy="430" r="20" fill="#fff" /><circle cx="110" cy="435" r="10" fill="#2b2b2b" />
+          <circle cx="140" cy="430" r="20" fill="#fff" /><circle cx="146" cy="435" r="10" fill="#2b2b2b" />
+          <rect x="110" y="460" width="26" height="10" rx="5" fill="#3f7d78" />
+        </g>
+
+        {/* amber round character (front) */}
+        <g className="lo-wig d3">
+          <rect x="228" y="486" width="14" height="76" rx="7" fill="#f2b64a" />
+          <rect x="262" y="486" width="14" height="76" rx="7" fill="#f2b64a" />
+          <circle cx="252" cy="440" r="72" fill="#f2b64a" />
+          <circle cx="234" cy="428" r="22" fill="#fff" /><circle cx="240" cy="433" r="11" fill="#2b2b2b" />
+          <circle cx="272" cy="428" r="22" fill="#fff" /><circle cx="278" cy="433" r="11" fill="#2b2b2b" />
+          <ellipse cx="253" cy="470" rx="15" ry="18" fill="#b9791f" />
+          <rect x="245" y="456" width="6" height="9" fill="#fff" /><rect x="255" y="456" width="6" height="9" fill="#fff" />
+        </g>
+      </svg>
     </div>
   );
 }
@@ -165,7 +128,7 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center p-4 sm:p-8"
-      style={{ background: 'linear-gradient(120deg,#eef8cf,#d9f0a3,#c6ebb4,#e9f4ab)', backgroundSize: '300% 300%', animation: 'loGradient 18s ease infinite' }}>
+      style={{ background: 'linear-gradient(120deg,#eef0f2,#e6e9ee,#f1f2f4,#e8ebf0)', backgroundSize: '300% 300%', animation: 'loGradient 20s ease infinite' }}>
       <style>{loCss}</style>
       <div className="lo-rise grid w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-[0_30px_80px_-20px_rgba(54,83,20,0.35)] lg:min-h-[600px] lg:grid-cols-2">
         {/* form side */}
@@ -200,15 +163,15 @@ export function Login() {
 
               <div className="mt-4 flex items-center justify-between">
                 <label className="flex cursor-pointer select-none items-center gap-2 text-[13px] text-slate-600">
-                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-lime-600" />
+                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-slate-900" />
                   {t('login.rememberMe')}
                 </label>
                 <button type="button" onClick={() => { setMode('pw'); setErr(''); setOk(''); }}
-                  className="text-[13px] font-medium text-[#65a30d] hover:underline">{t('login.forgot')}</button>
+                  className="text-[13px] font-medium text-slate-400 hover:text-slate-700 hover:underline">{t('login.forgot')}</button>
               </div>
 
               <div className="mt-3 min-h-[18px] text-[13px] text-rose-600">{err}</div>
-              <button className="w-full rounded-2xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={isSubmitting}>
+              <button className="w-full rounded-2xl bg-slate-900 py-3.5 font-bold text-white shadow-sm transition hover:bg-slate-800 hover:-translate-y-0.5 active:scale-[0.99] disabled:opacity-60" disabled={isSubmitting}>
                 {isSubmitting ? t('login.signingIn') : t('login.signIn')}
               </button>
               <button type="button" onClick={() => { setMode('pw'); setErr(''); setOk(''); }}
@@ -231,7 +194,7 @@ export function Login() {
                 <EyeBtn on={showNew} toggle={() => setShowNew((s) => !s)} />
               </div>
               <div className="mt-3 min-h-[18px] text-[13px] text-rose-600">{err}</div>
-              <button className="w-full rounded-2xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={pw.formState.isSubmitting}>
+              <button className="w-full rounded-2xl bg-slate-900 py-3.5 font-bold text-white shadow-sm transition hover:bg-slate-800 hover:-translate-y-0.5 active:scale-[0.99] disabled:opacity-60" disabled={pw.formState.isSubmitting}>
                 {pw.formState.isSubmitting ? t('login.changing') : t('login.changeBtn')}
               </button>
               <button type="button" onClick={() => { setMode('login'); setErr(''); }}
