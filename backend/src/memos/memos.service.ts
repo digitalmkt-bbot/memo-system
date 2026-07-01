@@ -65,9 +65,10 @@ export class MemosService {
   private async pickManager(creatorId: number) {
     const creator = await this.prisma.user.findUnique({ where: { id: creatorId } });
     if (!creator) return null;
-    // 1) explicit "first approver" assigned to this user (managerId) — admin's choice wins
+    // 1) explicit "first approver" assigned to this user (managerId) — admin's choice wins.
+    //    Any active user may be chosen as first approver (not only role=manager).
     if (creator.managerId) {
-      const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true, role: 'manager' } });
+      const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true } });
       if (m) return m.id;
     }
     // 2) manager of the SAME department (requester's department manager)
@@ -92,7 +93,7 @@ export class MemosService {
 
   private canApprove(user: JwtUser, memo: any) {
     if (memo.currentApproverId !== user.id) return false;
-    if (memo.status === 'pending_manager') return user.role === 'manager';
+    if (memo.status === 'pending_manager') return true; // assigned first approver (any role); currentApproverId already gates
     if (memo.status === 'pending_hrmd') return user.role === 'hrm' || user.role === 'md';
     if (memo.status === 'pending_fc') return user.role === 'fc';
     if (memo.status === 'pending_executive') return user.role === 'executive'; // legacy
