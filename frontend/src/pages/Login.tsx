@@ -10,7 +10,7 @@ type PwForm = { email: string; currentPassword: string; newPassword: string };
 
 const field =
   'w-full rounded-2xl bg-slate-50 px-4 py-3.5 text-[15px] text-slate-800 placeholder:text-slate-400 ' +
-  'border border-slate-200 focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-400 transition';
+  'border border-slate-200 focus:outline-none focus:ring-4 focus:ring-lime-100 focus:border-lime-400 transition';
 
 function EyeBtn({ on, toggle }: { on: boolean; toggle: () => void }) {
   return (
@@ -65,44 +65,64 @@ function Mascot() {
   );
 }
 
-/* Original brand panel — soft aurora gradient + abstract island / wave motif. */
+/* Original brand panel — bright daytime landscape (sky, hills, warm path). */
 function BrandPanel() {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#0e3b3a]">
-      {/* aurora blobs */}
-      <div className="absolute -top-24 -left-16 h-96 w-96 rounded-full bg-[#34d399] opacity-40 blur-3xl" />
-      <div className="absolute top-1/3 -right-20 h-[26rem] w-[26rem] rounded-full bg-[#22d3ee] opacity-30 blur-3xl" />
-      <div className="absolute bottom-[-6rem] left-1/4 h-80 w-80 rounded-full bg-[#a7f3d0] opacity-25 blur-3xl" />
-
-      {/* abstract island / horizon */}
-      <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 600 260" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="470" cy="70" r="42" fill="#e9fff6" opacity="0.85" />
-        <path d="M0 150 C120 110 200 150 300 140 C420 128 500 160 600 138 L600 260 L0 260 Z" fill="#0b524d" opacity="0.55" />
-        <path d="M0 190 C140 160 240 200 360 186 C470 174 540 200 600 188 L600 260 L0 260 Z" fill="#083f3b" opacity="0.7" />
-        <path d="M0 224 C160 204 260 232 380 222 C480 214 560 232 600 224 L600 260 L0 260 Z" fill="#062f2c" />
+    <div className="relative h-full w-full overflow-hidden">
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 600 820" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="loSky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#bfe4fb" /><stop offset="1" stopColor="#e9f7ff" />
+          </linearGradient>
+          <linearGradient id="loFg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#e4f2a6" /><stop offset="1" stopColor="#cfe888" />
+          </linearGradient>
+        </defs>
+        <rect width="600" height="820" fill="url(#loSky)" />
+        {/* sun */}
+        <circle cx="472" cy="150" r="72" fill="#ffe58a" opacity="0.4" />
+        <circle cx="472" cy="150" r="52" fill="#ffd75e" opacity="0.95" />
+        {/* clouds */}
+        <g fill="#ffffff" opacity="0.92">
+          <ellipse cx="150" cy="120" rx="80" ry="26" />
+          <ellipse cx="210" cy="140" rx="60" ry="20" />
+          <ellipse cx="360" cy="90" rx="66" ry="22" opacity="0.8" />
+        </g>
+        {/* distant blue hills */}
+        <path d="M0 330 Q150 260 320 320 T600 300 L600 500 L0 500 Z" fill="#a9d0e8" opacity="0.85" />
+        {/* green hills */}
+        <path d="M0 385 Q180 305 360 385 T600 360 L600 820 L0 820 Z" fill="#a6d968" />
+        <path d="M0 455 Q200 380 420 455 T600 430 L600 820 L0 820 Z" fill="#8bc850" />
+        <path d="M0 545 Q220 470 440 545 T600 520 L600 820 L0 820 Z" fill="#74b23f" />
+        {/* warm foreground */}
+        <path d="M0 625 Q220 560 600 635 L600 820 L0 820 Z" fill="url(#loFg)" />
+        {/* winding path */}
+        <path d="M300 820 C312 725 236 690 306 638 C366 596 452 610 496 582" fill="none" stroke="#eef3c6" strokeWidth="72" strokeLinecap="round" opacity="0.95" />
+        {/* tree */}
+        <rect x="94" y="452" width="15" height="70" rx="4" fill="#8a5a3b" />
+        <circle cx="101" cy="436" r="40" fill="#6fae3d" />
+        <circle cx="74" cy="454" r="26" fill="#7cba46" />
+        <circle cx="128" cy="452" r="26" fill="#66a437" />
+        <circle cx="92" cy="420" r="18" fill="#8fca55" opacity="0.8" />
       </svg>
 
-      {/* mascot */}
-      <div className="pointer-events-none absolute bottom-6 right-6 z-10 w-40 xl:bottom-10 xl:right-12 xl:w-52">
+      {/* mascot on the path */}
+      <div className="pointer-events-none absolute bottom-[8%] right-[12%] z-10 w-40 xl:w-52">
         <Mascot />
       </div>
 
-      {/* content */}
-      <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
-        <div className="flex items-center gap-3 text-white">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 backdrop-blur-sm">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#a7f3d0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 15c2 0 2-1.6 4-1.6S9 15 11 15s2-1.6 4-1.6S17 15 19 15s2-1.6 4-1.6" /><path d="M3 20c2 0 2-1.6 4-1.6S9 20 11 20s2-1.6 4-1.6S17 20 19 20" /><circle cx="12" cy="6" r="3" fill="#a7f3d0" stroke="none" /></svg>
-          </div>
-          <span className="text-[17px] font-bold tracking-wide">Love Andaman</span>
-        </div>
+      {/* wordmark */}
+      <div className="absolute left-8 top-8 z-10 flex items-center gap-2.5 rounded-full bg-white/70 px-4 py-2 backdrop-blur-sm xl:left-12 xl:top-12">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[#a3e635] to-[#65a30d]">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 15c2 0 2-1.6 4-1.6S9 15 11 15s2-1.6 4-1.6S17 15 19 15s2-1.6 4-1.6 4-1.6" /><circle cx="12" cy="6.5" r="2.5" fill="#fff" stroke="none" /></svg>
+        </span>
+        <span className="text-[14px] font-bold text-[#3f6212]">Love Andaman</span>
+      </div>
 
-        <div className="max-w-md text-white">
-          <div className="text-[13px] font-semibold uppercase tracking-[0.25em] text-emerald-200/90">MEMO System</div>
-          <h2 className="mt-3 text-[34px] xl:text-[40px] font-extrabold leading-[1.1]">ระบบบันทึกข้อความ<br />และการอนุมัติ</h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/70">สร้าง ส่ง และติดตามการอนุมัติบันทึกข้อความได้ในที่เดียว รวดเร็ว โปร่งใส ทุกขั้นตอน</p>
-        </div>
-
-        <div className="text-[12.5px] text-white/50">© {new Date().getFullYear()} Love Andaman. All rights reserved.</div>
+      {/* tagline */}
+      <div className="absolute bottom-8 left-8 z-10 max-w-[300px] xl:left-12 xl:bottom-12">
+        <div className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#3f6212]/80">MEMO System</div>
+        <div className="mt-1 text-[19px] font-extrabold leading-tight text-[#365314]">ระบบบันทึกข้อความและการอนุมัติ</div>
       </div>
     </div>
   );
@@ -144,7 +164,7 @@ export function Login() {
         <div className="w-full max-w-[400px]">
           {/* brand mark (mobile + all) */}
           <div className="mb-9 flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#34d399] to-[#10b981] shadow-sm">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] shadow-sm">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 15c2 0 2-1.6 4-1.6S9 15 11 15s2-1.6 4-1.6S17 15 19 15s2-1.6 4-1.6 4-1.6" /><circle cx="12" cy="6.5" r="2.5" fill="#fff" stroke="none" /></svg>
             </div>
             <div className="leading-tight">
@@ -171,15 +191,15 @@ export function Login() {
 
               <div className="mt-4 flex items-center justify-between">
                 <label className="flex cursor-pointer select-none items-center gap-2 text-[13px] text-slate-600">
-                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-emerald-500" />
+                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-lime-600" />
                   {t('login.rememberMe')}
                 </label>
                 <button type="button" onClick={() => { setMode('pw'); setErr(''); setOk(''); }}
-                  className="text-[13px] font-medium text-emerald-600 hover:underline">{t('login.forgot')}</button>
+                  className="text-[13px] font-medium text-[#65a30d] hover:underline">{t('login.forgot')}</button>
               </div>
 
               <div className="mt-3 min-h-[18px] text-[13px] text-rose-600">{err}</div>
-              <button className="w-full rounded-2xl bg-gradient-to-br from-[#34d399] to-[#10b981] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={isSubmitting}>
+              <button className="w-full rounded-2xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={isSubmitting}>
                 {isSubmitting ? t('login.signingIn') : t('login.signIn')}
               </button>
             </form>
@@ -198,7 +218,7 @@ export function Login() {
                 <EyeBtn on={showNew} toggle={() => setShowNew((s) => !s)} />
               </div>
               <div className="mt-3 min-h-[18px] text-[13px] text-rose-600">{err}</div>
-              <button className="w-full rounded-2xl bg-gradient-to-br from-[#34d399] to-[#10b981] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={pw.formState.isSubmitting}>
+              <button className="w-full rounded-2xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={pw.formState.isSubmitting}>
                 {pw.formState.isSubmitting ? t('login.changing') : t('login.changeBtn')}
               </button>
               <button type="button" onClick={() => { setMode('login'); setErr(''); }}
