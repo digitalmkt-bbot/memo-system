@@ -189,6 +189,10 @@ export function Login() {
               <button className="w-full rounded-2xl bg-gradient-to-br from-[#a3e635] to-[#65a30d] py-3.5 font-bold text-white shadow-sm transition hover:brightness-105 active:scale-[0.99] disabled:opacity-60" disabled={isSubmitting}>
                 {isSubmitting ? t('login.signingIn') : t('login.signIn')}
               </button>
+              <button type="button" onClick={() => { setMode('pw'); setErr(''); setOk(''); }}
+                className="mt-4 block w-full text-center text-[13px] font-medium text-slate-500 hover:text-[#65a30d] hover:underline">
+                {t('login.changePassword')}
+              </button>
             </form>
           ) : (
             <form onSubmit={pw.handleSubmit(onChangePw)}>
