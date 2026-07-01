@@ -24,6 +24,7 @@ const LOVE_DEPTS: [string, string][] = [
   ['TLP', 'TAP LAMU PIER'],
   ['RNGP', 'RANONG PIER'],
   ['TLPS', 'TAP LAMU PIER SHOP'],
+  ['SC', 'SALE COUNTER'],
 ];
 // legacy code -> new code (rename in place to avoid duplicates)
 const DEPT_RENAME: [string, string][] = [
