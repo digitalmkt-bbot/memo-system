@@ -8,9 +8,9 @@ import { useI18n } from '../i18n';
 function money(n: number) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 const CAT_KEY: Record<string, string> = { general: 'catGeneral', budget: 'catBudget', procurement: 'catProcurement', info: 'catInfo', other: 'catOther' };
 const FWD_OPTS = [
-  { email: 'ac@loveandaman.com', label: 'บัญชี · ac@loveandaman.com' },
-  { email: 'hr@loveandaman.com', label: 'บุคคล · hr@loveandaman.com' },
-  { email: 'apm@loveandaman.com', label: 'APM · apm@loveandaman.com' },
+  { email: 'ac@loveandaman.com', label: 'ฝ่ายบัญชี · ac@loveandaman.com' },
+  { email: 'hr@loveandaman.com', label: 'ฝ่ายบุคคล · hr@loveandaman.com' },
+  { email: 'apm@loveandaman.com', label: 'ฝ่ายจัดซื้อ · apm@loveandaman.com' },
 ];
 function fmtSize(n: number) {
   if (n < 1024) return n + ' B';
