@@ -137,9 +137,6 @@ export class PdfService {
 
       <div class="items-label">ลายมือชื่ออนุมัติ</div>
       <div class="sign">
-        <div class="col"><div class="line"></div><div class="role">ผู้ขอ / Requester</div>
-          <div class="who">${this.esc(memo.creatorName || '')}</div>
-          <div class="date">${this.fmtDate(memo.submittedAt)}</div></div>
         <div class="col"><div class="line"></div><div class="role">ผจก.แผนก / Manager</div>
           <div class="who">${this.esc((managerApproval && managerApproval.approverName) || '')}</div>
           <div class="date">${managerApproval ? this.fmtDate(managerApproval.approvedAt) : ''}</div></div>

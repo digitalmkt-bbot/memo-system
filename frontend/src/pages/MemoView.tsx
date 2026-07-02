@@ -181,9 +181,8 @@ export function MemoView() {
 
           <div className="mt-6">
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { role: t('sign.requester'), who: memo.creatorName, when: memo.submittedAt },
                 { role: t('sign.manager'), who: mgrAppr?.approverName, when: mgrAppr?.approvedAt },
                 { role: t('sign.hrm'), who: hrmAppr?.approverName, when: hrmAppr?.approvedAt },
                 { role: t('sign.md'), who: mdAppr?.approverName, when: mdAppr?.approvedAt },
