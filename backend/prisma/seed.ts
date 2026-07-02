@@ -182,6 +182,16 @@ async function main() {
     console.log('GO_LIVE_RESET: wiped all memos, attachments, history; running numbers reset to start fresh.');
   }
 
+  // 9) Migrate existing memos to the current approval flow.
+  //    New flow: HRM/MD approval = final (FC no longer approves, only acknowledges).
+  //    Any memo still resting at the old "pending_fc" step is advanced to approved.
+  //    Idempotent — new memos never enter pending_fc, so this is a no-op afterward.
+  const migratedFc = await prisma.memo.updateMany({
+    where: { status: 'pending_fc' as any },
+    data: { status: 'approved' as any, currentApproverId: null, closedAt: new Date() },
+  });
+  if (migratedFc.count) console.log(`Migrated ${migratedFc.count} memo(s): pending_fc → approved (new flow)`);
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
