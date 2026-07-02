@@ -64,6 +64,9 @@ export function MemoView() {
   const grandTotal = subtotal + vatAmount;
   const isCreator = memo.createdBy === user?.id;
   const isOpen = !['approved', 'rejected', 'cancelled'].includes(memo.status);
+  // creator may attach files while in progress AND after final approval/close
+  // (e.g. tax invoice / receipt / bill for the approved memo)
+  const canAttach = isCreator && (isOpen || memo.status === 'approved');
 
   const act = async () => {
     try {
@@ -230,12 +233,15 @@ export function MemoView() {
                 <span className="flex items-center gap-2 shrink-0">
                   {canPreview(a.mimeType) && <button className="text-ocean text-xs hover:underline" onClick={() => openPreview(a)}>{t('view.preview')}</button>}
                   <span className="text-gray-400 text-[11px]">{fmtSize(a.size)}</span>
-                  {isCreator && isOpen && <button className="text-red-500 text-xs" onClick={() => del(a.id)}>{t('view.del')}</button>}
+                  {canAttach && <button className="text-red-500 text-xs" onClick={() => del(a.id)}>{t('view.del')}</button>}
                 </span>
               </div>
             ))}
-            {isCreator && isOpen && (
+            {canAttach && (
               <div className="mt-3">
+                {memo.status === 'approved' && (
+                  <p className="text-emerald-600 text-[11.5px] mb-1.5">{t('view.attachAfterClose')}</p>
+                )}
                 <input ref={fileRef} type="file" onChange={onPick} disabled={uploading} className="text-[12px]" />
                 {uploading && <p className="text-gray-400 text-xs mt-1">{t('view.uploading')}</p>}
                 <p className="text-gray-400 text-[11px] mt-1">{t('view.maxPerFile')}</p>
