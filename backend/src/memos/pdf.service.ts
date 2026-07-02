@@ -130,10 +130,10 @@ export class PdfService {
         <div><div class="k">Attachment</div><div class="v">${this.esc(memo.attachment || '-')}</div></div>
       </div>
 
-      <div class="detail-label">Detail</div>
-      <div class="detail">${this.esc(memo.detail)}</div>
-
       ${itemsBlock}
+
+      <div class="detail-label">รายละเอียด</div>
+      <div class="detail">${this.esc(memo.detail)}</div>
 
       <div class="items-label">ลายมือชื่ออนุมัติ</div>
       <div class="sign">
