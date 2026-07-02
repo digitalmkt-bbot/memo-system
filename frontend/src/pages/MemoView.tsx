@@ -7,6 +7,11 @@ import { useI18n } from '../i18n';
 
 function money(n: number) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 const CAT_KEY: Record<string, string> = { general: 'catGeneral', budget: 'catBudget', procurement: 'catProcurement', info: 'catInfo', other: 'catOther' };
+const FWD_OPTS = [
+  { email: 'ac@loveandaman.com', label: 'บัญชี · ac@loveandaman.com' },
+  { email: 'hr@loveandaman.com', label: 'บุคคล · hr@loveandaman.com' },
+  { email: 'apm@loveandaman.com', label: 'APM · apm@loveandaman.com' },
+];
 function fmtSize(n: number) {
   if (n < 1024) return n + ' B';
   if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
@@ -26,6 +31,9 @@ export function MemoView() {
   const [comment, setComment] = useState('');
   const [nextRole, setNextRole] = useState<'hrm' | 'md'>('hrm');
   const [preview, setPreview] = useState<{ url: string; mime: string; name: string } | null>(null);
+  const [fwd, setFwd] = useState(false);
+  const [recips, setRecips] = useState<string[]>([]);
+  const [fwdBusy, setFwdBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const canPreview = (mime: string) => !!mime && (mime.startsWith('image/') || mime === 'application/pdf');
@@ -65,6 +73,14 @@ export function MemoView() {
     } catch (e: any) { alert(e.message); }
   };
   const submit = async () => { await api.submitMemo(mid); load(); };
+  const toggleRecip = (email: string) => setRecips((r) => r.includes(email) ? r.filter((x) => x !== email) : [...r, email]);
+  const doForward = async () => {
+    if (!recips.length) return alert(t('view.forwardDesc'));
+    setFwdBusy(true);
+    try { await api.forwardMemo(mid, recips); setFwd(false); setRecips([]); load(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    finally { setFwdBusy(false); }
+  };
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -191,7 +207,14 @@ export function MemoView() {
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             </>}
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
+            {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
+              <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
           </div>
+          {memo.forwardedAt && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-[12.5px] px-3 py-2">
+              ✓ {t('view.forwardedTo')}: {memo.forwardedTo} · {fmtDate(memo.forwardedAt, lang)}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -252,6 +275,27 @@ export function MemoView() {
             <div className="flex gap-2.5 justify-end mt-4">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>{t('common.cancel')}</button>
               <button className={'btn ' + (modal === 'approve' ? 'btn-green' : 'btn-red')} onClick={act}>{modal === 'approve' ? t('view.approveBtn') : t('view.rejectBtn')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fwd && (
+        <div className="fixed inset-0 bg-ink/50 grid place-items-center p-5 z-50" onClick={() => setFwd(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold">{t('view.forwardTitle')}</h3>
+            <p className="text-gray-500 text-[13px] mt-1">{t('view.forwardDesc')}</p>
+            <div className="mt-3 space-y-2">
+              {FWD_OPTS.map((o) => (
+                <label key={o.email} className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-[13.5px] cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={recips.includes(o.email)} onChange={() => toggleRecip(o.email)} />
+                  {o.label}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2.5 justify-end mt-4">
+              <button className="btn btn-ghost" onClick={() => setFwd(false)}>{t('common.cancel')}</button>
+              <button className="btn btn-green" onClick={doForward} disabled={fwdBusy || !recips.length}>{fwdBusy ? t('view.forwardSending') : t('view.forwardSend')}</button>
             </div>
           </div>
         </div>

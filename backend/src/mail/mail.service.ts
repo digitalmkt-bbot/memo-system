@@ -67,6 +67,70 @@ export class MailService {
     return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   }
 
+  /** Send with file attachments (base64). Fire-and-forget; never throws. */
+  async sendWithAttachments(
+    to: string[], subject: string, html: string,
+    attachments: { filename: string; mimeType: string; base64: string }[],
+  ) {
+    const list = (to || []).filter(Boolean);
+    if (!list.length) return;
+    if (!this.enabled) { this.log.warn(`SMTP2GO not configured — skip mail to ${list.join(',')} (${subject})`); return; }
+    try {
+      const res = await fetch('https://api.smtp2go.com/v3/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: process.env.SMTP2GO_API_KEY,
+          to: list,
+          sender: process.env.MAIL_FROM,
+          subject,
+          html_body: html,
+          attachments: (attachments || []).map((a) => ({ filename: a.filename, fileblob: a.base64, mimetype: a.mimeType })),
+        }),
+      });
+      const data: any = await res.json();
+      if (data?.data?.succeeded) this.log.log(`mail(+att) sent → ${list.join(',')} (${subject})`);
+      else this.log.error(`mail(+att) failed → ${list.join(',')}: ${JSON.stringify(data?.data?.failures ?? data)}`);
+    } catch (e: any) {
+      this.log.error(`mail(+att) error → ${list.join(',')}: ${e.message}`);
+    }
+  }
+
+  /** Notify FC/accounting that an approved memo is available — for acknowledgement only. */
+  async notifyFcAcknowledge(memo: any) {
+    const fcUsers = await this.prisma.user.findMany({ where: { role: 'fc' as any, active: true }, select: { email: true } });
+    const emails = fcUsers.map((u) => u.email).filter(Boolean);
+    if (!emails.length) return;
+    const html = this.layout(
+      'บันทึกข้อความอนุมัติแล้ว (แจ้งเพื่อทราบ)',
+      [
+        `มีบันทึกข้อความที่อนุมัติสมบูรณ์แล้ว ส่งถึงฝ่ายการเงินเพื่อทราบ`,
+        `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+        `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+        `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+      ],
+      memo.id,
+      'เปิดดูบันทึก',
+    );
+    for (const to of emails) await this.send(to, `[MEMO] แจ้งเพื่อทราบ: ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
+  }
+
+  /** Final forward: send the approved memo PDF + attachments to archive mailboxes. */
+  async sendMemoForward(recipients: string[], memo: any, attachments: { filename: string; mimeType: string; base64: string }[]) {
+    const html = this.layout(
+      'ส่งบันทึกข้อความที่อนุมัติแล้ว',
+      [
+        `บันทึกข้อความที่อนุมัติสมบูรณ์แล้ว (แนบไฟล์ PDF และเอกสารประกอบ)`,
+        `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+        `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+        `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+      ],
+      memo.id,
+      'เปิดดูในระบบ',
+    );
+    await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments);
+  }
+
   /** Notify the user who must approve next that a memo is waiting. */
   async notifyPendingApprover(memo: any) {
     if (!memo?.currentApproverId) return;

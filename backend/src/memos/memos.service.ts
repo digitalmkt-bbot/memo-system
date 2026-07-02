@@ -5,6 +5,7 @@ import { PrismaService } from '../db/prisma.service';
 import { JwtUser } from '../auth/jwt.strategy';
 import { CreateMemoDto, UpdateMemoDto } from './dto/memo.dto';
 import { MailService } from '../mail/mail.service';
+import { PdfService } from './pdf.service';
 
 const INCLUDE = {
   creator: { select: { name: true } },
@@ -16,7 +17,7 @@ const INCLUDE = {
 
 @Injectable()
 export class MemosService {
-  constructor(private prisma: PrismaService, private mail: MailService) {}
+  constructor(private prisma: PrismaService, private mail: MailService, private pdf: PdfService) {}
 
   private shape(m: any) {
     if (!m) return m;
@@ -295,12 +296,12 @@ export class MemosService {
         data = { status: 'pending_hrmd', currentApproverId: nextId };
         action = `approved_manager_to_${target}`;
       } else if (memo.status === 'pending_hrmd') {
-        const fcId = (await this.pickByRole('fc', memo.companyId)) ?? (await this.pickByRole('fc'));
-        if (!fcId) throw new BadRequestException('No FC approver available');
-        data = { status: 'pending_fc', currentApproverId: fcId };
-        action = `approved_${user.role}_to_fc`;
+        // HRM or MD approval finalizes the memo. FC no longer approves —
+        // they receive an acknowledgement email automatically (see below).
+        data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+        action = `approved_${user.role}_final`;
       } else {
-        // pending_fc (or legacy pending_executive) -> final approval
+        // legacy pending_fc / pending_executive -> final approval
         data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
         action = 'approved_final';
       }
@@ -310,10 +311,47 @@ export class MemosService {
     });
     // notify: creator on final approval, otherwise the next approver
     try {
-      if (result.status === 'approved') await this.mail.notifyCreator(result, 'approved');
-      else await this.mail.notifyPendingApprover(result);
+      if (result.status === 'approved') {
+        await this.mail.notifyCreator(result, 'approved');
+        await this.mail.notifyFcAcknowledge(result); // FC receives it for acknowledgement only
+      } else {
+        await this.mail.notifyPendingApprover(result);
+      }
     } catch { /* noop */ }
     return result;
+  }
+
+  /**
+   * Final step: the creator forwards the approved memo (PDF + attachments)
+   * to one or more archive mailboxes, which closes the job.
+   */
+  async forward(user: JwtUser, id: number, recipients: string[]) {
+    const ALLOWED = ['ac@loveandaman.com', 'hr@loveandaman.com', 'apm@loveandaman.com'];
+    const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
+    if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
+    const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
+    if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
+
+    const shaped = this.shape(memo);
+    const approvals = await this.prisma.approval.findMany({
+      where: { memoId: id }, include: { approver: { select: { name: true, role: true } } }, orderBy: { approvedAt: 'asc' },
+    });
+    const pdf = await this.pdf.render({ memo: shaped, approvals: approvals.map((a) => ({ ...a, approverName: a.approver.name, approverRole: a.approver.role })) });
+    const files = await this.prisma.attachment.findMany({ where: { memoId: id } });
+
+    const attachments = [
+      { filename: `${shaped.memoNo || 'memo'}.pdf`, mimeType: 'application/pdf', base64: pdf.toString('base64') },
+      ...files.map((f) => ({ filename: f.filename, mimeType: f.mimeType, base64: Buffer.from(f.data as any).toString('base64') })),
+    ];
+
+    await this.mail.sendMemoForward(to, shaped, attachments);
+    const updated = await this.prisma.memo.update({
+      where: { id }, data: { forwardedAt: new Date(), forwardedTo: to.join(', ') }, include: INCLUDE,
+    });
+    await this.audit(id, user.id, 'forwarded', `ส่งปิดงานถึง: ${to.join(', ')}`);
+    return this.shape(updated);
   }
 
   async reject(user: JwtUser, id: number, comment?: string) {

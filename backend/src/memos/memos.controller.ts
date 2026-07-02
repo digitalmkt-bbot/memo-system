@@ -7,7 +7,7 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MemosService } from './memos.service';
 import { PdfService } from './pdf.service';
-import { ActionDto, CreateMemoDto, UpdateMemoDto } from './dto/memo.dto';
+import { ActionDto, CreateMemoDto, ForwardDto, UpdateMemoDto } from './dto/memo.dto';
 
 @Controller('memos')
 @UseGuards(JwtAuthGuard)
@@ -37,6 +37,9 @@ export class MemosController {
 
   @Post(':id/reject')
   reject(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.reject(req.user, id, dto.comment); }
+
+  @Post(':id/forward')
+  forward(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ForwardDto) { return this.svc.forward(req.user, id, dto.recipients); }
 
   // ---- Attachments ----
   @Post(':id/attachments')

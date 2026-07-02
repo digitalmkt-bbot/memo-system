@@ -32,3 +32,7 @@ export class ActionDto {
   @IsOptional() @IsString() comment?: string;
   @IsOptional() @IsString() next?: string;
 }
+
+export class ForwardDto {
+  @IsArray() recipients: string[];
+}

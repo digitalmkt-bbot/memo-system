@@ -100,6 +100,8 @@ model Memo {
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at")
   submittedAt       DateTime?  @map("submitted_at")
   closedAt          DateTime?  @map("closed_at")
+  forwardedAt       DateTime?  @map("forwarded_at")
+  forwardedTo       String?    @map("forwarded_to")
 
   company         Company      @relation(fields: [companyId], references: [id])
   department      Department   @relation(fields: [departmentId], references: [id])

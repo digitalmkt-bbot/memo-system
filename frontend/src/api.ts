@@ -45,6 +45,7 @@ export const api = {
   submitMemo: (id: number, next?: string) => http.post(`/memos/${id}/submit`, { next }).then((r) => r.data),
   approveMemo: (id: number, comment?: string, next?: string) => http.post(`/memos/${id}/approve`, { comment, next }).then((r) => r.data),
   rejectMemo: (id: number, comment: string) => http.post(`/memos/${id}/reject`, { comment }).then((r) => r.data),
+  forwardMemo: (id: number, recipients: string[]) => http.post(`/memos/${id}/forward`, { recipients }).then((r) => r.data),
   summary: () => http.get('/dashboard/summary').then((r) => r.data),
   monthly: () => http.get('/dashboard/monthly').then((r) => r.data),
   series: (range: string, companyId?: string) => http.get('/dashboard/series', { params: { range, ...(companyId ? { companyId } : {}) } }).then((r) => r.data),
