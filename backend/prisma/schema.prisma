@@ -102,6 +102,7 @@ model Memo {
   closedAt          DateTime?  @map("closed_at")
   forwardedAt       DateTime?  @map("forwarded_at")
   forwardedTo       String?    @map("forwarded_to")
+  onHold            Boolean    @default(false) @map("on_hold")
 
   company         Company      @relation(fields: [companyId], references: [id])
   department      Department   @relation(fields: [departmentId], references: [id])

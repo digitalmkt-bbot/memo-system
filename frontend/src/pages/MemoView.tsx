@@ -27,7 +27,7 @@ export function MemoView() {
   const [data, setData] = useState<any>(null);
   const [atts, setAtts] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [modal, setModal] = useState<'approve' | 'reject' | null>(null);
+  const [modal, setModal] = useState<'approve' | 'reject' | 'hold' | null>(null);
   const [comment, setComment] = useState('');
   const [nextRole, setNextRole] = useState<string>('hrm');
   const [preview, setPreview] = useState<{ url: string; mime: string; name: string } | null>(null);
@@ -72,6 +72,7 @@ export function MemoView() {
     try {
       if (modal === 'approve') await api.approveMemo(mid, comment, memo.status === 'pending_manager' ? nextRole : undefined);
       else if (modal === 'reject') { if (!comment.trim()) return alert(t('view.reasonRequired')); await api.rejectMemo(mid, comment); }
+      else if (modal === 'hold') await api.holdMemo(mid, comment);
       setModal(null); setComment(''); load();
     } catch (e: any) { alert(e.message); }
   };
@@ -103,8 +104,8 @@ export function MemoView() {
     { c: '#1a9d5a', t: t('view.stepCreate'), w: memo.creatorName, d: memo.createdAt },
     ...(memo.submittedAt ? [{ c: '#1a9d5a', t: t('view.stepSubmit'), w: memo.creatorName, d: memo.submittedAt }] : []),
     ...approvals.map((a: any) => ({
-      c: a.status === 'approve' ? '#1a9d5a' : '#d23c3c',
-      t: `${roleLabel(a.approverRole)} ${a.status === 'approve' ? t('view.stepApprove') : t('view.stepReject')}`,
+      c: a.status === 'approve' ? '#1a9d5a' : a.status === 'hold' ? '#d97706' : '#d23c3c',
+      t: `${roleLabel(a.approverRole)} ${a.status === 'approve' ? t('view.stepApprove') : a.status === 'hold' ? t('view.stepHold') : t('view.stepReject')}`,
       w: a.approverName, d: a.approvedAt, cm: a.comment,
     })),
     ...(memo.status === 'pending_manager' ? [{ c: '#b9c4cc', t: t('view.waitManager'), w: memo.currentApproverName, d: null }] : []),
@@ -125,7 +126,9 @@ export function MemoView() {
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-5">
         <div className="card p-6">
-          <div className="flex items-center gap-2"><StatusTag s={memo.status} /><span className="text-gray-400 text-xs">{t('view.dateLabel')} {fmtDay(memo.date, lang)}</span></div>
+          <div className="flex items-center gap-2 flex-wrap"><StatusTag s={memo.status} />
+            {memo.onHold && isOpen && <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 text-[12px] font-semibold px-2.5 py-1">{t('view.onHoldBadge')}</span>}
+            <span className="text-gray-400 text-xs">{t('view.dateLabel')} {fmtDay(memo.date, lang)}</span></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm">
             <div><span className="text-gray-500">{t('view.from')}:</span> {memo.fromName}</div>
             <div><span className="text-gray-500">{t('view.dept')}:</span> {memo.deptName}</div>
@@ -201,6 +204,7 @@ export function MemoView() {
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
               <button className="btn btn-green" onClick={() => { setNextRole(memo.status === 'pending_manager' && isSmall ? 'done' : 'hrm'); setModal('approve'); }}>{t('view.approve')}</button>
+              <button className="btn bg-amber-400 text-amber-950 hover:bg-amber-500" onClick={() => { setComment(''); setModal('hold'); }}>{t('view.hold')}</button>
               <button className="btn btn-red" onClick={() => setModal('reject')}>{t('view.reject')}</button>
             </>}
             {isCreator && memo.status === 'draft' && <>
@@ -264,8 +268,8 @@ export function MemoView() {
       {modal && (
         <div className="fixed inset-0 bg-ink/50 grid place-items-center p-5 z-50" onClick={() => setModal(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold">{modal === 'approve' ? t('view.confirmApprove') : t('view.confirmReject')}</h3>
-            <p className="text-gray-500 text-[13px] mt-1">{modal === 'approve' ? t('view.addComment') : t('view.provideReason')}</p>
+            <h3 className="text-lg font-bold">{modal === 'approve' ? t('view.confirmApprove') : modal === 'hold' ? t('view.confirmHold') : t('view.confirmReject')}</h3>
+            <p className="text-gray-500 text-[13px] mt-1">{modal === 'reject' ? t('view.provideReason') : t('view.addComment')}</p>
             {modal === 'approve' && memo.status === 'pending_manager' && (
               <div className="mt-3">
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t('view.chooseNext')}</label>
@@ -287,7 +291,7 @@ export function MemoView() {
             <textarea className="input min-h-[90px] mt-2.5" value={comment} onChange={(e) => setComment(e.target.value)} />
             <div className="flex gap-2.5 justify-end mt-4">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>{t('common.cancel')}</button>
-              <button className={'btn ' + (modal === 'approve' ? 'btn-green' : 'btn-red')} onClick={act}>{modal === 'approve' ? t('view.approveBtn') : t('view.rejectBtn')}</button>
+              <button className={'btn ' + (modal === 'approve' ? 'btn-green' : modal === 'hold' ? 'bg-amber-400 text-amber-950 hover:bg-amber-500' : 'btn-red')} onClick={act}>{modal === 'approve' ? t('view.approveBtn') : modal === 'hold' ? t('view.holdBtn') : t('view.rejectBtn')}</button>
             </div>
           </div>
         </div>

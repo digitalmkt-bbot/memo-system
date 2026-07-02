@@ -343,6 +343,7 @@ export class MemosService {
         data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
         action = 'approved_final';
       }
+      data.onHold = false; // any decision clears a prior "on hold" mark
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action, detail: comment ?? null } });
       return this.shape(updated);
@@ -403,12 +404,34 @@ export class MemosService {
         : memo.status === 'pending_fc' ? 'fc' : 'executive';
       await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'reject', comment: comment.trim() } });
       const updated = await tx.memo.update({
-        where: { id }, data: { status: 'rejected', currentApproverId: null, closedAt: new Date() }, include: INCLUDE,
+        where: { id }, data: { status: 'rejected', currentApproverId: null, closedAt: new Date(), onHold: false }, include: INCLUDE,
       });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'rejected', detail: `${step} rejected: ${comment.trim()}` } });
       return this.shape(updated);
     });
     try { await this.mail.notifyCreator(result, 'rejected', comment.trim()); } catch { /* noop */ }
+    return result;
+  }
+
+  /**
+   * "รอพิจารณา" — the current approver marks the memo as on-hold (under
+   * consideration) without deciding yet. It stays assigned to the same
+   * approver, who can later approve or reject it.
+   */
+  async hold(user: JwtUser, id: number, comment?: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const memo = await tx.memo.findUnique({ where: { id } });
+      if (!memo) throw new NotFoundException('Memo not found');
+      if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot act at current step');
+      const step = memo.status === 'pending_manager' ? 'manager'
+        : memo.status === 'pending_hrmd' ? user.role
+        : memo.status === 'pending_fc' ? 'fc' : 'executive';
+      await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'hold', comment: comment?.trim() || null } });
+      const updated = await tx.memo.update({ where: { id }, data: { onHold: true }, include: INCLUDE });
+      await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'held', detail: comment?.trim() || null } });
+      return this.shape(updated);
+    });
+    try { await this.mail.notifyCreator(result, 'held', comment?.trim()); } catch { /* noop */ }
     return result;
   }
 

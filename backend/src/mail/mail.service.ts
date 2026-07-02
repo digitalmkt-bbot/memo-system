@@ -152,20 +152,24 @@ export class MailService {
     await this.send(approver.email, `[MEMO] รออนุมัติ: ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
   }
 
-  /** Notify the creator that their memo was approved or rejected. */
-  async notifyCreator(memo: any, kind: 'approved' | 'rejected', comment?: string) {
+  /** Notify the creator that their memo was approved, rejected, or put on hold. */
+  async notifyCreator(memo: any, kind: 'approved' | 'rejected' | 'held', comment?: string) {
     if (!memo?.createdBy) return;
     const creator = await this.prisma.user.findUnique({ where: { id: memo.createdBy } });
     if (!creator?.email) return;
     if (creator.role === 'executive') return; // executives are view-only — never notify
-    const approved = kind === 'approved';
+    const title = kind === 'approved' ? 'บันทึกข้อความได้รับการอนุมัติแล้ว'
+      : kind === 'rejected' ? 'บันทึกข้อความถูกตีกลับ (ไม่อนุมัติ)'
+      : 'บันทึกข้อความอยู่ระหว่างพิจารณา (รอพิจารณา)';
+    const line = kind === 'approved' ? 'บันทึกข้อความของท่านได้รับการอนุมัติครบทุกขั้นแล้ว'
+      : kind === 'rejected' ? 'บันทึกข้อความของท่านถูกตีกลับ (ไม่อนุมัติ)'
+      : 'ผู้อนุมัติได้ทำเครื่องหมาย “รอพิจารณา” ไว้ อยู่ระหว่างการพิจารณา';
+    const subj = kind === 'approved' ? 'อนุมัติแล้ว' : kind === 'rejected' ? 'ไม่อนุมัติ' : 'รอพิจารณา';
     const html = this.layout(
-      approved ? 'บันทึกข้อความได้รับการอนุมัติแล้ว' : 'บันทึกข้อความถูกตีกลับ (ไม่อนุมัติ)',
+      title,
       [
         `เรียน คุณ${this.esc(creator.name)}`,
-        approved
-          ? `บันทึกข้อความของท่านได้รับการอนุมัติครบทุกขั้นแล้ว`
-          : `บันทึกข้อความของท่านถูกตีกลับ (ไม่อนุมัติ)`,
+        line,
         `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
         `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
         ...(comment ? [`<b>หมายเหตุ:</b> ${this.esc(comment)}`] : []),
@@ -173,6 +177,6 @@ export class MailService {
       memo.id,
       'เปิดดูบันทึก',
     );
-    await this.send(creator.email, `[MEMO] ${approved ? 'อนุมัติแล้ว' : 'ไม่อนุมัติ'}: ${memo.memoNo || ''}`.trim(), html);
+    await this.send(creator.email, `[MEMO] ${subj}: ${memo.memoNo || ''}`.trim(), html);
   }
 }

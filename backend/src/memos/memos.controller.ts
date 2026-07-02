@@ -38,6 +38,9 @@ export class MemosController {
   @Post(':id/reject')
   reject(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.reject(req.user, id, dto.comment); }
 
+  @Post(':id/hold')
+  hold(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.hold(req.user, id, dto.comment); }
+
   @Post(':id/forward')
   forward(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ForwardDto) { return this.svc.forward(req.user, id, dto.recipients); }
 
