@@ -385,7 +385,9 @@ export class MemosService {
       ...files.map((f) => ({ filename: f.filename, mimeType: f.mimeType, base64: Buffer.from(f.data as any).toString('base64') })),
     ];
 
-    await this.mail.sendMemoForward(to, shaped, attachments);
+    const creator = await this.prisma.user.findUnique({ where: { id: memo.createdBy }, select: { email: true } });
+    const cc = creator?.email ? [creator.email] : [];
+    await this.mail.sendMemoForward(to, shaped, attachments, cc);
     const updated = await this.prisma.memo.update({
       where: { id }, data: { forwardedAt: new Date(), forwardedTo: to.join(', ') }, include: INCLUDE,
     });

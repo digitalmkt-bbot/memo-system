@@ -67,14 +67,16 @@ export class MailService {
     return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   }
 
-  /** Send with file attachments (base64). Fire-and-forget; never throws. */
+  /** Send with file attachments (base64) and optional CC. Fire-and-forget; never throws. */
   async sendWithAttachments(
     to: string[], subject: string, html: string,
     attachments: { filename: string; mimeType: string; base64: string }[],
+    cc?: string[],
   ) {
     const list = (to || []).filter(Boolean);
     if (!list.length) return;
     if (!this.enabled) { this.log.warn(`SMTP2GO not configured — skip mail to ${list.join(',')} (${subject})`); return; }
+    const ccList = (cc || []).filter(Boolean).filter((e) => !list.includes(e));
     try {
       const res = await fetch('https://api.smtp2go.com/v3/email/send', {
         method: 'POST',
@@ -82,6 +84,7 @@ export class MailService {
         body: JSON.stringify({
           api_key: process.env.SMTP2GO_API_KEY,
           to: list,
+          ...(ccList.length ? { cc: ccList } : {}),
           sender: process.env.MAIL_FROM,
           subject,
           html_body: html,
@@ -89,7 +92,7 @@ export class MailService {
         }),
       });
       const data: any = await res.json();
-      if (data?.data?.succeeded) this.log.log(`mail(+att) sent → ${list.join(',')} (${subject})`);
+      if (data?.data?.succeeded) this.log.log(`mail(+att) sent → ${list.join(',')}${ccList.length ? ` cc:${ccList.join(',')}` : ''} (${subject})`);
       else this.log.error(`mail(+att) failed → ${list.join(',')}: ${JSON.stringify(data?.data?.failures ?? data)}`);
     } catch (e: any) {
       this.log.error(`mail(+att) error → ${list.join(',')}: ${e.message}`);
@@ -115,8 +118,8 @@ export class MailService {
     for (const to of emails) await this.send(to, `[MEMO] แจ้งเพื่อทราบ: ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
   }
 
-  /** Final forward: send the approved memo PDF + attachments to archive mailboxes. */
-  async sendMemoForward(recipients: string[], memo: any, attachments: { filename: string; mimeType: string; base64: string }[]) {
+  /** Final forward: send the approved memo PDF + attachments to archive mailboxes (CC the creator). */
+  async sendMemoForward(recipients: string[], memo: any, attachments: { filename: string; mimeType: string; base64: string }[], cc?: string[]) {
     const html = this.layout(
       'ส่งบันทึกข้อความที่อนุมัติแล้ว',
       [
@@ -128,7 +131,7 @@ export class MailService {
       memo.id,
       'เปิดดูในระบบ',
     );
-    await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments);
+    await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments, cc);
   }
 
   /** Notify the user who must approve next that a memo is waiting. */
