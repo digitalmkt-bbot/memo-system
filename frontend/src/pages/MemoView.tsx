@@ -29,7 +29,7 @@ export function MemoView() {
   const [uploading, setUploading] = useState(false);
   const [modal, setModal] = useState<'approve' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
-  const [nextRole, setNextRole] = useState<'hrm' | 'md'>('hrm');
+  const [nextRole, setNextRole] = useState<string>('hrm');
   const [preview, setPreview] = useState<{ url: string; mime: string; name: string } | null>(null);
   const [fwd, setFwd] = useState(false);
   const [recips, setRecips] = useState<string[]>([]);
@@ -61,6 +61,7 @@ export function MemoView() {
   const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const vatAmount = memo.vat ? subtotal * 0.07 : 0;
   const grandTotal = subtotal + vatAmount;
+  const isSmall = subtotal <= 1000; // ≤ 1,000: skip MD (manager finalizes or forwards to HRM)
   const isCreator = memo.createdBy === user?.id;
   const isOpen = !['approved', 'rejected', 'cancelled'].includes(memo.status);
   // creator may attach files while in progress AND after final approval/close
@@ -199,7 +200,7 @@ export function MemoView() {
 
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
-              <button className="btn btn-green" onClick={() => setModal('approve')}>{t('view.approve')}</button>
+              <button className="btn btn-green" onClick={() => { setNextRole(memo.status === 'pending_manager' && isSmall ? 'done' : 'hrm'); setModal('approve'); }}>{t('view.approve')}</button>
               <button className="btn btn-red" onClick={() => setModal('reject')}>{t('view.reject')}</button>
             </>}
             {isCreator && memo.status === 'draft' && <>
@@ -268,9 +269,18 @@ export function MemoView() {
             {modal === 'approve' && memo.status === 'pending_manager' && (
               <div className="mt-3">
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t('view.chooseNext')}</label>
-                <select className="input" value={nextRole} onChange={(e) => setNextRole(e.target.value as 'hrm' | 'md')}>
-                  <option value="hrm">{t('view.toHrm')}</option>
-                  <option value="md">{t('view.toMd')}</option>
+                <select className="input" value={nextRole} onChange={(e) => setNextRole(e.target.value)}>
+                  {isSmall ? (
+                    <>
+                      <option value="done">{t('view.finalizeNow')}</option>
+                      <option value="hrm">{t('view.toHrm')}</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="hrm">{t('view.toHrm')}</option>
+                      <option value="md">{t('view.toMd')}</option>
+                    </>
+                  )}
                 </select>
               </div>
             )}

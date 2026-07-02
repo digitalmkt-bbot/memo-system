@@ -92,6 +92,14 @@ export class MemosService {
     return u?.id ?? null;
   }
 
+  // Approval base = sum of line items (before VAT). Memos with no items = 0.
+  private async memoTotal(db: any, memoId: number): Promise<number> {
+    const items = await db.memoItem.findMany({ where: { memoId }, select: { qty: true, unitPrice: true } });
+    return items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+  }
+  // Memos with total ≤ this amount skip the MD approver entirely.
+  private readonly SMALL_MAX = 1000;
+
   private canApprove(user: JwtUser, memo: any) {
     if (memo.currentApproverId !== user.id) return false;
     if (memo.status === 'pending_manager') return true; // assigned first approver (any role); currentApproverId already gates
@@ -252,14 +260,23 @@ export class MemosService {
 
       let data: any; let detail: string;
       if (isDeptManager) {
-        // creator is the department manager → skip the manager step and route
-        // straight to the Managing Director (MD), regardless of `next`.
-        const target = 'md';
-        const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
-        if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
-        await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: 'ผู้สร้างเป็นผู้จัดการแผนก (ข้ามขั้นอนุมัติหัวหน้า → ส่งตรงถึง MD)' } });
-        data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
-        detail = `Assigned ${memoNo}; creator is dept manager → routed to MD`;
+        // creator is the department manager → skip the manager step.
+        // Small memos (≤ 1,000): head approval is enough → approved immediately.
+        // Large memos (> 1,000): route straight to MD.
+        const total = await this.memoTotal(tx, id);
+        const small = total <= this.SMALL_MAX;
+        await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: small
+          ? 'ผู้สร้างเป็นผู้จัดการแผนก · ยอด ≤ 1,000 → อนุมัติจบงานทันที'
+          : 'ผู้สร้างเป็นผู้จัดการแผนก (ข้ามขั้นอนุมัติหัวหน้า → ส่งตรงถึง MD)' } });
+        if (small) {
+          data = { memoNo, status: 'approved', currentApproverId: null, submittedAt: new Date(), closedAt: new Date() };
+          detail = `Assigned ${memoNo}; dept manager, ≤1,000 → approved directly`;
+        } else {
+          const nextId = (await this.pickByRole('md', memo.companyId)) ?? (await this.pickByRole('md'));
+          if (!nextId) throw new BadRequestException('No MD approver available');
+          data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
+          detail = `Assigned ${memoNo}; creator is dept manager → routed to MD`;
+        }
       } else {
         const managerId = await this.pickManager(user.id);
         if (!managerId) throw new BadRequestException('No manager available to route to');
@@ -271,8 +288,15 @@ export class MemosService {
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });
       return this.shape(updated);
     });
-    // notify the next approver (after commit, never blocks the flow)
-    try { await this.mail.notifyPendingApprover(result); } catch { /* noop */ }
+    // notify (after commit, never blocks the flow)
+    try {
+      if (result.status === 'approved') {
+        await this.mail.notifyCreator(result, 'approved');
+        await this.mail.notifyFcAcknowledge(result);
+      } else {
+        await this.mail.notifyPendingApprover(result);
+      }
+    } catch { /* noop */ }
     return result;
   }
 
@@ -289,12 +313,26 @@ export class MemosService {
 
       let data: any; let action = 'approved';
       if (memo.status === 'pending_manager') {
-        // department manager chooses HRM or MD as the next approver
-        const target = next === 'md' ? 'md' : 'hrm';
-        const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
-        if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
-        data = { status: 'pending_hrmd', currentApproverId: nextId };
-        action = `approved_manager_to_${target}`;
+        const total = await this.memoTotal(tx, id);
+        if (total <= this.SMALL_MAX) {
+          // small memo (≤ 1,000): no MD. Manager either finalizes, or forwards to HRM.
+          if (next === 'hrm') {
+            const nextId = (await this.pickByRole('hrm', memo.companyId)) ?? (await this.pickByRole('hrm'));
+            if (!nextId) throw new BadRequestException('No HRM approver available');
+            data = { status: 'pending_hrmd', currentApproverId: nextId };
+            action = 'approved_manager_to_hrm';
+          } else {
+            data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+            action = 'approved_manager_final';
+          }
+        } else {
+          // large memo: manager chooses HRM or MD as the next approver
+          const target = next === 'md' ? 'md' : 'hrm';
+          const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
+          if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
+          data = { status: 'pending_hrmd', currentApproverId: nextId };
+          action = `approved_manager_to_${target}`;
+        }
       } else if (memo.status === 'pending_hrmd') {
         // HRM or MD approval finalizes the memo. FC no longer approves —
         // they receive an acknowledgement email automatically (see below).
