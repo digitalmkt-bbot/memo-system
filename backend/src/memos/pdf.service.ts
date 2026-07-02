@@ -42,7 +42,6 @@ export class PdfService {
     const managerApproval = approvals.find((a) => a.step === 'manager' && a.status === 'approve');
     const hrmApproval = approvals.find((a) => a.step === 'hrm' && a.status === 'approve');
     const mdApproval = approvals.find((a) => a.step === 'md' && a.status === 'approve');
-    const fcApproval = approvals.find((a) => a.step === 'fc' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
@@ -146,9 +145,6 @@ export class PdfService {
         <div class="col"><div class="line"></div><div class="role">กรรมการผู้จัดการ / MD</div>
           <div class="who">${this.esc((mdApproval && mdApproval.approverName) || '')}</div>
           <div class="date">${mdApproval ? this.fmtDate(mdApproval.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">ฝ่ายบัญชี / FC</div>
-          <div class="who">${this.esc((fcApproval && fcApproval.approverName) || '')}</div>
-          <div class="date">${fcApproval ? this.fmtDate(fcApproval.approvedAt) : ''}</div></div>
       </div>
     </body></html>`;
   }
