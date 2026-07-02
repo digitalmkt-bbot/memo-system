@@ -63,31 +63,33 @@ export class MemosService {
     await this.prisma.auditLog.create({ data: { memoId, userId, action, detail: detail ?? null } });
   }
 
-  private async pickManager(creatorId: number) {
+  private async pickManager(creatorId: number, companyId?: number, departmentId?: number) {
     const creator = await this.prisma.user.findUnique({ where: { id: creatorId } });
     if (!creator) return null;
+    // route by the MEMO's company/department (may differ from the creator's own)
+    const coId = companyId ?? creator.companyId;
+    const deptId = departmentId ?? creator.departmentId ?? -1;
     // 1) explicit "first approver" assigned to this user (managerId) — admin's choice wins.
     //    Any active user may be chosen as first approver (not only role=manager).
     if (creator.managerId) {
       const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true } });
       if (m) return m.id;
     }
-    // 2) manager of the SAME department (requester's department manager)
+    // 2) manager of the memo's department
     const sameDept = await this.prisma.user.findFirst({
-      where: { role: 'manager', active: true, companyId: creator.companyId, departmentId: creator.departmentId ?? -1 },
-      orderBy: { id: 'asc' },
+      where: { role: 'manager', active: true, companyId: coId, departmentId: deptId }, orderBy: { id: 'asc' },
     });
     if (sameDept) return sameDept.id;
     // 3) any manager in the company (fallback)
     const fb = await this.prisma.user.findFirst({
-      where: { role: 'manager', active: true, companyId: creator.companyId }, orderBy: { id: 'asc' },
+      where: { role: 'manager', active: true, companyId: coId }, orderBy: { id: 'asc' },
     });
     return fb?.id ?? null;
   }
 
-  private async pickByRole(role: string, companyId?: number) {
+  private async pickByRole(role: string, companyId?: number, excludeId?: number) {
     const u = await this.prisma.user.findFirst({
-      where: { role: role as any, active: true, ...(companyId ? { companyId } : {}) }, orderBy: { id: 'asc' },
+      where: { role: role as any, active: true, ...(companyId ? { companyId } : {}), ...(excludeId ? { id: { not: excludeId } } : {}) }, orderBy: { id: 'asc' },
     });
     return u?.id ?? null;
   }
@@ -137,11 +139,16 @@ export class MemosService {
     if (f.status) where.status = f.status;
     if (f.companyId) where.companyId = parseInt(f.companyId, 10);
     if (f.departmentId) where.departmentId = parseInt(f.departmentId, 10);
-    if (f.q) where.OR = [
-      { subject: { contains: f.q, mode: 'insensitive' } },
-      { detail: { contains: f.q, mode: 'insensitive' } },
-      { memoNo: { contains: f.q, mode: 'insensitive' } },
-    ];
+    if (f.q) {
+      const search = [
+        { subject: { contains: f.q, mode: 'insensitive' } },
+        { detail: { contains: f.q, mode: 'insensitive' } },
+        { memoNo: { contains: f.q, mode: 'insensitive' } },
+      ];
+      // keep the visibility OR (draft restriction) intact when combined with search
+      if (where.OR) { where.AND = [{ OR: where.OR }, { OR: search }]; delete where.OR; }
+      else where.OR = search;
+    }
     const rows = await this.prisma.memo.findMany({ where, include: INCLUDE, orderBy: { createdAt: 'desc' } });
     return rows.map((m) => this.shape(m));
   }
@@ -272,13 +279,13 @@ export class MemosService {
           data = { memoNo, status: 'approved', currentApproverId: null, submittedAt: new Date(), closedAt: new Date() };
           detail = `Assigned ${memoNo}; dept manager, ≤1,000 → approved directly`;
         } else {
-          const nextId = (await this.pickByRole('md', memo.companyId)) ?? (await this.pickByRole('md'));
+          const nextId = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
           if (!nextId) throw new BadRequestException('No MD approver available');
           data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
           detail = `Assigned ${memoNo}; creator is dept manager → routed to MD`;
         }
       } else {
-        const managerId = await this.pickManager(user.id);
+        const managerId = await this.pickManager(user.id, memo.companyId, memo.departmentId);
         if (!managerId) throw new BadRequestException('No manager available to route to');
         data = { memoNo, status: 'pending_manager', currentApproverId: managerId, submittedAt: new Date() };
         detail = `Assigned ${memoNo}, routed to manager`;
@@ -317,7 +324,7 @@ export class MemosService {
         if (total <= this.SMALL_MAX) {
           // small memo (≤ 1,000): no MD. Manager either finalizes, or forwards to HRM.
           if (next === 'hrm') {
-            const nextId = (await this.pickByRole('hrm', memo.companyId)) ?? (await this.pickByRole('hrm'));
+            const nextId = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
             if (!nextId) throw new BadRequestException('No HRM approver available');
             data = { status: 'pending_hrmd', currentApproverId: nextId };
             action = 'approved_manager_to_hrm';
@@ -328,7 +335,7 @@ export class MemosService {
         } else {
           // large memo: manager chooses HRM or MD as the next approver
           const target = next === 'md' ? 'md' : 'hrm';
-          const nextId = (await this.pickByRole(target, memo.companyId)) ?? (await this.pickByRole(target));
+          const nextId = (await this.pickByRole(target, memo.companyId, user.id)) ?? (await this.pickByRole(target, undefined, user.id));
           if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
           data = { status: 'pending_hrmd', currentApproverId: nextId };
           action = `approved_manager_to_${target}`;
@@ -370,6 +377,7 @@ export class MemosService {
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
+    if (memo.forwardedAt) throw new BadRequestException('memo นี้ส่งปิดงานไปแล้ว');
     const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
     if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
 

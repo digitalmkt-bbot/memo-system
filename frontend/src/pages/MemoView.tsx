@@ -54,9 +54,9 @@ export function MemoView() {
   if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
-  const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
-  const hrmAppr = approvals.find((a: any) => a.approverRole === 'hrm' && a.status === 'approve');
-  const mdAppr = approvals.find((a: any) => a.approverRole === 'md' && a.status === 'approve');
+  const mgrAppr = approvals.find((a: any) => a.step === 'manager' && a.status === 'approve');
+  const hrmAppr = approvals.find((a: any) => a.step === 'hrm' && a.status === 'approve');
+  const mdAppr = approvals.find((a: any) => a.step === 'md' && a.status === 'approve');
   const items = memo.items || [];
   const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const vatAmount = memo.vat ? subtotal * 0.07 : 0;
