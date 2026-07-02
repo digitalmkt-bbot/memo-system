@@ -125,7 +125,7 @@ export class PdfService {
         <div><div class="k">Department</div><div class="v">${this.esc(memo.deptName || memo.deptCode || '')}</div></div>
         <div><div class="k">ประเภท</div><div class="v">${this.esc(catLabel)}</div></div>
         <div><div class="k">วันที่ต้องการ</div><div class="v">${memo.neededDate ? this.fmtDate(memo.neededDate) : '-'}</div></div>
-        <div><div class="k">From</div><div class="v">${this.esc(memo.fromName)}</div></div>
+        <div><div class="k">ผู้ขอ</div><div class="v">${this.esc(memo.fromName)}</div></div>
         <div><div class="k">Subject</div><div class="v">${this.esc(memo.subject)}</div></div>
         <div><div class="k">Attachment</div><div class="v">${this.esc(memo.attachment || '-')}</div></div>
       </div>
