@@ -38,8 +38,6 @@ export function Dashboard() {
   const loadAnns = () => api.announcements().then(setAnns).catch(() => {});
   useEffect(() => { loadAnns(); }, []);
   const fmtD = (d: any) => (d ? new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
-  const now = new Date();
-  const dateBanner = `${now.toLocaleDateString('th-TH', { weekday: 'long' }).replace('วัน', '')}, ${now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })} ${now.getFullYear()}`;
   const saveAnn = async () => {
     if (!annForm) return;
     setAnnSaving(true);
@@ -80,9 +78,6 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="mb-5 rounded-2xl bg-gradient-to-r from-[#34d399] to-[#10b981] px-6 py-3.5 text-white text-[20px] font-extrabold shadow-sm">
-        {dateBanner}
-      </div>
       <div className="mb-6 flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-3xl">{t('dashboard.hello')}, {user?.name}</h2>
