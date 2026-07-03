@@ -80,6 +80,9 @@ export function Dashboard() {
 
   return (
     <>
+      <div className="mb-5 rounded-2xl bg-gradient-to-r from-[#34d399] to-[#10b981] px-6 py-3.5 text-white text-[20px] font-extrabold shadow-sm">
+        {dateBanner}
+      </div>
       <div className="mb-6 flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-3xl">{t('dashboard.hello')}, {user?.name}</h2>
@@ -91,11 +94,6 @@ export function Dashboard() {
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
-      </div>
-
-      {/* date banner */}
-      <div className="mb-4 rounded-2xl bg-gradient-to-r from-[#2f6bff] to-[#1746c9] px-6 py-4 text-white text-[22px] font-extrabold shadow-sm">
-        {dateBanner}
       </div>
 
       {/* corporate news */}

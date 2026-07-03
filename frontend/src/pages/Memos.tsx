@@ -7,7 +7,7 @@ import { useAuth } from '../auth';
 
 export function Memos() {
   const nav = useNavigate();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
   const [box, setBox] = useState('sent');
   const [q, setQ] = useState('');
@@ -60,13 +60,14 @@ export function Memos() {
       <div className="card overflow-x-auto">
         {loading ? <div className="p-10 text-center text-gray-400">{t('common.loading')}</div> :
           rows.length === 0 ? <div className="p-10 text-center text-gray-400">{t('memos.noMemos')}</div> : (
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[780px]">
               <thead>
                 <tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                   <th className="text-left px-4 py-3">{t('memos.colNo')}</th>
                   <th className="text-left px-4 py-3">{t('memos.colSubject')}</th>
                   <th className="text-left px-4 py-3">{t('memos.colCompanyDept')}</th>
                   <th className="text-left px-4 py-3">{t('memos.colFrom')}</th>
+                  <th className="text-right px-4 py-3">{lang === 'th' ? 'จำนวนเงิน' : 'Amount'}</th>
                   <th className="text-right px-4 py-3">{t('memos.colStatus')}</th>
                 </tr>
               </thead>
@@ -78,6 +79,7 @@ export function Memos() {
                     <td className="px-4 py-3 text-[13.5px]">{m.subject}</td>
                     <td className="px-4 py-3 text-[12.5px] text-gray-500">{m.companyCode}/{m.deptCode}</td>
                     <td className="px-4 py-3 text-[12.5px]">{m.fromName}</td>
+                    <td className="px-4 py-3 text-right text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap">฿{(Number(m.grandTotal ?? m.totalAmount) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                     <td className="px-4 py-3 text-right"><StatusTag s={m.status} /></td>
                   </tr>
                 ))}
