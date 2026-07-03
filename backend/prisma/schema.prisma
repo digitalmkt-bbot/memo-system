@@ -191,3 +191,13 @@ model MemoItem {
   @@index([memoId])
   @@map("memo_items")
 }
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  message   String
+  active    Boolean  @default(true)
+  updatedBy Int?     @map("updated_by")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("announcements")
+}

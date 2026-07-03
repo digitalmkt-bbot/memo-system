@@ -10,6 +10,7 @@ import { DepartmentsModule } from './departments/departments.module';
 import { MemosModule } from './memos/memos.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { UsersModule } from './users/users.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     MemosModule,
     DashboardModule,
     UsersModule,
+    AnnouncementsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

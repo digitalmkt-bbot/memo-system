@@ -16,6 +16,14 @@ export function getStoredLang(): Lang {
 type Dict = Record<string, any>;
 
 const TH: Dict = {
+  ann: {
+    title: 'ประกาศข่าวสาร',
+    set: 'ตั้งประกาศข่าวสาร',
+    edit: 'แก้ไข',
+    editTitle: 'ตั้ง / แก้ไขประกาศ',
+    placeholder: 'พิมพ์ข้อความประกาศสำหรับทุกคน…',
+    showToAll: 'แสดงให้ทุกคนเห็น',
+  },
   common: {
     appName: 'Love Island',
     systemName: 'ระบบ MEMO',
@@ -257,6 +265,14 @@ const TH: Dict = {
 };
 
 const EN: Dict = {
+  ann: {
+    title: 'Announcement',
+    set: 'Set an announcement',
+    edit: 'Edit',
+    editTitle: 'Set / edit announcement',
+    placeholder: 'Type an announcement for everyone…',
+    showToAll: 'Show to everyone',
+  },
   common: {
     appName: 'Love Island',
     systemName: 'MEMO System',

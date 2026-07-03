@@ -47,6 +47,8 @@ export const api = {
   rejectMemo: (id: number, comment: string) => http.post(`/memos/${id}/reject`, { comment }).then((r) => r.data),
   holdMemo: (id: number, comment?: string) => http.post(`/memos/${id}/hold`, { comment }).then((r) => r.data),
   forwardMemo: (id: number, recipients: string[]) => http.post(`/memos/${id}/forward`, { recipients }).then((r) => r.data),
+  announcement: () => http.get('/announcement').then((r) => r.data),
+  setAnnouncement: (message: string, active: boolean) => http.put('/announcement', { message, active }).then((r) => r.data),
   summary: () => http.get('/dashboard/summary').then((r) => r.data),
   monthly: () => http.get('/dashboard/monthly').then((r) => r.data),
   series: (range: string, companyId?: string) => http.get('/dashboard/series', { params: { range, ...(companyId ? { companyId } : {}) } }).then((r) => r.data),

@@ -28,6 +28,21 @@ export function Dashboard() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState('');
   const canFilterCompany = user?.role === 'admin' || user?.role === 'executive';
+  const isAdmin = user?.role === 'admin';
+
+  // announcement
+  const [ann, setAnn] = useState<any>(null);
+  const [annEdit, setAnnEdit] = useState(false);
+  const [annMsg, setAnnMsg] = useState('');
+  const [annActive, setAnnActive] = useState(true);
+  const [annSaving, setAnnSaving] = useState(false);
+  useEffect(() => { api.announcement().then((a) => { setAnn(a); setAnnMsg(a?.message || ''); setAnnActive(a?.active ?? true); }).catch(() => {}); }, []);
+  const saveAnn = async () => {
+    setAnnSaving(true);
+    try { const a = await api.setAnnouncement(annMsg, annActive); setAnn(a); setAnnEdit(false); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    finally { setAnnSaving(false); }
+  };
 
   useEffect(() => { if (canFilterCompany) api.companies().then(setCompanies).catch(() => {}); }, [canFilterCompany]);
   useEffect(() => { api.overview(companyId ? { companyId } : {}).then(setOv).catch(() => {}); }, [companyId]);
@@ -66,6 +81,38 @@ export function Dashboard() {
           </select>
         )}
       </div>
+
+      {((ann?.active && ann?.message) || isAdmin) && (
+        <div className="mb-6">
+          {ann?.active && ann?.message && !annEdit && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <span className="text-[18px] leading-none mt-0.5">📢</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12.5px] font-bold text-amber-800">{t('ann.title')}</div>
+                <div className="text-[14px] text-amber-900 whitespace-pre-wrap break-words">{ann.message}</div>
+              </div>
+              {isAdmin && <button className="btn btn-ghost !py-1 !px-3 text-[12px] shrink-0" onClick={() => setAnnEdit(true)}>{t('ann.edit')}</button>}
+            </div>
+          )}
+          {isAdmin && (!ann?.active || !ann?.message) && !annEdit && (
+            <button className="text-[13px] font-semibold text-ocean-dark hover:underline" onClick={() => setAnnEdit(true)}>+ {t('ann.set')}</button>
+          )}
+          {isAdmin && annEdit && (
+            <div className="card p-4 max-w-2xl">
+              <div className="font-bold text-ink text-sm mb-2">{t('ann.editTitle')}</div>
+              <textarea className="input min-h-[84px]" value={annMsg} onChange={(e) => setAnnMsg(e.target.value)} placeholder={t('ann.placeholder')} />
+              <label className="flex items-center gap-2 mt-2.5 text-[13px] text-slate-600 cursor-pointer select-none">
+                <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={annActive} onChange={(e) => setAnnActive(e.target.checked)} />
+                {t('ann.showToAll')}
+              </label>
+              <div className="flex gap-2 mt-3">
+                <button className="btn btn-ghost" onClick={() => { setAnnEdit(false); setAnnMsg(ann?.message || ''); setAnnActive(ann?.active ?? true); }}>{t('common.cancel')}</button>
+                <button className="btn btn-primary" disabled={annSaving} onClick={saveAnn}>{t('common.save')}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr_1.25fr] lg:auto-rows-min lg:grid-flow-row-dense">
         {/* Total value */}
