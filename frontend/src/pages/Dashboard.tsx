@@ -30,17 +30,29 @@ export function Dashboard() {
   const canFilterCompany = user?.role === 'admin' || user?.role === 'executive';
   const isAdmin = user?.role === 'admin';
 
-  // announcement
-  const [ann, setAnn] = useState<any>(null);
-  const [annMsg, setAnnMsg] = useState('');
-  const [annActive, setAnnActive] = useState(true);
+  // announcements (news feed)
+  const [anns, setAnns] = useState<any[]>([]);
+  const [viewAnn, setViewAnn] = useState<any>(null);
+  const [annForm, setAnnForm] = useState<any>(null);
   const [annSaving, setAnnSaving] = useState(false);
-  useEffect(() => { api.announcement().then((a) => { setAnn(a); setAnnMsg(a?.message || ''); setAnnActive(a?.active ?? true); }).catch(() => {}); }, []);
+  const loadAnns = () => api.announcements().then(setAnns).catch(() => {});
+  useEffect(() => { loadAnns(); }, []);
+  const fmtD = (d: any) => (d ? new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
+  const now = new Date();
+  const dateBanner = `${now.toLocaleDateString('th-TH', { weekday: 'long' }).replace('วัน', '')}, ${now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })} ${now.getFullYear()}`;
   const saveAnn = async () => {
+    if (!annForm) return;
     setAnnSaving(true);
-    try { const a = await api.setAnnouncement(annMsg, annActive); setAnn(a); }
-    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    try {
+      const dto = { title: annForm.title, message: annForm.message, active: annForm.active, publishedAt: annForm.publishedAt || undefined };
+      if (annForm.id) await api.updateAnnouncement(annForm.id, dto); else await api.createAnnouncement(dto);
+      setAnnForm(null); loadAnns();
+    } catch (e: any) { alert(e?.response?.data?.message || e.message); }
     finally { setAnnSaving(false); }
+  };
+  const delAnn = async (id: number) => {
+    if (!window.confirm('ลบข่าวนี้?')) return;
+    try { await api.deleteAnnouncement(id); loadAnns(); } catch (e: any) { alert(e.message); }
   };
 
   useEffect(() => { if (canFilterCompany) api.companies().then(setCompanies).catch(() => {}); }, [canFilterCompany]);
@@ -81,31 +93,75 @@ export function Dashboard() {
         )}
       </div>
 
-      {isAdmin ? (
-        <div className="mb-6 card p-4 max-w-3xl">
-          <div className="font-bold text-ink text-sm mb-2 flex items-center gap-2">
-            <span>📢</span>{t('ann.title')}
-            <span className="font-normal text-slate-400 text-[12px]">— {t('ann.adminHint')}</span>
-          </div>
-          <textarea className="input min-h-[76px]" value={annMsg} onChange={(e) => setAnnMsg(e.target.value)} placeholder={t('ann.placeholder')} />
-          <div className="flex items-center justify-between mt-2.5 gap-3 flex-wrap">
-            <label className="flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer select-none">
-              <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={annActive} onChange={(e) => setAnnActive(e.target.checked)} />
-              {t('ann.showToAll')}
-            </label>
-            <button className="btn btn-primary" disabled={annSaving} onClick={saveAnn}>{annSaving ? '…' : t('common.save')}</button>
-          </div>
-          {ann?.updatedAt && annMsg && <p className="text-slate-400 text-[11px] mt-2">{ann.active ? t('ann.liveNow') : t('ann.hidden')}</p>}
+      {/* date banner */}
+      <div className="mb-4 rounded-2xl bg-gradient-to-r from-[#2f6bff] to-[#1746c9] px-6 py-4 text-white text-[22px] font-extrabold shadow-sm">
+        {dateBanner}
+      </div>
+
+      {/* corporate news */}
+      <div className="mb-6">
+        <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-[16px] font-bold text-ocean-dark">📢 ข่าวประชาสัมพันธ์องค์กร</h3>
+          {isAdmin && <button className="btn btn-primary !py-1.5 text-[13px]" onClick={() => setAnnForm({ title: '', message: '', active: true, publishedAt: '' })}>+ เพิ่มข่าว</button>}
         </div>
-      ) : (ann?.active && ann?.message) ? (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <span className="text-[18px] leading-none mt-0.5">📢</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12.5px] font-bold text-amber-800">{t('ann.title')}</div>
-            <div className="text-[14px] text-amber-900 whitespace-pre-wrap break-words">{ann.message}</div>
+        {anns.length === 0 ? (
+          <p className="text-slate-400 text-[13px]">ยังไม่มีข่าวประกาศ</p>
+        ) : (
+          <div className="flex gap-3.5 overflow-x-auto pb-2">
+            {anns.map((a) => (
+              <div key={a.id} className="flex-none w-[300px] cursor-pointer rounded-2xl border border-slate-200 bg-surface p-4 transition hover:border-emerald-400 hover:shadow-neu-sm" onClick={() => setViewAnn(a)}>
+                <div className="font-bold text-ink text-[14.5px] leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '42px' }}>{a.title || a.message}</div>
+                <div className="mt-3 text-[12px] leading-relaxed text-slate-400">
+                  <div><span className="text-slate-500">วันที่ประกาศข่าว</span> {fmtD(a.publishedAt)}</div>
+                  <div><span className="text-slate-500">วันที่แก้ไขล่าสุด</span> {fmtD(a.updatedAt)}</div>
+                </div>
+                {isAdmin && (
+                  <div className="mt-2.5 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <button className="text-[12px] text-slate-500 hover:underline" onClick={() => setAnnForm({ id: a.id, title: a.title, message: a.message, active: a.active, publishedAt: a.publishedAt ? String(a.publishedAt).slice(0, 10) : '' })}>แก้ไข</button>
+                    <button className="text-[12px] text-rose-500 hover:underline" onClick={() => delAnn(a.id)}>ลบ</button>
+                    {!a.active && <span className="text-[11px] text-amber-600">(ซ่อนอยู่)</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* detail popup */}
+      {viewAnn && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-5" onClick={() => setViewAnn(null)}>
+          <div className="w-full max-w-lg max-h-[80vh] overflow-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-lg font-bold text-ink">{viewAnn.title || 'ประกาศ'}</h3>
+              <button className="text-xl leading-none text-slate-400 hover:text-ink" onClick={() => setViewAnn(null)}>✕</button>
+            </div>
+            <div className="mt-1 text-[12px] text-slate-400">ประกาศ {fmtD(viewAnn.publishedAt)} · แก้ไขล่าสุด {fmtD(viewAnn.updatedAt)}</div>
+            <div className="mt-4 whitespace-pre-wrap text-[14px] leading-7 text-slate-700">{viewAnn.message}</div>
           </div>
         </div>
-      ) : null}
+      )}
+
+      {/* admin add/edit popup */}
+      {isAdmin && annForm && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-5" onClick={() => setAnnForm(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-3 text-lg font-bold">{annForm.id ? 'แก้ไขข่าว' : 'เพิ่มข่าว'}</h3>
+            <label className="label">หัวข้อข่าว</label>
+            <input className="input" value={annForm.title} onChange={(e) => setAnnForm({ ...annForm, title: e.target.value })} placeholder="เช่น วันหยุดนักขัตฤกษ์ ประจำปี 2569" />
+            <label className="label mt-3">รายละเอียด</label>
+            <textarea className="input min-h-[120px]" value={annForm.message} onChange={(e) => setAnnForm({ ...annForm, message: e.target.value })} placeholder="เนื้อหาข่าวแบบเต็ม…" />
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div><label className="label">วันที่ประกาศ</label><input type="date" className="input" value={annForm.publishedAt} onChange={(e) => setAnnForm({ ...annForm, publishedAt: e.target.value })} /></div>
+              <label className="flex items-end gap-2 pb-2.5 text-[13px] text-slate-600"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={annForm.active} onChange={(e) => setAnnForm({ ...annForm, active: e.target.checked })} />แสดงให้ทุกคนเห็น</label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="btn btn-ghost" onClick={() => setAnnForm(null)}>ยกเลิก</button>
+              <button className="btn btn-primary" disabled={annSaving} onClick={saveAnn}>{annSaving ? '…' : 'บันทึก'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr_1.25fr] lg:auto-rows-min lg:grid-flow-row-dense">
         {/* Total value */}

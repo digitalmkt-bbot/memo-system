@@ -193,11 +193,14 @@ model MemoItem {
 }
 
 model Announcement {
-  id        Int      @id @default(autoincrement())
-  message   String
-  active    Boolean  @default(true)
-  updatedBy Int?     @map("updated_by")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  title       String   @default("")
+  message     String
+  active      Boolean  @default(true)
+  publishedAt DateTime @default(now()) @map("published_at")
+  updatedBy   Int?     @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("announcements")
 }
