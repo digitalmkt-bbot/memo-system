@@ -137,11 +137,16 @@ async function main() {
     const departmentId = noDept ? null : await dept(love.id, deptCode);
     empSeq[deptCode] = (empSeq[deptCode] || 0) + 1;
     const employeeCode = `${deptCode}${String(empSeq[deptCode]).padStart(2, '0')}`;
-    await prisma.user.upsert({
-      where: { email },
-      update: { name, departmentId, role: role as any },
-      create: { companyId: love.id, departmentId, employeeCode, name, email, passwordHash: demoPw, role: role as any },
-    });
+    try {
+      await prisma.user.upsert({
+        where: { email },
+        update: { name, departmentId, role: role as any },
+        create: { companyId: love.id, departmentId, employeeCode, name, email, passwordHash: demoPw, role: role as any },
+      });
+    } catch (e: any) {
+      // never let one user (e.g. duplicate employee_code after admin edits) abort the seed/deploy
+      console.warn(`seed: skip import for ${email} (${e?.code || e?.message})`);
+    }
   }
   console.log(`Imported ${IMPORT_USERS.length} staff from Name.csv`);
 

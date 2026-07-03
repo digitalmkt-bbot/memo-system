@@ -17,4 +17,4 @@ COPY . .
 RUN npm run build
 EXPOSE 3000
 # Apply schema + seed (idempotent) then start
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx prisma db seed && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && (npx prisma db seed || echo 'seed failed — continuing so the app still starts') && node dist/main.js"]
