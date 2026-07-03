@@ -1,4 +1,4 @@
-name: CI / Deploy to Railway
+name: CI (typecheck + build)
 
 on:
   push:
@@ -29,20 +29,3 @@ jobs:
           npm ci || npm install
           npm run typecheck
           npm run build
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-      - name: Deploy backend
-        run: railway up --service ${{ vars.RAILWAY_BACKEND_SERVICE }} --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Deploy frontend
-        run: railway up --service ${{ vars.RAILWAY_FRONTEND_SERVICE }} --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
