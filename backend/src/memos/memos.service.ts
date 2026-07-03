@@ -63,6 +63,21 @@ export class MemosService {
     await this.prisma.auditLog.create({ data: { memoId, userId, action, detail: detail ?? null } });
   }
 
+  /**
+   * The head of a department = a role 'manager' in that dept, or (for depts
+   * without a manager, e.g. HR headed by the HRM) the dept's 'hrm'/'md'.
+   */
+  private async deptHeadId(companyId: number, departmentId: number, excludeId?: number): Promise<number | null> {
+    for (const role of ['manager', 'hrm', 'md']) {
+      const u = await this.prisma.user.findFirst({
+        where: { role: role as any, active: true, companyId, departmentId, ...(excludeId ? { id: { not: excludeId } } : {}) },
+        orderBy: { id: 'asc' },
+      });
+      if (u) return u.id;
+    }
+    return null;
+  }
+
   private async pickManager(creatorId: number, companyId?: number, departmentId?: number) {
     const creator = await this.prisma.user.findUnique({ where: { id: creatorId } });
     if (!creator) return null;
@@ -75,14 +90,12 @@ export class MemosService {
       const m = await this.prisma.user.findFirst({ where: { id: creator.managerId, active: true } });
       if (m) return m.id;
     }
-    // 2) manager of the memo's department
-    const sameDept = await this.prisma.user.findFirst({
-      where: { role: 'manager', active: true, companyId: coId, departmentId: deptId }, orderBy: { id: 'asc' },
-    });
-    if (sameDept) return sameDept.id;
-    // 3) any manager in the company (fallback)
+    // 2) the head of the memo's OWN department (never cross-department)
+    const head = await this.deptHeadId(coId, deptId, creatorId);
+    if (head) return head;
+    // 3) last resort: any manager in the company
     const fb = await this.prisma.user.findFirst({
-      where: { role: 'manager', active: true, companyId: coId }, orderBy: { id: 'asc' },
+      where: { role: 'manager', active: true, companyId: coId, id: { not: creatorId } }, orderBy: { id: 'asc' },
     });
     return fb?.id ?? null;
   }
@@ -258,31 +271,28 @@ export class MemosService {
         memoNo = r[0].no;
       }
 
-      // If the creator is the department manager of this memo's department,
-      // skip the manager-approval step (no self-approval) and go straight to HRM/MD.
-      const creator = await tx.user.findUnique({ where: { id: user.id } });
-      const isDeptManager = creator?.role === 'manager'
-        && memo.companyId === creator.companyId
-        && memo.departmentId === creator.departmentId;
+      // The first approver is the HEAD of the memo's department (a 'manager', or
+      // the dept's HRM/MD when it has no manager — e.g. HR headed by the HRM).
+      // If the creator IS that head, skip the step (no self-approval):
+      // small memos are approved outright, larger ones go straight to MD.
+      const headId = await this.deptHeadId(memo.companyId, memo.departmentId);
+      const isHead = headId != null && headId === user.id;
 
       let data: any; let detail: string;
-      if (isDeptManager) {
-        // creator is the department manager → skip the manager step.
-        // Small memos (≤ 1,000): head approval is enough → approved immediately.
-        // Large memos (> 1,000): route straight to MD.
+      if (isHead) {
         const total = await this.memoTotal(tx, id);
         const small = total <= this.SMALL_MAX;
         await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: small
-          ? 'ผู้สร้างเป็นผู้จัดการแผนก · ยอด ≤ 1,000 → อนุมัติจบงานทันที'
-          : 'ผู้สร้างเป็นผู้จัดการแผนก (ข้ามขั้นอนุมัติหัวหน้า → ส่งตรงถึง MD)' } });
+          ? 'ผู้สร้างเป็นหัวหน้าแผนก · ยอด ≤ 1,000 → อนุมัติจบงานทันที'
+          : 'ผู้สร้างเป็นหัวหน้าแผนก (ข้ามขั้นหัวหน้า → ส่งตรงถึง MD)' } });
         if (small) {
           data = { memoNo, status: 'approved', currentApproverId: null, submittedAt: new Date(), closedAt: new Date() };
-          detail = `Assigned ${memoNo}; dept manager, ≤1,000 → approved directly`;
+          detail = `Assigned ${memoNo}; dept head, ≤1,000 → approved directly`;
         } else {
           const nextId = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
           if (!nextId) throw new BadRequestException('No MD approver available');
           data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
-          detail = `Assigned ${memoNo}; creator is dept manager → routed to MD`;
+          detail = `Assigned ${memoNo}; creator is dept head → routed to MD`;
         }
       } else {
         const managerId = await this.pickManager(user.id, memo.companyId, memo.departmentId);
