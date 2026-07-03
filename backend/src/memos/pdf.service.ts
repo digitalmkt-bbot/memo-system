@@ -131,10 +131,10 @@ export class PdfService {
         <div><div class="k">Attachment</div><div class="v">${this.esc(memo.attachment || '-')}</div></div>
       </div>
 
-      ${itemsBlock}
-
       <div class="detail-label">รายละเอียด</div>
       <div class="detail">${this.esc(memo.detail)}</div>
+
+      ${itemsBlock}
 
       <div class="items-label">ลายมือชื่ออนุมัติ</div>
       <div class="sign">
@@ -235,6 +235,9 @@ export class PdfService {
         <div class="row"><span class="k">เอกสารแนบ :</span> ${this.esc(memo.attachment || '-')}</div>
       </div>
 
+      <div class="sec"><span class="tri"></span>รายละเอียด</div>
+      <div class="detail">${this.esc(memo.detail)}</div>
+
       <div class="sec"><span class="tri"></span>รายการสินค้า / บริการ</div>
       <table class="it">
         <thead><tr>
@@ -245,9 +248,6 @@ export class PdfService {
         <tbody>${rows}</tbody>
       </table>
       ${totalsBlock}
-
-      <div class="sec"><span class="tri"></span>รายละเอียด</div>
-      <div class="detail">${this.esc(memo.detail)}</div>
 
       <div class="sign-title">ลายมือชื่อผู้อนุมัติ</div>
       <div class="sign">
