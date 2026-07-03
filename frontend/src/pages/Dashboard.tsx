@@ -131,13 +131,29 @@ export function Dashboard() {
       {/* detail popup */}
       {viewAnn && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-5" onClick={() => setViewAnn(null)}>
-          <div className="w-full max-w-lg max-h-[80vh] overflow-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between gap-3">
-              <h3 className="text-lg font-bold text-ink">{viewAnn.title || 'ประกาศ'}</h3>
-              <button className="text-xl leading-none text-slate-400 hover:text-ink" onClick={() => setViewAnn(null)}>✕</button>
+          <div className="relative w-full max-w-2xl max-h-[88vh] overflow-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()} style={{ fontFamily: 'Sarabun, sans-serif' }}>
+            <button className="absolute right-4 top-4 z-10 text-xl leading-none text-slate-400 hover:text-ink" onClick={() => setViewAnn(null)}>✕</button>
+            <div className="px-9 py-8 sm:px-11">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[19px] font-extrabold text-[#17263f]">Love Island Co., Ltd.</div>
+                  <div className="mt-1.5 h-[6px] w-[92px]" style={{ background: 'linear-gradient(90deg,#17263f 55%,#23b4d8 55%)' }} />
+                  <div className="mt-2 text-[10.5px] leading-relaxed text-slate-500">9/239-240 Sakdidej Road<br />T.Talat Nuea A.Mueang Phuket 83000<br />T: +66 76 390 250<br />E-mail : info@loveandaman.com</div>
+                </div>
+                <img src="/love-logo.png" alt="LOVE andaman" className="w-[150px]" />
+              </div>
+              <div className="my-3 border-t-2 border-[#17263f]" />
+              <div className="text-center text-[20px] font-extrabold text-[#17263f]">ประกาศจากบริษัท</div>
+              <div className="my-3 border-t-2 border-[#17263f]" />
+              <div className="text-[15px]"><span className="font-bold text-[#17263f]">เรื่อง :</span> {viewAnn.title || '-'}</div>
+              <div className="mt-1 text-[12px] text-slate-500">วันที่ประกาศ : {fmtD(viewAnn.publishedAt)}{viewAnn.updatedAt ? ` · แก้ไขล่าสุด ${fmtD(viewAnn.updatedAt)}` : ''}</div>
+              <div className="mt-4 whitespace-pre-wrap text-[14px] leading-8 text-slate-700">{viewAnn.message}</div>
+              <div className="mt-10 text-right">
+                <div className="text-slate-400 tracking-widest">.........................................</div>
+                <div className="mt-1 text-[13px] font-bold text-[#17263f]">กรรมการผู้จัดการ / MD</div>
+                <div className="text-[13px] text-slate-600">นายอรรควิชญ์ หาญนวโชค</div>
+              </div>
             </div>
-            <div className="mt-1 text-[12px] text-slate-400">ประกาศ {fmtD(viewAnn.publishedAt)} · แก้ไขล่าสุด {fmtD(viewAnn.updatedAt)}</div>
-            <div className="mt-4 whitespace-pre-wrap text-[14px] leading-7 text-slate-700">{viewAnn.message}</div>
           </div>
         </div>
       )}
