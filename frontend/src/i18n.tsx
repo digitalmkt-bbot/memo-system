@@ -23,6 +23,9 @@ const TH: Dict = {
     editTitle: 'ตั้ง / แก้ไขประกาศ',
     placeholder: 'พิมพ์ข้อความประกาศสำหรับทุกคน…',
     showToAll: 'แสดงให้ทุกคนเห็น',
+    adminHint: 'พิมพ์แล้วกดบันทึก ทุกคนจะเห็นที่หน้าแรก',
+    liveNow: '● กำลังแสดงให้ทุกคนเห็น',
+    hidden: 'บันทึกแล้ว (ยังไม่แสดง — ติ๊ก “แสดงให้ทุกคนเห็น”)',
   },
   common: {
     appName: 'Love Island',
@@ -272,6 +275,9 @@ const EN: Dict = {
     editTitle: 'Set / edit announcement',
     placeholder: 'Type an announcement for everyone…',
     showToAll: 'Show to everyone',
+    adminHint: 'Type and save — everyone sees it on the home page',
+    liveNow: '● Live — shown to everyone',
+    hidden: 'Saved (hidden — tick “Show to everyone”)',
   },
   common: {
     appName: 'Love Island',
