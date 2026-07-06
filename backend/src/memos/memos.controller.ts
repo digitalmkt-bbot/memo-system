@@ -17,6 +17,9 @@ export class MemosController {
   @Get()
   list(@Req() req: any, @Query() q: any) { return this.svc.list(req.user, q); }
 
+  @Get('approvers')
+  approvers(@Req() req: any) { return this.svc.approvers(req.user); }
+
   @Get(':id')
   getOne(@Req() req: any, @Param('id', ParseIntPipe) id: number) { return this.svc.getOne(req.user, id); }
 
@@ -30,7 +33,7 @@ export class MemosController {
   remove(@Req() req: any, @Param('id', ParseIntPipe) id: number) { return this.svc.remove(req.user, id); }
 
   @Post(':id/submit')
-  submit(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.submit(req.user, id, dto?.next); }
+  submit(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.submit(req.user, id, dto?.approverId); }
 
   @Post(':id/approve')
   approve(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.approve(req.user, id, dto.comment, dto.next); }

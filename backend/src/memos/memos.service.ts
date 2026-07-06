@@ -269,33 +269,62 @@ export class MemosService {
     return { ok: true };
   }
 
+  /** Active users the creator may choose as an approver (everyone but themselves). */
+  async approvers(user: JwtUser) {
+    const users = await this.prisma.user.findMany({
+      where: { active: true, id: { not: user.id } },
+      orderBy: [{ companyId: 'asc' }, { departmentId: 'asc' }, { name: 'asc' }],
+      select: {
+        id: true, name: true, role: true,
+        company: { select: { code: true } },
+        department: { select: { code: true, name: true } },
+      },
+    });
+    return users.map((u) => ({
+      id: u.id, name: u.name, role: u.role,
+      companyCode: u.company?.code ?? null,
+      deptCode: u.department?.code ?? null,
+      deptName: u.department?.name ?? null,
+    }));
+  }
+
   /**
    * Submit a draft. The running number is generated ATOMICALLY by the
    * next_memo_no() DB function (INSERT ... ON CONFLICT DO UPDATE RETURNING),
    * executed inside a single interactive transaction.
    */
-  async submit(user: JwtUser, id: number, next?: string) {
+  async submit(user: JwtUser, id: number, approverId?: number) {
     const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
       if (memo.status !== 'draft') throw new BadRequestException('Memo is not a draft');
 
+      // Resolve the FIRST approver. NEVER auto-guess:
+      //  1) the per-user "ผู้อนุมัติขั้นแรก" (managerId) configured in the backend, or
+      //  2) an approver the creator explicitly picked when submitting.
+      // If neither exists, ask the creator to choose (frontend catches CHOOSE_APPROVER).
+      const creator = await tx.user.findUnique({ where: { id: user.id }, select: { managerId: true } });
+      let approver: number | null = null;
+      if (creator?.managerId && creator.managerId !== user.id) {
+        const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
+        if (m) approver = m.id;
+      }
+      if (!approver && approverId) {
+        const chosen = await tx.user.findFirst({ where: { id: approverId, active: true }, select: { id: true } });
+        if (!chosen) throw new BadRequestException('ผู้อนุมัติที่เลือกไม่ถูกต้องหรือถูกปิดใช้งาน');
+        if (chosen.id === user.id) throw new BadRequestException('เลือกตัวเองเป็นผู้อนุมัติไม่ได้');
+        approver = chosen.id;
+      }
+      if (!approver) throw new BadRequestException('CHOOSE_APPROVER');
+
       let memoNo = memo.memoNo;
       if (!memoNo) {
         const r = await tx.$queryRaw<{ no: string }[]>`SELECT next_memo_no(${memo.companyId}::int) AS no`;
         memoNo = r[0].no;
       }
-
-      // Route to the FIRST APPROVER configured in the backend for this creator
-      // (per-user "ผู้อนุมัติขั้นแรก" / managerId). No role-based skipping — even a
-      // department head goes to whoever the admin assigned as their first approver.
-      // If none is configured, fall back to the dept head, then any company manager.
-      // pickManager never returns the creator, so there is no self-approval.
-      const managerId = await this.pickManager(user.id, memo.companyId, memo.departmentId);
-      if (!managerId) throw new BadRequestException('ยังไม่ได้ตั้งผู้อนุมัติให้ผู้ใช้/แผนกนี้ในระบบหลังบ้าน');
-      const data: any = { memoNo, status: 'pending_manager', currentApproverId: managerId, submittedAt: new Date() };
-      const detail = `Assigned ${memoNo}, routed to configured first approver`;
+      const data: any = { memoNo, status: 'pending_manager', currentApproverId: approver, submittedAt: new Date() };
+      const detail = `Assigned ${memoNo}, routed to first approver #${approver}`;
 
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });

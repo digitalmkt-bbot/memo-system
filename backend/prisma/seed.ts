@@ -255,11 +255,12 @@ async function main() {
   });
   let resynced = 0;
   for (const m of atManager) {
-    const creator = await prisma.user.findUnique({ where: { id: m.createdBy } });
-    if (!creator) continue;
-    const approverId = await firstApprover(creator, m.companyId, m.departmentId);
-    if (approverId && approverId !== m.currentApproverId) {
-      await prisma.memo.update({ where: { id: m.id }, data: { currentApproverId: approverId } });
+    const creator = await prisma.user.findUnique({ where: { id: m.createdBy }, select: { id: true, managerId: true } });
+    // Only re-sync to the creator's CONFIGURED first approver — never a guess.
+    if (!creator?.managerId || creator.managerId === creator.id) continue;
+    const approver = await prisma.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
+    if (approver && approver.id !== m.currentApproverId) {
+      await prisma.memo.update({ where: { id: m.id }, data: { currentApproverId: approver.id } });
       resynced++;
     }
   }

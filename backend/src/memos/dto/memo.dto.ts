@@ -31,6 +31,7 @@ export class UpdateMemoDto {
 export class ActionDto {
   @IsOptional() @IsString() comment?: string;
   @IsOptional() @IsString() next?: string;
+  @IsOptional() @IsInt() approverId?: number;
 }
 
 export class ForwardDto {

@@ -82,7 +82,19 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       let id = memoId;
       if (id) await api.updateMemo(id, build(v));
       else { const m = await api.createMemo(build(v)); id = m.id; }
-      await uploadIfAny(id!); await api.submitMemo(id!); nav(`/memos/view/${id}`);
+      await uploadIfAny(id!);
+      try {
+        await api.submitMemo(id!);
+        nav(`/memos/view/${id}`);
+      } catch (e: any) {
+        // No default first approver configured — finish on the view page, where
+        // the creator is prompted to choose who to send the memo to.
+        if (e?.response?.data?.message === 'CHOOSE_APPROVER') {
+          nav(`/memos/view/${id}`, { state: { pickApprover: true } });
+        } else { throw e; }
+      }
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e.message);
     } finally { setBusy(false); }
   });
   // Editing an already-submitted memo (before the first approval): just save the

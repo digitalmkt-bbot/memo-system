@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { StatusTag, fmtDate, fmtDay } from '../ui';
 import { useAuth } from '../auth';
@@ -21,6 +21,7 @@ function fmtSize(n: number) {
 export function MemoView() {
   const { id } = useParams();
   const nav = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { t, lang, roleLabel } = useI18n();
   const mid = Number(id);
@@ -34,6 +35,10 @@ export function MemoView() {
   const [fwd, setFwd] = useState(false);
   const [recips, setRecips] = useState<string[]>([]);
   const [fwdBusy, setFwdBusy] = useState(false);
+  const [pick, setPick] = useState(false);
+  const [approverList, setApproverList] = useState<any[]>([]);
+  const [chosen, setChosen] = useState('');
+  const [submitBusy, setSubmitBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const canPreview = (mime: string) => !!mime && (mime.startsWith('image/') || mime === 'application/pdf');
@@ -51,6 +56,14 @@ export function MemoView() {
   const load = () => api.memo(mid).then(setData).catch(() => nav('/memos'));
   const loadAtts = () => api.listAttachments(mid).then(setAtts).catch(() => setAtts([]));
   useEffect(() => { load(); loadAtts(); }, [mid]);
+  // Arriving from "create → send" when the creator has no default approver:
+  // open the picker automatically so they can choose who to send to.
+  useEffect(() => {
+    if (!data || !(location.state as any)?.pickApprover) return;
+    if (data.memo.createdBy !== user?.id || data.memo.status !== 'draft') return;
+    api.approvers().then((list) => { setApproverList(list); setChosen(list[0]?.id ? String(list[0].id) : ''); setPick(true); }).catch(() => {});
+    window.history.replaceState({}, '');
+  }, [data]);
   if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
@@ -76,7 +89,25 @@ export function MemoView() {
       setModal(null); setComment(''); load();
     } catch (e: any) { alert(e.message); }
   };
-  const submit = async () => { await api.submitMemo(mid); load(); };
+  const submit = async (approverId?: number) => {
+    setSubmitBusy(true);
+    try {
+      await api.submitMemo(mid, approverId);
+      setPick(false);
+      load();
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      if (msg === 'CHOOSE_APPROVER') {
+        // No first approver configured for this creator — let them choose one.
+        const list = await api.approvers().catch(() => []);
+        setApproverList(list);
+        setChosen(list[0]?.id ? String(list[0].id) : '');
+        setPick(true);
+      } else {
+        alert(msg || e.message);
+      }
+    } finally { setSubmitBusy(false); }
+  };
   const toggleRecip = (email: string) => setRecips((r) => r.includes(email) ? r.filter((x) => x !== email) : [...r, email]);
   const doForward = async () => {
     if (!recips.length) return alert(t('view.forwardDesc'));
@@ -208,7 +239,7 @@ export function MemoView() {
               <button className="btn btn-red" onClick={() => setModal('reject')}>{t('view.reject')}</button>
             </>}
             {isCreator && memo.status === 'draft' && <>
-              <button className="btn btn-primary" onClick={submit}>{t('view.submit')}</button>
+              <button className="btn btn-primary" onClick={() => submit()} disabled={submitBusy}>{t('view.submit')}</button>
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             </>}
             {isCreator && memo.status === 'pending_manager' && (
@@ -316,6 +347,31 @@ export function MemoView() {
             <div className="flex gap-2.5 justify-end mt-4">
               <button className="btn btn-ghost" onClick={() => setFwd(false)}>{t('common.cancel')}</button>
               <button className="btn btn-green" onClick={doForward} disabled={fwdBusy || !recips.length}>{fwdBusy ? t('view.forwardSending') : t('view.forwardSend')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pick && (
+        <div className="fixed inset-0 bg-ink/50 grid place-items-center p-5 z-50" onClick={() => setPick(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold">{lang === 'th' ? 'เลือกผู้อนุมัติ' : 'Choose an approver'}</h3>
+            <p className="text-gray-500 text-[13px] mt-1">
+              {lang === 'th'
+                ? 'ยังไม่ได้ตั้งผู้อนุมัติขั้นแรกให้คุณในระบบ กรุณาเลือกผู้ที่จะส่งบันทึกนี้ไปอนุมัติ'
+                : 'You have no default first approver set. Choose who should approve this memo.'}
+            </p>
+            <select className="input mt-3" value={chosen} onChange={(e) => setChosen(e.target.value)}>
+              {approverList.length === 0 && <option value="">—</option>}
+              {approverList.map((a: any) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} — {roleLabel(a.role)}{a.deptCode ? ' · ' + a.deptCode : ''}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2.5 justify-end mt-4">
+              <button className="btn btn-ghost" onClick={() => setPick(false)}>{t('common.cancel')}</button>
+              <button className="btn btn-primary" onClick={() => submit(Number(chosen))} disabled={submitBusy || !chosen}>{t('view.submit')}</button>
             </div>
           </div>
         </div>
