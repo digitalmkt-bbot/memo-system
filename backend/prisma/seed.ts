@@ -197,48 +197,48 @@ async function main() {
   });
   if (migratedFc.count) console.log(`Migrated ${migratedFc.count} memo(s): pending_fc → approved (new flow)`);
 
-  // 10) Fix memos misrouted at the manager step. Older logic looked only for a
-  //     role='manager' in the dept; departments headed by an HRM (e.g. HR) had no
-  //     match and fell back to another department's manager (cross-department).
-  //     Re-route each stuck memo to the correct department head, or — if the
-  //     creator IS that head — finalize (≤1,000) / send to MD (>1,000).
-  //     Idempotent: correctly-routed memos are left untouched.
-  const deptHead = async (companyId: number, departmentId: number, excludeId?: number) => {
+  // 10) Undo the old "department head skips straight to MD" auto-approval and
+  //     re-route each affected memo to its creator's CONFIGURED first approver
+  //     (per-user managerId set in the backend). Targeted + idempotent: only
+  //     memos still carrying the bogus auto-skip approval are touched; once fixed
+  //     they no longer match, so re-runs leave them alone. Legitimately-progressed
+  //     memos (real approvals) are never affected.
+  const firstApprover = async (creator: any, companyId: number, departmentId: number | null) => {
+    // a) explicit first approver configured for this user (must be active, not self)
+    if (creator.managerId && creator.managerId !== creator.id) {
+      const u = await prisma.user.findFirst({ where: { id: creator.managerId, active: true } });
+      if (u) return u.id;
+    }
+    // b) the head of the memo's own department (excluding the creator)
     for (const role of ['manager', 'hrm', 'md']) {
       const u = await prisma.user.findFirst({
-        where: { role: role as any, active: true, companyId, departmentId, ...(excludeId ? { id: { not: excludeId } } : {}) },
+        where: { role: role as any, active: true, companyId, departmentId: departmentId ?? -1, id: { not: creator.id } },
         orderBy: { id: 'asc' },
       });
-      if (u) return u;
+      if (u) return u.id;
     }
-    return null;
+    // c) last resort: any company manager (not self)
+    const fb = await prisma.user.findFirst({ where: { role: 'manager' as any, active: true, companyId, id: { not: creator.id } }, orderBy: { id: 'asc' } });
+    return fb?.id ?? null;
   };
-  const stuck = await prisma.memo.findMany({
-    where: { status: 'pending_manager' as any },
-    select: { id: true, companyId: true, departmentId: true, createdBy: true, currentApproverId: true },
+  const bogus = await prisma.approval.findMany({
+    where: { step: 'manager', comment: { contains: 'ข้ามขั้น' } },
+    select: { id: true, memoId: true },
   });
   let fixed = 0;
-  for (const m of stuck) {
-    const head = await deptHead(m.companyId, m.departmentId);
-    if (!head) continue;
-    if (head.id === m.createdBy) {
-      const items = await prisma.memoItem.findMany({ where: { memoId: m.id }, select: { qty: true, unitPrice: true } });
-      const total = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-      await prisma.approval.create({ data: { memoId: m.id, step: 'manager', approvedBy: m.createdBy, status: 'approve', comment: 'แก้การจ่ายงาน: ผู้สร้างเป็นหัวหน้าแผนก' } });
-      if (total <= 1000) {
-        await prisma.memo.update({ where: { id: m.id }, data: { status: 'approved' as any, currentApproverId: null, closedAt: new Date() } });
-      } else {
-        const md = (await prisma.user.findFirst({ where: { role: 'md' as any, active: true, companyId: m.companyId }, orderBy: { id: 'asc' } }))
-          ?? (await prisma.user.findFirst({ where: { role: 'md' as any, active: true }, orderBy: { id: 'asc' } }));
-        if (md) await prisma.memo.update({ where: { id: m.id }, data: { status: 'pending_hrmd' as any, currentApproverId: md.id } });
-      }
-      fixed++;
-    } else if (m.currentApproverId !== head.id) {
-      await prisma.memo.update({ where: { id: m.id }, data: { currentApproverId: head.id } });
-      fixed++;
-    }
+  for (const b of bogus) {
+    const m = await prisma.memo.findUnique({ where: { id: b.memoId }, select: { id: true, companyId: true, departmentId: true, createdBy: true, status: true } });
+    if (!m) { await prisma.approval.delete({ where: { id: b.id } }).catch(() => {}); continue; }
+    if (['approved', 'rejected', 'cancelled'].includes(m.status as any)) continue; // already closed, leave history
+    const creator = await prisma.user.findUnique({ where: { id: m.createdBy } });
+    if (!creator) continue;
+    const approverId = await firstApprover(creator, m.companyId, m.departmentId);
+    if (!approverId) continue;
+    await prisma.approval.delete({ where: { id: b.id } }).catch(() => {});
+    await prisma.memo.update({ where: { id: m.id }, data: { status: 'pending_manager' as any, currentApproverId: approverId, closedAt: null } });
+    fixed++;
   }
-  if (fixed) console.log(`Fixed ${fixed} misrouted memo(s) at the manager step`);
+  if (fixed) console.log(`Re-routed ${fixed} memo(s) to their configured first approver`);
 
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');

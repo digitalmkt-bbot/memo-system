@@ -280,37 +280,15 @@ export class MemosService {
         memoNo = r[0].no;
       }
 
-      // The first approver is the HEAD of the memo's department (a 'manager', or
-      // the dept's HRM/MD when it has no manager — e.g. HR headed by the HRM).
-      // If the creator IS that head, skip the step (no self-approval):
-      // small memos are approved outright, larger ones go straight to MD.
-      const headId = await this.deptHeadId(memo.companyId, memo.departmentId);
-      // A head-level creator (role 'manager', or the actual dept head) does not
-      // approve at the manager step — skip straight to the next step.
-      const isHead = (headId != null && headId === user.id) || user.role === 'manager';
-
-      let data: any; let detail: string;
-      if (isHead) {
-        const total = await this.memoTotal(tx, id);
-        const small = total <= this.SMALL_MAX;
-        await tx.approval.create({ data: { memoId: id, step: 'manager', approvedBy: user.id, status: 'approve', comment: small
-          ? 'ผู้สร้างเป็นหัวหน้าแผนก · ยอด ≤ 1,000 → อนุมัติจบงานทันที'
-          : 'ผู้สร้างเป็นหัวหน้าแผนก (ข้ามขั้นหัวหน้า → ส่งตรงถึง MD)' } });
-        if (small) {
-          data = { memoNo, status: 'approved', currentApproverId: null, submittedAt: new Date(), closedAt: new Date() };
-          detail = `Assigned ${memoNo}; dept head, ≤1,000 → approved directly`;
-        } else {
-          const nextId = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
-          if (!nextId) throw new BadRequestException('No MD approver available');
-          data = { memoNo, status: 'pending_hrmd', currentApproverId: nextId, submittedAt: new Date() };
-          detail = `Assigned ${memoNo}; creator is dept head → routed to MD`;
-        }
-      } else {
-        const managerId = await this.pickManager(user.id, memo.companyId, memo.departmentId);
-        if (!managerId) throw new BadRequestException('No manager available to route to');
-        data = { memoNo, status: 'pending_manager', currentApproverId: managerId, submittedAt: new Date() };
-        detail = `Assigned ${memoNo}, routed to manager`;
-      }
+      // Route to the FIRST APPROVER configured in the backend for this creator
+      // (per-user "ผู้อนุมัติขั้นแรก" / managerId). No role-based skipping — even a
+      // department head goes to whoever the admin assigned as their first approver.
+      // If none is configured, fall back to the dept head, then any company manager.
+      // pickManager never returns the creator, so there is no self-approval.
+      const managerId = await this.pickManager(user.id, memo.companyId, memo.departmentId);
+      if (!managerId) throw new BadRequestException('ยังไม่ได้ตั้งผู้อนุมัติให้ผู้ใช้/แผนกนี้ในระบบหลังบ้าน');
+      const data: any = { memoNo, status: 'pending_manager', currentApproverId: managerId, submittedAt: new Date() };
+      const detail = `Assigned ${memoNo}, routed to configured first approver`;
 
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });
