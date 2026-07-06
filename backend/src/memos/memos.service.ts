@@ -247,9 +247,18 @@ export class MemosService {
   async remove(user: JwtUser, id: number) {
     const memo = await this.prisma.memo.findUnique({ where: { id } });
     if (!memo) throw new NotFoundException('Memo not found');
-    if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
-    if (memo.status !== 'draft') throw new BadRequestException('Only drafts can be deleted');
-    await this.prisma.memo.delete({ where: { id } });
+    // The creator may delete their own memo (e.g. a keying mistake), any status.
+    // Admin may delete any memo. No one else can.
+    if (memo.createdBy !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('เฉพาะผู้สร้างหรือผู้ดูแลระบบเท่านั้นที่ลบได้');
+    }
+    await this.prisma.$transaction([
+      this.prisma.approval.deleteMany({ where: { memoId: id } }),
+      this.prisma.memoItem.deleteMany({ where: { memoId: id } }),
+      this.prisma.attachment.deleteMany({ where: { memoId: id } }),
+      this.prisma.auditLog.deleteMany({ where: { memoId: id } }),
+      this.prisma.memo.delete({ where: { id } }),
+    ]);
     return { ok: true };
   }
 

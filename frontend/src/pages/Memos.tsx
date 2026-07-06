@@ -29,6 +29,12 @@ export function Memos() {
   useEffect(() => { if (canFilterCompany) api.companies().then(setCompanies).catch(() => {}); }, [canFilterCompany]);
   useEffect(() => { load(); }, [box, companyId]);
 
+  const del = async (e: any, m: any) => {
+    e.stopPropagation();
+    if (!window.confirm(`ลบ ${m.memoNo || 'บันทึกนี้'} ?`)) return;
+    try { await api.deleteMemo(m.id); load(); } catch (err: any) { alert(err?.response?.data?.message || err.message); }
+  };
+
   return (
     <>
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
@@ -80,7 +86,16 @@ export function Memos() {
                     <td className="px-4 py-3 text-[12.5px] text-gray-500">{m.companyCode}/{m.deptCode}</td>
                     <td className="px-4 py-3 text-[12.5px]">{m.fromName}</td>
                     <td className="px-4 py-3 text-right text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap">฿{(Number(m.grandTotal ?? m.totalAmount) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                    <td className="px-4 py-3 text-right"><StatusTag s={m.status} /></td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <StatusTag s={m.status} />
+                        {(user?.role === 'admin' || m.createdBy === user?.id) && (
+                          <button onClick={(e) => del(e, m)} title={lang === 'th' ? 'ลบ' : 'Delete'} className="text-rose-400 hover:text-rose-600 shrink-0">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
