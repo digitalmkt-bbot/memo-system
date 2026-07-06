@@ -8,10 +8,10 @@ import { MailService } from '../mail/mail.service';
 import { PdfService } from './pdf.service';
 
 const INCLUDE = {
-  creator: { select: { name: true } },
+  creator: { select: { name: true, role: true } },
   department: { select: { code: true, name: true } },
   company: { select: { code: true, name: true } },
-  currentApprover: { select: { name: true } },
+  currentApprover: { select: { name: true, role: true } },
   items: { orderBy: { position: 'asc' as const } },
 };
 
@@ -36,11 +36,13 @@ export class MemosService {
       vatAmount,
       grandTotal,
       creatorName: creator?.name ?? null,
+      creatorRole: creator?.role ?? null,
       deptCode: department?.code ?? null,
       deptName: department?.name ?? null,
       companyCode: company?.code ?? null,
       companyName: company?.name ?? null,
       currentApproverName: currentApprover?.name ?? null,
+      currentApproverRole: currentApprover?.role ?? null,
     };
   }
 

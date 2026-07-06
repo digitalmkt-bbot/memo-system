@@ -75,9 +75,19 @@ export function MemoView() {
   if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
-  const mgrAppr = approvals.find((a: any) => a.step === 'manager' && a.status === 'approve');
-  const hrmAppr = approvals.find((a: any) => a.step === 'hrm' && a.status === 'approve');
-  const mdAppr = approvals.find((a: any) => a.step === 'md' && a.status === 'approve');
+  // Signature boxes are ROLE-based: each approver appears in the box for THEIR
+  // OWN role. So the MD always shows in "กรรมการผู้จัดการ" — never in "ผจก.แผนก".
+  const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
+  const hrmAppr = approvals.find((a: any) => a.approverRole === 'hrm' && a.status === 'approve');
+  const mdAppr = approvals.find((a: any) => a.approverRole === 'md' && a.status === 'approve');
+  // Person currently expected to sign — shown greyed in the box for their role.
+  const isPending = ['pending_manager', 'pending_hrmd', 'pending_fc'].includes(memo.status);
+  const pendMgr = isPending && memo.currentApproverRole === 'manager' ? memo.currentApproverName : null;
+  const pendHrm = isPending && memo.currentApproverRole === 'hrm' ? memo.currentApproverName : null;
+  const pendMd = isPending && memo.currentApproverRole === 'md' ? memo.currentApproverName : null;
+  // When the creator IS a department manager, the memo skips the manager step and
+  // goes straight up — so the creator themselves fills the "ผจก.แผนก" box.
+  const mgrFallback = !mgrAppr && memo.creatorRole === 'manager' ? memo.creatorName : null;
   const items = memo.items || [];
   const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const vatAmount = memo.vat ? subtotal * 0.07 : 0;
@@ -147,9 +157,18 @@ export function MemoView() {
       t: `${roleLabel(a.approverRole)} ${a.status === 'approve' ? t('view.stepApprove') : a.status === 'hold' ? t('view.stepHold') : t('view.stepReject')}`,
       w: a.approverName, d: a.approvedAt, cm: a.comment,
     })),
-    ...(memo.status === 'pending_manager' ? [{ c: '#b9c4cc', t: t('view.waitManager'), w: memo.currentApproverName, d: null }] : []),
-    ...(memo.status === 'pending_hrmd' ? [{ c: '#b9c4cc', t: t('view.waitHrmd'), w: memo.currentApproverName, d: null }] : []),
-    ...(memo.status === 'pending_fc' ? [{ c: '#b9c4cc', t: t('view.waitFc'), w: memo.currentApproverName, d: null }] : []),
+    ...(['pending_manager', 'pending_hrmd', 'pending_fc'].includes(memo.status)
+      ? [{
+          c: '#b9c4cc',
+          // Label the pending step by the ACTUAL approver's role, e.g.
+          // "รอกรรมการผู้จัดการอนุมัติ" — never a fixed "ผจก.แผนก".
+          t: memo.currentApproverRole
+            ? `${lang === 'th' ? 'รอ' : 'Awaiting '}${roleLabel(memo.currentApproverRole)}${lang === 'th' ? 'อนุมัติ' : ' approval'}`
+            : t('view.waitManager'),
+          w: memo.currentApproverName,
+          d: null,
+        }]
+      : []),
     ...(memo.status === 'pending_executive' ? [{ c: '#b9c4cc', t: t('view.waitExecutive'), w: memo.currentApproverName, d: null }] : []),
   ];
 
@@ -225,24 +244,30 @@ export function MemoView() {
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { role: t('sign.manager'), a: mgrAppr },
-                { role: t('sign.hrm'), a: hrmAppr },
-                { role: t('sign.md'), a: mdAppr },
-              ].map((c, i) => (
+                { role: t('sign.manager'), a: mgrAppr, pend: pendMgr, fallback: mgrFallback },
+                { role: t('sign.hrm'), a: hrmAppr, pend: pendHrm, fallback: null },
+                { role: t('sign.md'), a: mdAppr, pend: pendMd, fallback: null },
+              ].map((c, i) => {
+                const signedName = c.a?.approverName || c.fallback; // name that sits on the line
+                return (
                 <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">
                   <div className="h-11 flex items-end justify-center">
                     {c.a?.approverRole === 'md'
                       ? <img src="/md-signature.png" alt="" className="max-h-11 max-w-[80%] object-contain" />
-                      : c.a?.approverName
-                        ? <span className="text-[15px] text-[#22206a] italic pb-1">{c.a.approverName}</span>
+                      : signedName
+                        ? <span className="text-[15px] text-[#22206a] italic pb-1">{signedName}</span>
                         : null}
                   </div>
                   <div className="border-t border-dashed border-slate-300 mx-3 mb-2" />
-                  <div className="text-[13px] font-semibold min-h-[16px]">{c.a?.approverName || '—'}</div>
+                  {signedName
+                    ? <div className="text-[13px] font-semibold min-h-[16px]">{signedName}</div>
+                    : c.pend
+                      ? <div className="text-[13px] font-medium text-slate-400 min-h-[16px]">{c.pend}</div>
+                      : <div className="text-[13px] font-semibold min-h-[16px]">—</div>}
                   <div className="text-slate-400 text-[11.5px]">{c.role}</div>
-                  <div className="text-slate-400 text-[11px]">{c.a?.approvedAt ? fmtDate(c.a.approvedAt, lang) : '—'}</div>
+                  <div className="text-slate-400 text-[11px]">{c.a?.approvedAt ? fmtDate(c.a.approvedAt, lang) : (c.pend ? (lang === 'th' ? 'รออนุมัติ' : 'Pending') : '—')}</div>
                 </div>
-              ))}
+              ); })}
             </div>
           </div>
 

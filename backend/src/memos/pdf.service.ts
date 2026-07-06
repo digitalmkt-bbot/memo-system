@@ -49,10 +49,20 @@ export class PdfService {
     return (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  /** Manager-column content: the manager who approved, or — when the creator is
+   *  themselves a department manager (memo skips straight up) — the creator. */
+  private mgrCell(approval: any, memo: any): { sig: string; name: string; date: string } {
+    if (approval) return { sig: this.sigImg(approval), name: this.esc(approval.approverName || ''), date: this.fmtDate(approval.approvedAt) };
+    if (memo.creatorRole === 'manager' && memo.creatorName) {
+      return { sig: `<span class="signame">${this.esc(memo.creatorName)}</span>`, name: this.esc(memo.creatorName), date: '' };
+    }
+    return { sig: '', name: '', date: '' };
+  }
+
   private html({ memo, approvals }: { memo: any; approvals: any[] }): string {
-    const managerApproval = approvals.find((a) => a.step === 'manager' && a.status === 'approve');
-    const hrmApproval = approvals.find((a) => a.step === 'hrm' && a.status === 'approve');
-    const mdApproval = approvals.find((a) => a.step === 'md' && a.status === 'approve');
+    const managerApproval = approvals.find((a) => a.approverRole === 'manager' && a.status === 'approve');
+    const hrmApproval = approvals.find((a) => a.approverRole === 'hrm' && a.status === 'approve');
+    const mdApproval = approvals.find((a) => a.approverRole === 'md' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
@@ -151,10 +161,10 @@ export class PdfService {
 
       <div class="items-label">ลายมือชื่ออนุมัติ</div>
       <div class="sign">
-        <div class="col"><div class="sigbox">${this.sigImg(managerApproval)}</div><div class="line"></div>
-          <div class="who">${this.esc((managerApproval && managerApproval.approverName) || '')}</div>
+        <div class="col"><div class="sigbox">${this.mgrCell(managerApproval, memo).sig}</div><div class="line"></div>
+          <div class="who">${this.mgrCell(managerApproval, memo).name}</div>
           <div class="role">ผจก.แผนก / Manager</div>
-          <div class="date">${managerApproval ? this.fmtDate(managerApproval.approvedAt) : ''}</div></div>
+          <div class="date">${this.mgrCell(managerApproval, memo).date}</div></div>
         <div class="col"><div class="sigbox">${this.sigImg(hrmApproval)}</div><div class="line"></div>
           <div class="who">${this.esc((hrmApproval && hrmApproval.approverName) || '')}</div>
           <div class="role">ผจก.ฝ่ายบุคคล / HRM</div>
@@ -169,9 +179,9 @@ export class PdfService {
 
   /* LOVE ISLAND branded template — matches the company's Memo letterhead. */
   private htmlLoveIsland({ memo, approvals }: { memo: any; approvals: any[] }): string {
-    const mgr = approvals.find((a) => a.step === 'manager' && a.status === 'approve');
-    const hrm = approvals.find((a) => a.step === 'hrm' && a.status === 'approve');
-    const md = approvals.find((a) => a.step === 'md' && a.status === 'approve');
+    const mgr = approvals.find((a) => a.approverRole === 'manager' && a.status === 'approve');
+    const hrm = approvals.find((a) => a.approverRole === 'hrm' && a.status === 'approve');
+    const md = approvals.find((a) => a.approverRole === 'md' && a.status === 'approve');
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
     const catLabel = memo.category ? ((catMap[memo.category] || memo.category) + (memo.category === 'other' && memo.categoryNote ? ` (${memo.categoryNote})` : '')) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
@@ -270,7 +280,7 @@ export class PdfService {
 
       <div class="sign-title">ลายมือชื่อผู้อนุมัติ</div>
       <div class="sign">
-        <div class="col"><div class="sigbox">${this.sigImg(mgr)}</div><div class="line"></div><div class="who">${this.esc((mgr && mgr.approverName) || '')}</div><div class="role">ผู้จัดการแผนก / Manager</div><div class="dt">${mgr ? this.fmtDate(mgr.approvedAt) : ''}</div></div>
+        <div class="col"><div class="sigbox">${this.mgrCell(mgr, memo).sig}</div><div class="line"></div><div class="who">${this.mgrCell(mgr, memo).name}</div><div class="role">ผู้จัดการแผนก / Manager</div><div class="dt">${this.mgrCell(mgr, memo).date}</div></div>
         <div class="col"><div class="sigbox">${this.sigImg(hrm)}</div><div class="line"></div><div class="who">${this.esc((hrm && hrm.approverName) || '')}</div><div class="role">ผจก.ฝ่ายบุคคล / HRM</div><div class="dt">${hrm ? this.fmtDate(hrm.approvedAt) : ''}</div></div>
         <div class="col"><div class="sigbox">${this.sigImg(md)}</div><div class="line"></div><div class="who">${this.esc((md && md.approverName) || '')}</div><div class="role">กรรมการผู้จัดการ / MD</div><div class="dt">${md ? this.fmtDate(md.approvedAt) : ''}</div></div>
       </div>
