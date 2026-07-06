@@ -285,7 +285,9 @@ export class MemosService {
       // If the creator IS that head, skip the step (no self-approval):
       // small memos are approved outright, larger ones go straight to MD.
       const headId = await this.deptHeadId(memo.companyId, memo.departmentId);
-      const isHead = headId != null && headId === user.id;
+      // A head-level creator (role 'manager', or the actual dept head) does not
+      // approve at the manager step — skip straight to the next step.
+      const isHead = (headId != null && headId === user.id) || user.role === 'manager';
 
       let data: any; let detail: string;
       if (isHead) {
