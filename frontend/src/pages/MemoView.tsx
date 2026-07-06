@@ -39,7 +39,15 @@ export function MemoView() {
   const [approverList, setApproverList] = useState<any[]>([]);
   const [chosen, setChosen] = useState('');
   const [submitBusy, setSubmitBusy] = useState(false);
+  const [pdfView, setPdfView] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const openPdfPreview = async () => {
+    setPdfBusy(true);
+    try { setPdfView(await api.pdfBlobUrl(mid)); } catch (e: any) { alert(e?.response?.data?.message || e.message); } finally { setPdfBusy(false); }
+  };
+  const closePdfPreview = () => { if (pdfView) URL.revokeObjectURL(pdfView); setPdfView(null); };
 
   const canPreview = (mime: string) => !!mime && (mime.startsWith('image/') || mime === 'application/pdf');
   const openPreview = async (a: any) => {
@@ -251,6 +259,7 @@ export function MemoView() {
             {isCreator && memo.status === 'pending_manager' && (
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             )}
+            {memo.memoNo && <button className="btn btn-ghost" onClick={openPdfPreview} disabled={pdfBusy}>{pdfBusy ? (lang === 'th' ? 'กำลังเปิด…' : 'Opening…') : (lang === 'th' ? 'ดูตัวอย่าง PDF' : 'Preview PDF')}</button>}
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
@@ -397,6 +406,23 @@ export function MemoView() {
               {preview.mime.startsWith('image/')
                 ? <img src={preview.url} alt={preview.name} className="max-w-full max-h-[80vh] object-contain" />
                 : <iframe src={preview.url} title={preview.name} className="w-full h-[80vh] border-0" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pdfView && (
+        <div className="fixed inset-0 bg-ink/70 grid place-items-center p-5 z-50" onClick={closePdfPreview}>
+          <div className="bg-white rounded-2xl overflow-hidden w-full max-w-4xl max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+              <div className="font-semibold text-[13px] truncate mr-2">📄 {lang === 'th' ? 'ตัวอย่าง PDF' : 'PDF preview'} · {memo.memoNo}</div>
+              <div className="flex items-center gap-3 shrink-0">
+                <button className="text-ocean text-[13px] hover:underline" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>
+                <button className="text-gray-500 hover:text-ink text-lg leading-none" onClick={closePdfPreview}>✕</button>
+              </div>
+            </div>
+            <div className="bg-gray-50 flex-1 overflow-auto">
+              <iframe src={pdfView} title="PDF" className="w-full h-[82vh] border-0" />
             </div>
           </div>
         </div>

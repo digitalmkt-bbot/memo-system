@@ -79,6 +79,10 @@ export const api = {
     return URL.createObjectURL(res.data as Blob);
   },
   pdfUrl: (id: number) => `${BASE}/memos/${id}/pdf`,
+  pdfBlobUrl: async (id: number) => {
+    const res = await http.get(`/memos/${id}/pdf`, { responseType: 'blob' });
+    return URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }));
+  },
   openPdf: async (id: number, memoNo?: string) => {
     const res = await http.get(`/memos/${id}/pdf`, { responseType: 'blob' });
     const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
