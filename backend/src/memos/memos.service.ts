@@ -356,7 +356,12 @@ export class MemosService {
       await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'approve', comment: comment ?? null } });
 
       let data: any; let action = 'approved';
-      if (memo.status === 'pending_manager') {
+      if (user.role === 'md') {
+        // The Managing Director is the highest authority — their approval is
+        // ALWAYS final, at any step. Never route onward to HR after the MD signs.
+        data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+        action = 'approved_md_final';
+      } else if (memo.status === 'pending_manager') {
         const total = await this.memoTotal(tx, id);
         if (total <= this.SMALL_MAX) {
           // small memo (≤ 1,000): no MD. Manager either finalizes, or forwards to HRM.

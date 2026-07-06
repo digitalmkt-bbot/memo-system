@@ -266,6 +266,22 @@ async function main() {
   }
   if (resynced) console.log(`Re-synced ${resynced} pending memo(s) to configured first approver`);
 
+  // 12) Finalize memos where the MD already approved but were wrongly routed
+  //     onward for further approval (e.g. sent to HR after the MD signed).
+  //     The Managing Director is the top authority — their approval is final.
+  const mdApprovals = await prisma.approval.findMany({
+    where: { status: 'approve' as any, approver: { role: 'md' as any } },
+    select: { memoId: true },
+  });
+  const mdMemoIds = [...new Set(mdApprovals.map((a) => a.memoId).filter((x): x is number => x != null))];
+  if (mdMemoIds.length) {
+    const done = await prisma.memo.updateMany({
+      where: { id: { in: mdMemoIds }, status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc'] as any } },
+      data: { status: 'approved' as any, currentApproverId: null, closedAt: new Date() },
+    });
+    if (done.count) console.log(`Finalized ${done.count} memo(s) already approved by the MD`);
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
