@@ -93,11 +93,15 @@ export class MemosService {
     // 2) the head of the memo's OWN department (never cross-department)
     const head = await this.deptHeadId(coId, deptId, creatorId);
     if (head) return head;
-    // 3) last resort: any manager in the company
-    const fb = await this.prisma.user.findFirst({
-      where: { role: 'manager', active: true, companyId: coId, id: { not: creatorId } }, orderBy: { id: 'asc' },
-    });
-    return fb?.id ?? null;
+    // 3) escalate to the company HR head, then the MD — never grab a random
+    //    manager from an unrelated department.
+    for (const role of ['hrm', 'md']) {
+      const u = await this.prisma.user.findFirst({
+        where: { role: role as any, active: true, companyId: coId, id: { not: creatorId } }, orderBy: { id: 'asc' },
+      });
+      if (u) return u.id;
+    }
+    return null;
   }
 
   private async pickByRole(role: string, companyId?: number, excludeId?: number) {

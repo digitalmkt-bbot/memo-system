@@ -217,9 +217,13 @@ async function main() {
       });
       if (u) return u.id;
     }
-    // c) last resort: any company manager (not self)
-    const fb = await prisma.user.findFirst({ where: { role: 'manager' as any, active: true, companyId, id: { not: creator.id } }, orderBy: { id: 'asc' } });
-    return fb?.id ?? null;
+    // c) escalate to the company HR head, then the MD — never a random peer
+    //    manager from an unrelated department.
+    for (const role of ['hrm', 'md']) {
+      const u = await prisma.user.findFirst({ where: { role: role as any, active: true, companyId, id: { not: creator.id } }, orderBy: { id: 'asc' } });
+      if (u) return u.id;
+    }
+    return null;
   };
   const bogus = await prisma.approval.findMany({
     where: { step: 'manager', comment: { contains: 'ข้ามขั้น' } },
@@ -239,6 +243,27 @@ async function main() {
     fixed++;
   }
   if (fixed) console.log(`Re-routed ${fixed} memo(s) to their configured first approver`);
+
+  // 11) Re-sync every memo still at the FIRST-approval stage to its creator's
+  //     configured first approver. Fixes memos that were parked on a wrong
+  //     fallback approver (e.g. a manager from another department) before the
+  //     per-user "ผู้อนุมัติขั้นแรก" was set in the backend. Idempotent: a memo
+  //     already sitting with the correct approver is left untouched.
+  const atManager = await prisma.memo.findMany({
+    where: { status: 'pending_manager' as any },
+    select: { id: true, companyId: true, departmentId: true, createdBy: true, currentApproverId: true },
+  });
+  let resynced = 0;
+  for (const m of atManager) {
+    const creator = await prisma.user.findUnique({ where: { id: m.createdBy } });
+    if (!creator) continue;
+    const approverId = await firstApprover(creator, m.companyId, m.departmentId);
+    if (approverId && approverId !== m.currentApproverId) {
+      await prisma.memo.update({ where: { id: m.id }, data: { currentApproverId: approverId } });
+      resynced++;
+    }
+  }
+  if (resynced) console.log(`Re-synced ${resynced} pending memo(s) to configured first approver`);
 
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
