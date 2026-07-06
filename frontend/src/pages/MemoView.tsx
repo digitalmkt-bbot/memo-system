@@ -223,7 +223,11 @@ export function MemoView() {
               ].map((c, i) => (
                 <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">
                   <div className="h-11 flex items-end justify-center">
-                    {c.a?.approverRole === 'md' && <img src="/md-signature.png" alt="" className="max-h-11 max-w-[80%] object-contain" />}
+                    {c.a?.approverRole === 'md'
+                      ? <img src="/md-signature.png" alt="" className="max-h-11 max-w-[80%] object-contain" />
+                      : c.a?.approverName
+                        ? <span className="text-[15px] text-[#22206a] italic pb-1">{c.a.approverName}</span>
+                        : null}
                   </div>
                   <div className="border-t border-dashed border-slate-300 mx-3 mb-2" />
                   <div className="text-[13px] font-semibold min-h-[16px]">{c.a?.approverName || '—'}</div>

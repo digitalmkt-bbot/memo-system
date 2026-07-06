@@ -4,11 +4,13 @@ import { MD_SIGNATURE } from './md-signature';
 
 @Injectable()
 export class PdfService {
-  /** Signature image for an approval, on the line — only the MD has one for now. */
+  /** What sits ON the signature line: the MD's signature image, or — for anyone
+   *  else who approved — their name written on the line. Empty if not approved. */
   private sigImg(a: any): string {
-    return a && a.approverRole === 'md'
-      ? `<img class="sig" src="${MD_SIGNATURE}" alt="" />`
-      : '';
+    if (!a) return '';
+    if (a.approverRole === 'md') return `<img class="sig" src="${MD_SIGNATURE}" alt="" />`;
+    const name = this.esc(a.approverName || '');
+    return name ? `<span class="signame">${name}</span>` : '';
   }
   /** Render an A4 portrait MEMO PDF using Puppeteer + Chromium. */
   async render(data: { memo: any; approvals: any[] }): Promise<Buffer> {
@@ -110,6 +112,7 @@ export class PdfService {
       .sign .col{flex:1;text-align:center}
       .sign .sigbox{height:46px;display:flex;align-items:flex-end;justify-content:center}
       .sign .sigbox .sig{max-height:44px;max-width:82%}
+      .sign .sigbox .signame{font-size:14px;color:#22206a;font-style:italic;padding-bottom:4px}
       .sign .line{border-top:1px dotted #888;margin:2px 8px 6px}
       .sign .who{font-weight:700;font-size:12px;min-height:16px}
       .sign .role{color:#666;font-size:11px}
@@ -220,6 +223,7 @@ export class PdfService {
       .sign .col{flex:1;text-align:center}
       .sign .sigbox{height:46px;display:flex;align-items:flex-end;justify-content:center}
       .sign .sigbox .sig{max-height:44px;max-width:82%}
+      .sign .sigbox .signame{font-size:14px;color:#22206a;font-style:italic;padding-bottom:4px}
       .sign .line{border-top:1.5px dotted #6b7785;margin:2px 6px 6px}
       .sign .who{font-weight:800;color:#17263f;font-size:12px;min-height:15px}
       .sign .role{color:#6b7785;font-size:11px}
