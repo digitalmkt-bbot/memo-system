@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { LOVE_LOGO } from './love-logo';
+import { MD_SIGNATURE } from './md-signature';
 
 @Injectable()
 export class PdfService {
+  /** Signature image for an approval, on the line — only the MD has one for now. */
+  private sigImg(a: any): string {
+    return a && a.approverRole === 'md'
+      ? `<img class="sig" src="${MD_SIGNATURE}" alt="" />`
+      : '';
+  }
   /** Render an A4 portrait MEMO PDF using Puppeteer + Chromium. */
   async render(data: { memo: any; approvals: any[] }): Promise<Buffer> {
     const puppeteer = require('puppeteer');
@@ -101,9 +108,12 @@ export class PdfService {
       .detail{border:1px solid #e2e8ec;border-radius:6px;padding:12px;white-space:pre-wrap;min-height:${detailRows * 1.7}em;line-height:1.7}
       .sign{display:flex;gap:18px;margin-top:36px}
       .sign .col{flex:1;text-align:center}
-      .sign .line{border-top:1px dotted #888;margin:48px 8px 6px}
-      .sign .role{font-weight:700;font-size:12px}.sign .who{color:#444;font-size:12px;min-height:16px}
-      .sign .date{color:#888;font-size:11px;margin-top:4px}
+      .sign .sigbox{height:46px;display:flex;align-items:flex-end;justify-content:center}
+      .sign .sigbox .sig{max-height:44px;max-width:82%}
+      .sign .line{border-top:1px dotted #888;margin:2px 8px 6px}
+      .sign .who{font-weight:700;font-size:12px;min-height:16px}
+      .sign .role{color:#666;font-size:11px}
+      .sign .date{color:#888;font-size:11px;margin-top:3px}
       .items-label{font-weight:700;margin:16px 0 6px;color:#0a6e7c}
       table.items{width:100%;border-collapse:collapse;font-size:12px}
       table.items th,table.items td{border:1px solid #e2e8ec;padding:6px 8px}
@@ -138,14 +148,17 @@ export class PdfService {
 
       <div class="items-label">ลายมือชื่ออนุมัติ</div>
       <div class="sign">
-        <div class="col"><div class="line"></div><div class="role">ผจก.แผนก / Manager</div>
+        <div class="col"><div class="sigbox">${this.sigImg(managerApproval)}</div><div class="line"></div>
           <div class="who">${this.esc((managerApproval && managerApproval.approverName) || '')}</div>
+          <div class="role">ผจก.แผนก / Manager</div>
           <div class="date">${managerApproval ? this.fmtDate(managerApproval.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">ผจก.ฝ่ายบุคคล / HRM</div>
+        <div class="col"><div class="sigbox">${this.sigImg(hrmApproval)}</div><div class="line"></div>
           <div class="who">${this.esc((hrmApproval && hrmApproval.approverName) || '')}</div>
+          <div class="role">ผจก.ฝ่ายบุคคล / HRM</div>
           <div class="date">${hrmApproval ? this.fmtDate(hrmApproval.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">กรรมการผู้จัดการ / MD</div>
+        <div class="col"><div class="sigbox">${this.sigImg(mdApproval)}</div><div class="line"></div>
           <div class="who">${this.esc((mdApproval && mdApproval.approverName) || '')}</div>
+          <div class="role">กรรมการผู้จัดการ / MD</div>
           <div class="date">${mdApproval ? this.fmtDate(mdApproval.approvedAt) : ''}</div></div>
       </div>
     </body></html>`;
@@ -205,9 +218,11 @@ export class PdfService {
       .sign-title{font-weight:800;color:#17263f;margin:26px 0 4px;font-size:13.5px}
       .sign{display:flex;gap:18px;margin-top:34px}
       .sign .col{flex:1;text-align:center}
-      .sign .line{border-top:1.5px dotted #6b7785;margin:0 6px 6px}
-      .sign .role{font-weight:800;color:#17263f;font-size:12px}
-      .sign .who{color:#374151;font-size:12px;min-height:15px}
+      .sign .sigbox{height:46px;display:flex;align-items:flex-end;justify-content:center}
+      .sign .sigbox .sig{max-height:44px;max-width:82%}
+      .sign .line{border-top:1.5px dotted #6b7785;margin:2px 6px 6px}
+      .sign .who{font-weight:800;color:#17263f;font-size:12px;min-height:15px}
+      .sign .role{color:#6b7785;font-size:11px}
       .sign .dt{color:#8a98a5;font-size:11px;margin-top:3px}
     </style></head><body>
       <div class="head">
@@ -251,9 +266,9 @@ export class PdfService {
 
       <div class="sign-title">ลายมือชื่อผู้อนุมัติ</div>
       <div class="sign">
-        <div class="col"><div class="line"></div><div class="role">ผู้จัดการแผนก / Manager</div><div class="who">${this.esc((mgr && mgr.approverName) || '')}</div><div class="dt">${mgr ? this.fmtDate(mgr.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">ผจก.ฝ่ายบุคคล / HRM</div><div class="who">${this.esc((hrm && hrm.approverName) || '')}</div><div class="dt">${hrm ? this.fmtDate(hrm.approvedAt) : ''}</div></div>
-        <div class="col"><div class="line"></div><div class="role">กรรมการผู้จัดการ / MD</div><div class="who">${this.esc((md && md.approverName) || '')}</div><div class="dt">${md ? this.fmtDate(md.approvedAt) : ''}</div></div>
+        <div class="col"><div class="sigbox">${this.sigImg(mgr)}</div><div class="line"></div><div class="who">${this.esc((mgr && mgr.approverName) || '')}</div><div class="role">ผู้จัดการแผนก / Manager</div><div class="dt">${mgr ? this.fmtDate(mgr.approvedAt) : ''}</div></div>
+        <div class="col"><div class="sigbox">${this.sigImg(hrm)}</div><div class="line"></div><div class="who">${this.esc((hrm && hrm.approverName) || '')}</div><div class="role">ผจก.ฝ่ายบุคคล / HRM</div><div class="dt">${hrm ? this.fmtDate(hrm.approvedAt) : ''}</div></div>
+        <div class="col"><div class="sigbox">${this.sigImg(md)}</div><div class="line"></div><div class="who">${this.esc((md && md.approverName) || '')}</div><div class="role">กรรมการผู้จัดการ / MD</div><div class="dt">${md ? this.fmtDate(md.approvedAt) : ''}</div></div>
       </div>
     </body></html>`;
   }

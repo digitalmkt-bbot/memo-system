@@ -217,16 +217,18 @@ export function MemoView() {
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { role: t('sign.manager'), who: mgrAppr?.approverName, when: mgrAppr?.approvedAt },
-                { role: t('sign.hrm'), who: hrmAppr?.approverName, when: hrmAppr?.approvedAt },
-                { role: t('sign.md'), who: mdAppr?.approverName, when: mdAppr?.approvedAt },
+                { role: t('sign.manager'), a: mgrAppr },
+                { role: t('sign.hrm'), a: hrmAppr },
+                { role: t('sign.md'), a: mdAppr },
               ].map((c, i) => (
                 <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">
-                  <div className="h-10" />
+                  <div className="h-11 flex items-end justify-center">
+                    {c.a?.approverRole === 'md' && <img src="/md-signature.png" alt="" className="max-h-11 max-w-[80%] object-contain" />}
+                  </div>
                   <div className="border-t border-dashed border-slate-300 mx-3 mb-2" />
-                  <div className="text-[13px] font-semibold">{c.role}</div>
-                  <div className="text-slate-500 text-[12px] min-h-[16px]">{c.who || '—'}</div>
-                  <div className="text-slate-400 text-[11px]">{c.when ? fmtDate(c.when, lang) : '—'}</div>
+                  <div className="text-[13px] font-semibold min-h-[16px]">{c.a?.approverName || '—'}</div>
+                  <div className="text-slate-400 text-[11.5px]">{c.role}</div>
+                  <div className="text-slate-400 text-[11px]">{c.a?.approvedAt ? fmtDate(c.a.approvedAt, lang) : '—'}</div>
                 </div>
               ))}
             </div>
