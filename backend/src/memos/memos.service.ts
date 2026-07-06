@@ -220,7 +220,10 @@ export class MemosService {
     const memo = await this.prisma.memo.findUnique({ where: { id } });
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
-    if (memo.status !== 'draft') throw new BadRequestException('Only drafts can be edited');
+    // Editable while still a draft, OR after submit but BEFORE the first approval
+    // (status pending_manager = the first approver has not acted yet).
+    if (memo.status !== 'draft' && memo.status !== 'pending_manager')
+      throw new BadRequestException('แก้ไขได้เฉพาะก่อนการอนุมัติขั้นแรกเท่านั้น');
     const updated = await this.prisma.memo.update({
       where: { id },
       data: {

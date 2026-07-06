@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { fmtDay } from '../ui';
 import { useI18n } from '../i18n';
-import { useAuth } from '../auth';
 
 export type MemoItemRow = { name: string; detail?: string; qty: any; unit?: string; unitPrice: any };
 export type MemoFormValues = {
@@ -32,14 +31,12 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const [category, setCategory] = useState<string>(initial?.category || 'general');
   const [categoryNote, setCategoryNote] = useState<string>(initial?.categoryNote || '');
   const [neededDate, setNeededDate] = useState<string>(initial?.neededDate || '');
-  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MemoFormValues>({
     defaultValues: { companyId: 0, departmentId: 0, fromName: '', subject: '', attachment: '', detail: '', ...initial },
   });
   const companyId = watch('companyId');
   const activeStep = Math.max(0, STEPS.findIndex(([k]) => k === (status || 'create')));
-  const isSelfManager = user?.role === 'manager' && Number(watch('departmentId')) === user?.departmentId;
 
   useEffect(() => { api.companies().then((c) => { setCompanies(c); if (!initial?.companyId && c[0]) setValue('companyId', c[0].id); }); }, []);
   useEffect(() => {
@@ -85,8 +82,15 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       let id = memoId;
       if (id) await api.updateMemo(id, build(v));
       else { const m = await api.createMemo(build(v)); id = m.id; }
-      await uploadIfAny(id!); await api.submitMemo(id!, isSelfManager ? 'md' : undefined); nav(`/memos/view/${id}`);
+      await uploadIfAny(id!); await api.submitMemo(id!); nav(`/memos/view/${id}`);
     } finally { setBusy(false); }
+  });
+  // Editing an already-submitted memo (before the first approval): just save the
+  // changes and go back to the memo — it stays with the same approver.
+  const saveEdit = handleSubmit(async (v) => {
+    setBusy(true);
+    try { await api.updateMemo(memoId!, build(v)); await uploadIfAny(memoId!); nav(`/memos/view/${memoId}`); }
+    finally { setBusy(false); }
   });
 
   const cell = 'rounded-lg bg-surface shadow-neu-inset px-2.5 py-1.5 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-ocean/40 w-full';
@@ -227,15 +231,15 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
           </div>
         </div>
 
-        {isSelfManager && (
-          <div className="mt-6 flex items-center gap-2 flex-wrap text-[13px] text-ink bg-surface rounded-xl px-3.5 py-2.5 shadow-neu-inset">
-            <span className="text-slate-500">{t('form.selfManagerNote')}</span>
-            <span className="rounded-lg bg-sand shadow-neu-sm px-2.5 py-1.5 text-[13px] font-medium">{t('view.toMd')}</span>
-          </div>
-        )}
         <div className="flex gap-2.5 mt-4">
-          <button type="button" className="btn btn-ghost" onClick={saveDraft} disabled={busy}>{t('form.saveDraft')}</button>
-          <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>{t('form.submit')}</button>
+          {status === 'pending_manager' ? (
+            <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={busy}>{lang === 'th' ? 'บันทึกการแก้ไข' : 'Save changes'}</button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-ghost" onClick={saveDraft} disabled={busy}>{t('form.saveDraft')}</button>
+              <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>{t('form.submit')}</button>
+            </>
+          )}
         </div>
       </form>
     </div>
