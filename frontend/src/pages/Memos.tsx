@@ -17,7 +17,7 @@ export function Memos() {
   const [companyId, setCompanyId] = useState('');
   const canFilterCompany = ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user?.role || '');
 
-  const BOXES: [string, string][] = [['sent', t('memos.boxSent')], ['inbox', t('memos.boxInbox')], ['all', t('memos.boxAll')]];
+  const BOXES: [string, string][] = [['sent', t('memos.boxSent')], ['inbox', t('memos.boxInbox')], ['received', t('memos.boxReceived')], ['all', t('memos.boxAll')]];
 
   const load = () => {
     setLoading(true);

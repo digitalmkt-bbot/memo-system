@@ -152,6 +152,10 @@ export class MemosService {
       where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
     } else if (f.box === 'sent') {
       where.createdBy = user.id;
+    } else if (f.box === 'received') {
+      // memos that were "ส่งปิดงาน" (forwarded to close) to THIS user's email
+      const me = await this.prisma.user.findUnique({ where: { id: user.id }, select: { email: true } });
+      where.forwardedTo = { contains: (me?.email || '__no_recipient__').toLowerCase(), mode: 'insensitive' };
     } else {
       Object.assign(where, this.visibilityScope(user));
     }
@@ -182,6 +186,11 @@ export class MemosService {
       (['manager', 'staff'].includes(user.role) &&
         memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
         (memo.status !== 'draft' || memo.createdBy === user.id));
+    if (!participant && (memo as any).forwardedTo) {
+      // a recipient of "ส่งปิดงาน" may open the memo
+      const me = await this.prisma.user.findUnique({ where: { id: user.id }, select: { email: true } });
+      if (me?.email && String((memo as any).forwardedTo).toLowerCase().includes(me.email.toLowerCase())) participant = true;
+    }
     if (!participant) {
       const ap = await this.prisma.approval.findFirst({ where: { memoId: id, approvedBy: user.id } });
       if (!ap) throw new ForbiddenException('Not allowed');
