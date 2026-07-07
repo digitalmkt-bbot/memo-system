@@ -439,14 +439,24 @@ export class MemosService {
     const pdf = await this.pdf.render({ memo: shaped, approvals: approvals.map((a) => ({ ...a, approverName: a.approver.name, approverRole: a.approver.role })) });
     const files = await this.prisma.attachment.findMany({ where: { memoId: id } });
 
-    const attachments = [
-      { filename: `${shaped.memoNo || 'memo'}.pdf`, mimeType: 'application/pdf', base64: pdf.toString('base64') },
-      ...files.map((f) => ({ filename: f.filename, mimeType: f.mimeType, base64: Buffer.from(f.data as any).toString('base64') })),
+    // Keep e-mail attachment names safe for the mail API, and don't let a huge
+    // file cause the whole message (incl. other attachments) to be rejected —
+    // oversized files are listed instead and downloaded from the system.
+    const safeName = (name: string) => (String(name || 'file').replace(/[\\/:*?"<>|\r\n\t]+/g, '_').replace(/\s+/g, ' ').trim() || 'file');
+    const EMAIL_MAX = 7 * 1024 * 1024; // per-file cap for e-mail attachments
+    const attachments: { filename: string; mimeType: string; base64: string }[] = [
+      { filename: `${safeName(shaped.memoNo || 'memo')}.pdf`, mimeType: 'application/pdf', base64: pdf.toString('base64') },
     ];
+    const skipped: string[] = [];
+    for (const f of files) {
+      const buf = Buffer.from(f.data as any);
+      if (buf.length > EMAIL_MAX) { skipped.push(f.filename); continue; }
+      attachments.push({ filename: safeName(f.filename), mimeType: f.mimeType || 'application/octet-stream', base64: buf.toString('base64') });
+    }
 
     const creator = await this.prisma.user.findUnique({ where: { id: memo.createdBy }, select: { email: true } });
     const cc = creator?.email ? [creator.email] : [];
-    await this.mail.sendMemoForward(to, shaped, attachments, cc);
+    await this.mail.sendMemoForward(to, shaped, attachments, cc, skipped);
     const updated = await this.prisma.memo.update({
       where: { id }, data: { forwardedAt: new Date(), forwardedTo: to.join(', ') }, include: INCLUDE,
     });
@@ -504,6 +514,11 @@ export class MemosService {
       (['manager', 'staff'].includes(user.role) && memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
         (memo.status !== 'draft' || memo.createdBy === user.id));
     if (ok) return;
+    if ((memo as any).forwardedTo) {
+      // a recipient of "ส่งปิดงาน" may view/download the memo's files
+      const me = await this.prisma.user.findUnique({ where: { id: user.id }, select: { email: true } });
+      if (me?.email && String((memo as any).forwardedTo).toLowerCase().includes(me.email.toLowerCase())) return;
+    }
     const ap = await this.prisma.approval.findFirst({ where: { memoId: memo.id, approvedBy: user.id } });
     if (!ap) throw new ForbiddenException('Not allowed');
   }

@@ -119,7 +119,8 @@ export class MailService {
   }
 
   /** Final forward: send the approved memo PDF + attachments to archive mailboxes (CC the creator). */
-  async sendMemoForward(recipients: string[], memo: any, attachments: { filename: string; mimeType: string; base64: string }[], cc?: string[]) {
+  async sendMemoForward(recipients: string[], memo: any, attachments: { filename: string; mimeType: string; base64: string }[], cc?: string[], skipped?: string[]) {
+    const attNames = attachments.map((a) => a.filename);
     const html = this.layout(
       'ส่งบันทึกข้อความที่อนุมัติแล้ว',
       [
@@ -127,9 +128,13 @@ export class MailService {
         `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
         `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
         `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+        `<b>ไฟล์แนบในอีเมล:</b> ${attNames.map((n) => this.esc(n)).join(', ') || '-'}`,
+        ...(skipped && skipped.length
+          ? [`<b>ไฟล์ขนาดใหญ่ (ดาวน์โหลดในระบบ):</b> ${skipped.map((n) => this.esc(n)).join(', ')}`]
+          : []),
       ],
       memo.id,
-      'เปิดดูในระบบ',
+      'เปิดดู / ดาวน์โหลดไฟล์ทั้งหมดในระบบ',
     );
     await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments, cc);
   }
