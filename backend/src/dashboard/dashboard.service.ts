@@ -9,7 +9,7 @@ export class DashboardService {
   // executive/admin: all · manager: own department · staff: own memos
   private scopeWhere(user: JwtUser): any {
     if (user.role === 'admin' || user.role === 'executive') return {};
-    if (user.role === 'manager') return { companyId: user.companyId, departmentId: user.departmentId ?? -1 };
+    if (user.role === 'manager') return { OR: [{ companyId: user.companyId, departmentId: user.departmentId ?? -1 }, { createdBy: user.id }] };
     return { createdBy: user.id };
   }
 
@@ -19,8 +19,7 @@ export class DashboardService {
     const params: any[] = [];
     const p = (v: any) => { params.push(v); return `$${params.length}`; };
     if (user.role === 'manager') {
-      conds.push(`m.company_id = ${p(user.companyId)}`);
-      conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`);
+      conds.push(`(m.created_by = ${p(user.id)} OR (m.company_id = ${p(user.companyId)} AND m.department_id = ${p(user.departmentId ?? -1)}))`);
     } else if (user.role === 'staff') {
       conds.push(`m.created_by = ${p(user.id)}`);
     }
@@ -49,8 +48,7 @@ export class DashboardService {
     if (companyId) {
       conds.push(`m.company_id = ${p(parseInt(companyId, 10))}`);
     } else if (user.role === 'manager') {
-      conds.push(`m.company_id = ${p(user.companyId)}`);
-      conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`);
+      conds.push(`(m.created_by = ${p(user.id)} OR (m.company_id = ${p(user.companyId)} AND m.department_id = ${p(user.departmentId ?? -1)}))`);
     } else if (user.role === 'staff') {
       conds.push(`m.created_by = ${p(user.id)}`);
     }
@@ -106,8 +104,7 @@ export class DashboardService {
     const p = (v: any) => { params.push(v); return `$${params.length}`; };
     const scope: string[] = [];
     if (user.role === 'manager') {
-      scope.push(`m.company_id = ${p(user.companyId)}`);
-      scope.push(`m.department_id = ${p(user.departmentId ?? -1)}`);
+      scope.push(`(m.created_by = ${p(user.id)} OR (m.company_id = ${p(user.companyId)} AND m.department_id = ${p(user.departmentId ?? -1)}))`);
     } else if (user.role === 'staff') {
       scope.push(`m.created_by = ${p(user.id)}`);
     }
@@ -166,7 +163,7 @@ export class DashboardService {
     const params: any[] = [];
     const p = (v: any) => { params.push(v); return `$${params.length}`; };
     const conds: string[] = ['1=1'];
-    if (user.role === 'manager') { conds.push(`m.company_id = ${p(user.companyId)}`); conds.push(`m.department_id = ${p(user.departmentId ?? -1)}`); }
+    if (user.role === 'manager') { conds.push(`(m.created_by = ${p(user.id)} OR (m.company_id = ${p(user.companyId)} AND m.department_id = ${p(user.departmentId ?? -1)}))`); }
     else if (user.role === 'staff') conds.push(`m.created_by = ${p(user.id)}`);
     if (cid) conds.push(`m.company_id = ${p(cid)}`);
     if (from) conds.push(`m.created_at >= ${p(new Date(from))}`);
