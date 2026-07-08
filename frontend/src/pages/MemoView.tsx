@@ -41,7 +41,16 @@ export function MemoView() {
   const [submitBusy, setSubmitBusy] = useState(false);
   const [pdfView, setPdfView] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [actualInput, setActualInput] = useState('');
+  const [settleBusy, setSettleBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const settle = async () => {
+    const v = Number(String(actualInput).replace(/,/g, ''));
+    if (!isFinite(v) || v < 0) { alert(lang === 'th' ? 'กรุณากรอกยอดใช้จริงให้ถูกต้อง' : 'Enter a valid amount'); return; }
+    setSettleBusy(true);
+    try { await api.settleMemo(mid, v); load(); } catch (e: any) { alert(e?.response?.data?.message || e.message); } finally { setSettleBusy(false); }
+  };
 
   const openPdfPreview = async () => {
     setPdfBusy(true);
@@ -271,6 +280,63 @@ export function MemoView() {
             </div>
           </div>
 
+          {memo.category === 'budget' && (memo.status === 'approved' || memo.overBudget) && (isCreator || user?.role === 'admin') && (() => {
+            const estimate = grandTotal;
+            const actual = memo.actualAmount;
+            const settled = actual != null;
+            const over = settled && actual > estimate;
+            const diff = settled ? estimate - actual : 0;
+            const overPending = memo.overBudget && memo.status !== 'approved';
+            const canClose = memo.status === 'approved' && settled && !overPending && !memo.forwardedAt;
+            return (
+              <div className="mt-6 card !shadow-none border border-indigo-100 bg-indigo-50/40 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[13px] font-bold text-indigo-700">📊 {lang === 'th' ? 'สรุปการใช้งบประมาณ (งบประมาณการ)' : 'Budget settlement'}</span>
+                </div>
+                <div className="flex justify-between text-[13.5px] py-1.5 border-b border-dashed border-indigo-200/70">
+                  <span className="text-slate-500">{lang === 'th' ? 'งบประมาณการ (ที่อนุมัติ)' : 'Approved estimate'}</span>
+                  <span className="font-bold">฿{money(estimate)}</span>
+                </div>
+                <div className="flex justify-between items-center text-[13.5px] py-2.5">
+                  <span className="text-slate-500">{lang === 'th' ? 'ยอดใช้จริง (แนบบิลด้านขวา)' : 'Actual used'}</span>
+                  {memo.forwardedAt || overPending ? (
+                    <span className="font-bold">฿{money(actual || 0)}</span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <input className="input !w-40 !py-1.5 text-right" inputMode="decimal"
+                        value={actualInput} placeholder={settled ? money(actual) : '0.00'}
+                        onChange={(e) => setActualInput(e.target.value)} />
+                      <button className="btn btn-primary !py-1.5" onClick={settle} disabled={settleBusy}>{lang === 'th' ? 'คำนวณ' : 'Calc'}</button>
+                    </span>
+                  )}
+                </div>
+                {settled && (
+                  <div className={'rounded-xl px-4 py-3 mt-1 flex items-center justify-between text-[13.5px] ' + (over ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800')}>
+                    <span className="font-bold">
+                      {over
+                        ? `${lang === 'th' ? 'เบิกเพิ่ม' : 'Over budget'} ฿${money(-diff)}`
+                        : `${lang === 'th' ? 'คืนเงิน' : 'Refund'} ฿${money(diff)}`}
+                    </span>
+                    <span className="text-[12px] font-medium">
+                      {overPending
+                        ? (lang === 'th' ? 'รออนุมัติส่วนเกิน…' : 'Awaiting over-budget approval…')
+                        : over
+                          ? (lang === 'th' ? 'อนุมัติส่วนเกินแล้ว' : 'Over-budget approved')
+                          : (lang === 'th' ? 'พร้อมส่งปิดงาน' : 'Ready to close')}
+                    </span>
+                  </div>
+                )}
+                {overPending && (
+                  <p className="text-[12px] text-amber-700 mt-2">{lang === 'th' ? 'ใช้จริงเกินงบที่อนุมัติ — ระบบส่งขออนุมัติส่วนเกินให้แล้ว เมื่ออนุมัติจึงจะส่งปิดงานได้' : 'Sent for over-budget approval; close once approved.'}</p>
+                )}
+                {!settled && (
+                  <p className="text-[12px] text-slate-500 mt-1">{lang === 'th' ? 'กรอกยอดใช้จริงแล้วกด "คำนวณ" ระบบจะสรุปคืนเงิน/เบิกเพิ่มให้อัตโนมัติ ก่อนส่งปิดงาน' : ''}</p>
+                )}
+                {canClose && <p className="text-[12px] text-emerald-700 mt-2">{lang === 'th' ? '✓ พร้อมแล้ว — กดปุ่ม "ส่งปิดงาน" ด้านล่างเพื่อปิดงาน' : ''}</p>}
+              </div>
+            );
+          })()}
+
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
               <button className="btn btn-green" onClick={() => { setNextRole(memo.status === 'pending_manager' && isSmall ? 'done' : 'hrm'); setModal('approve'); }}>{t('view.approve')}</button>
@@ -287,6 +353,7 @@ export function MemoView() {
             {memo.memoNo && <button className="btn btn-ghost" onClick={openPdfPreview} disabled={pdfBusy}>{pdfBusy ? (lang === 'th' ? 'กำลังเปิด…' : 'Opening…') : (lang === 'th' ? 'ดูตัวอย่าง PDF' : 'Preview PDF')}</button>}
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
+              !(memo.category === 'budget' && memo.actualAmount == null) &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
           </div>
           {memo.forwardedAt && (

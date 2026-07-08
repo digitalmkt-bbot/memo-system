@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateMemoDto {
   @IsInt() companyId: number;
@@ -36,4 +36,8 @@ export class ActionDto {
 
 export class ForwardDto {
   @IsArray() recipients: string[];
+}
+
+export class SettleDto {
+  @IsNumber() actualAmount: number;
 }

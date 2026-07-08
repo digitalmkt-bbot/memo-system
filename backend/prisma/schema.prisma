@@ -103,6 +103,9 @@ model Memo {
   forwardedAt       DateTime?  @map("forwarded_at")
   forwardedTo       String?    @map("forwarded_to")
   onHold            Boolean    @default(false) @map("on_hold")
+  actualAmount      Float?     @map("actual_amount")
+  settledAt         DateTime?  @map("settled_at")
+  overBudget        Boolean    @default(false) @map("over_budget")
 
   company         Company      @relation(fields: [companyId], references: [id])
   department      Department   @relation(fields: [departmentId], references: [id])

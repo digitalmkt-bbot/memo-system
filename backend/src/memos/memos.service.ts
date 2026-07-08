@@ -429,6 +429,8 @@ export class MemosService {
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
     if (memo.forwardedAt) throw new BadRequestException('memo นี้ส่งปิดงานไปแล้ว');
+    if (memo.category === 'budget' && memo.actualAmount == null)
+      throw new BadRequestException('ประเภทงบประมาณการ: กรุณากรอกยอดใช้จริงก่อนส่งปิดงาน');
     const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
     if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
 
@@ -461,6 +463,50 @@ export class MemosService {
       where: { id }, data: { forwardedAt: new Date(), forwardedTo: to.join(', ') }, include: INCLUDE,
     });
     await this.audit(id, user.id, 'forwarded', `ส่งปิดงานถึง: ${to.join(', ')}`);
+    return this.shape(updated);
+  }
+
+  /**
+   * Record the ACTUAL amount used for a budget-estimate memo (ประเภทงบประมาณการ)
+   * after it has been approved. The system reconciles against the approved
+   * estimate automatically:
+   *   - actual ≤ estimate  → stays approved; the difference is a refund (คืนเงิน).
+   *   - actual > estimate  → the excess must be approved: the memo is routed back
+   *                          to the MD/HRM for a quick "approve the over-budget"
+   *                          before it can be closed.
+   */
+  async settle(user: JwtUser, id: number, actualAmount: number) {
+    const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่กรอกยอดใช้จริงได้');
+    if (memo.category !== 'budget') throw new BadRequestException('กรอกยอดใช้จริงได้เฉพาะประเภทงบประมาณการ');
+    if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติก่อนจึงจะกรอกยอดใช้จริงได้');
+    if (memo.forwardedAt) throw new BadRequestException('memo นี้ส่งปิดงานไปแล้ว');
+    const actual = Number(actualAmount);
+    if (!isFinite(actual) || actual < 0) throw new BadRequestException('ยอดใช้จริงไม่ถูกต้อง');
+
+    const estimate = this.shape(memo).grandTotal as number;
+    if (actual > estimate) {
+      // over budget → route the excess to the MD (or HRM) for re-approval
+      const approverId =
+        (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id)) ??
+        (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
+      if (!approverId) throw new BadRequestException('ไม่พบผู้อนุมัติสำหรับส่วนเกินงบ');
+      const updated = await this.prisma.memo.update({
+        where: { id },
+        data: { actualAmount: actual, settledAt: new Date(), overBudget: true, status: 'pending_hrmd', currentApproverId: approverId, closedAt: null },
+        include: INCLUDE,
+      });
+      await this.audit(id, user.id, 'settle_over', `ยอดใช้จริง ${actual} เกินงบ ${estimate} → ขออนุมัติเพิ่ม ${actual - estimate}`);
+      try { await this.mail.notifyPendingApprover(this.shape(updated)); } catch { /* noop */ }
+      return this.shape(updated);
+    }
+    const updated = await this.prisma.memo.update({
+      where: { id },
+      data: { actualAmount: actual, settledAt: new Date(), overBudget: false },
+      include: INCLUDE,
+    });
+    await this.audit(id, user.id, 'settle', `ยอดใช้จริง ${actual} (คืนเงิน ${estimate - actual})`);
     return this.shape(updated);
   }
 
