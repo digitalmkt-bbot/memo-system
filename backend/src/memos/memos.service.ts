@@ -370,26 +370,30 @@ export class MemosService {
         // ALWAYS final, at any step. Never route onward to HR after the MD signs.
         data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
         action = 'approved_md_final';
+      } else if (user.role === 'hrm' && memo.status === 'pending_manager') {
+        // The HR head is the first approver — their approval is final, unless
+        // they explicitly escalate to the MD. (Never route to "another HRM".)
+        const md = next === 'md'
+          ? ((await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id)))
+          : null;
+        if (md) { data = { status: 'pending_hrmd', currentApproverId: md }; action = 'approved_hrm_to_md'; }
+        else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_hrm_final'; }
       } else if (memo.status === 'pending_manager') {
         const total = await this.memoTotal(tx, id);
-        if (total <= this.SMALL_MAX) {
-          // small memo (≤ 1,000): no MD. Manager either finalizes, or forwards to HRM.
-          if (next === 'hrm') {
-            const nextId = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
-            if (!nextId) throw new BadRequestException('No HRM approver available');
-            data = { status: 'pending_hrmd', currentApproverId: nextId };
-            action = 'approved_manager_to_hrm';
-          } else {
-            data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-            action = 'approved_manager_final';
-          }
+        if (total <= this.SMALL_MAX && next !== 'hrm' && next !== 'md') {
+          // small memo (≤ 1,000): the first approver finalizes.
+          data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+          action = 'approved_manager_final';
         } else {
-          // large memo: manager chooses HRM or MD as the next approver
+          // forward to a higher approver; resilient — if the chosen role has no
+          // available person, fall back to the other high role, else finalize.
           const target = next === 'md' ? 'md' : 'hrm';
-          const nextId = (await this.pickByRole(target, memo.companyId, user.id)) ?? (await this.pickByRole(target, undefined, user.id));
-          if (!nextId) throw new BadRequestException(`No ${target.toUpperCase()} approver available`);
-          data = { status: 'pending_hrmd', currentApproverId: nextId };
-          action = `approved_manager_to_${target}`;
+          const alt = target === 'md' ? 'hrm' : 'md';
+          const nextId =
+            (await this.pickByRole(target, memo.companyId, user.id)) ?? (await this.pickByRole(target, undefined, user.id)) ??
+            (await this.pickByRole(alt, memo.companyId, user.id)) ?? (await this.pickByRole(alt, undefined, user.id));
+          if (nextId) { data = { status: 'pending_hrmd', currentApproverId: nextId }; action = `approved_manager_to_${target}`; }
+          else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final'; }
         }
       } else if (memo.status === 'pending_hrmd') {
         // HRM or MD approval finalizes the memo. FC no longer approves —

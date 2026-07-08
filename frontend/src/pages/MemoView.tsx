@@ -339,7 +339,7 @@ export function MemoView() {
 
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
-              <button className="btn btn-green" onClick={() => { setNextRole(memo.status === 'pending_manager' && isSmall ? 'done' : 'hrm'); setModal('approve'); }}>{t('view.approve')}</button>
+              <button className="btn btn-green" onClick={() => { setNextRole(memo.status === 'pending_manager' && (isSmall || user?.role === 'hrm') ? 'done' : 'hrm'); setModal('approve'); }}>{t('view.approve')}</button>
               <button className="btn bg-amber-400 text-amber-950 hover:bg-amber-500" onClick={() => { setComment(''); setModal('hold'); }}>{t('view.hold')}</button>
               <button className="btn btn-red" onClick={() => setModal('reject')}>{t('view.reject')}</button>
             </>}
@@ -415,7 +415,13 @@ export function MemoView() {
               <div className="mt-3">
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t('view.chooseNext')}</label>
                 <select className="input" value={nextRole} onChange={(e) => setNextRole(e.target.value)}>
-                  {isSmall ? (
+                  {user?.role === 'hrm' ? (
+                    // the HR head is approving — never offer "forward to HRM" (themselves)
+                    <>
+                      <option value="done">{t('view.finalizeNow')}</option>
+                      <option value="md">{t('view.toMd')}</option>
+                    </>
+                  ) : isSmall ? (
                     <>
                       <option value="done">{t('view.finalizeNow')}</option>
                       <option value="hrm">{t('view.toHrm')}</option>
