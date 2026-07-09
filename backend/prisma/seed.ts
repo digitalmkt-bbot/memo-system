@@ -282,6 +282,21 @@ async function main() {
     if (done.count) console.log(`Finalized ${done.count} memo(s) already approved by the MD`);
   }
 
+  // 13) Re-route memos wrongly sent to the HR head. Purchases go manager → MD;
+  //     HR is not a purchase approver. Any memo waiting at an HRM (pending_hrmd,
+  //     current approver role 'hrm') is moved to the MD instead.
+  const hrmStuck = await prisma.memo.findMany({
+    where: { status: 'pending_hrmd' as any, currentApprover: { role: 'hrm' as any } },
+    select: { id: true, companyId: true },
+  });
+  let hrToMd = 0;
+  for (const m of hrmStuck) {
+    const md = (await prisma.user.findFirst({ where: { role: 'md' as any, active: true, companyId: m.companyId } }))
+      ?? (await prisma.user.findFirst({ where: { role: 'md' as any, active: true } }));
+    if (md) { await prisma.memo.update({ where: { id: m.id }, data: { currentApproverId: md.id } }); hrToMd++; }
+  }
+  if (hrToMd) console.log(`Re-routed ${hrToMd} memo(s) from HR to MD`);
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');

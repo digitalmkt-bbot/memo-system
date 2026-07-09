@@ -339,7 +339,7 @@ export function MemoView() {
 
           <div className="flex gap-2.5 mt-5 flex-wrap">
             {canApprove && <>
-              <button className="btn btn-green" onClick={() => { setNextRole(memo.status === 'pending_manager' && (isSmall || user?.role === 'hrm') ? 'done' : 'hrm'); setModal('approve'); }}>{t('view.approve')}</button>
+              <button className="btn btn-green" onClick={() => { setComment(''); setModal('approve'); }}>{t('view.approve')}</button>
               <button className="btn bg-amber-400 text-amber-950 hover:bg-amber-500" onClick={() => { setComment(''); setModal('hold'); }}>{t('view.hold')}</button>
               <button className="btn btn-red" onClick={() => setModal('reject')}>{t('view.reject')}</button>
             </>}
@@ -411,28 +411,9 @@ export function MemoView() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold">{modal === 'approve' ? t('view.confirmApprove') : modal === 'hold' ? t('view.confirmHold') : t('view.confirmReject')}</h3>
             <p className="text-gray-500 text-[13px] mt-1">{modal === 'reject' ? t('view.provideReason') : t('view.addComment')}</p>
-            {modal === 'approve' && memo.status === 'pending_manager' && (
-              <div className="mt-3">
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t('view.chooseNext')}</label>
-                <select className="input" value={nextRole} onChange={(e) => setNextRole(e.target.value)}>
-                  {user?.role === 'hrm' ? (
-                    // the HR head is approving — never offer "forward to HRM" (themselves)
-                    <>
-                      <option value="done">{t('view.finalizeNow')}</option>
-                      <option value="md">{t('view.toMd')}</option>
-                    </>
-                  ) : isSmall ? (
-                    <>
-                      <option value="done">{t('view.finalizeNow')}</option>
-                      <option value="hrm">{t('view.toHrm')}</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="hrm">{t('view.toHrm')}</option>
-                      <option value="md">{t('view.toMd')}</option>
-                    </>
-                  )}
-                </select>
+            {modal === 'approve' && memo.status === 'pending_manager' && !isSmall && user?.role !== 'hrm' && user?.role !== 'md' && (
+              <div className="mt-3 text-[12.5px] text-slate-500 bg-sand rounded-lg px-3 py-2">
+                {lang === 'th' ? 'ยอด > 1,000 → เมื่ออนุมัติจะส่งต่อให้กรรมการผู้จัดการ (MD) อัตโนมัติ' : 'Over 1,000 → forwards to the MD automatically on approval.'}
               </div>
             )}
             <textarea className="input min-h-[90px] mt-2.5" value={comment} onChange={(e) => setComment(e.target.value)} />

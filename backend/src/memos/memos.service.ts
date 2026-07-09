@@ -380,19 +380,14 @@ export class MemosService {
         else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_hrm_final'; }
       } else if (memo.status === 'pending_manager') {
         const total = await this.memoTotal(tx, id);
-        if (total <= this.SMALL_MAX && next !== 'hrm' && next !== 'md') {
-          // small memo (≤ 1,000): the first approver finalizes.
+        if (total <= this.SMALL_MAX) {
+          // ≤ 1,000: the department manager's approval is final (no MD, no HR).
           data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
           action = 'approved_manager_final';
         } else {
-          // forward to a higher approver; resilient — if the chosen role has no
-          // available person, fall back to the other high role, else finalize.
-          const target = next === 'md' ? 'md' : 'hrm';
-          const alt = target === 'md' ? 'hrm' : 'md';
-          const nextId =
-            (await this.pickByRole(target, memo.companyId, user.id)) ?? (await this.pickByRole(target, undefined, user.id)) ??
-            (await this.pickByRole(alt, memo.companyId, user.id)) ?? (await this.pickByRole(alt, undefined, user.id));
-          if (nextId) { data = { status: 'pending_hrmd', currentApproverId: nextId }; action = `approved_manager_to_${target}`; }
+          // > 1,000: route straight to the MD. HR is NOT in the purchase chain.
+          const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
+          if (md) { data = { status: 'pending_hrmd', currentApproverId: md }; action = 'approved_manager_to_md'; }
           else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final'; }
         }
       } else if (memo.status === 'pending_hrmd') {
