@@ -297,6 +297,29 @@ async function main() {
   }
   if (hrToMd) console.log(`Re-routed ${hrToMd} memo(s) from HR to MD`);
 
+  // 14) Re-open memos > 1,000 that were finalized by the HR head WITHOUT the MD.
+  //     Over-1,000 must reach the MD — route them back to the MD for approval.
+  const hrmFinal = await prisma.memo.findMany({
+    where: {
+      status: 'approved' as any,
+      forwardedAt: null,
+      approvals: { some: { status: 'approve', approver: { role: 'hrm' as any } }, none: { status: 'approve', approver: { role: 'md' as any } } },
+    },
+    select: { id: true, companyId: true },
+  });
+  let reopened = 0;
+  for (const m of hrmFinal) {
+    const items = await prisma.memoItem.findMany({ where: { memoId: m.id }, select: { qty: true, unitPrice: true } });
+    const total = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+    if (total <= 1000) continue;
+    const md = (await prisma.user.findFirst({ where: { role: 'md' as any, active: true, companyId: m.companyId } }))
+      ?? (await prisma.user.findFirst({ where: { role: 'md' as any, active: true } }));
+    if (!md) continue;
+    await prisma.memo.update({ where: { id: m.id }, data: { status: 'pending_hrmd' as any, currentApproverId: md.id, closedAt: null } });
+    reopened++;
+  }
+  if (reopened) console.log(`Re-opened ${reopened} over-1,000 memo(s) finalized by HR → routed to MD`);
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
