@@ -19,8 +19,16 @@ export class MailService {
     return !!(process.env.SMTP2GO_API_KEY && process.env.MAIL_FROM);
   }
 
+  /**
+   * Base URL used in e-mail links. ALWAYS the production domain
+   * (memo.loveandaman.com) — the Railway *.up.railway.app URL is a different
+   * origin, so its login session doesn't carry over and users get bounced to
+   * the login page when they click a link from an e-mail.
+   */
   private appUrl() {
-    return (process.env.APP_URL || 'https://memo-system-production-001.up.railway.app').replace(/\/$/, '');
+    const url = (process.env.APP_URL || '').trim().replace(/\/$/, '');
+    if (!url || /railway\.app$/i.test(url)) return 'https://memo.loveandaman.com';
+    return url;
   }
 
   /** Fire-and-forget; never throws. */
