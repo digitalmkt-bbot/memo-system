@@ -132,13 +132,14 @@ export function Users() {
                 <th className="px-5 py-3 font-semibold">{t('users.company')}</th>
                 <th className="px-5 py-3 font-semibold">{t('users.department')}</th>
                 <th className="px-5 py-3 font-semibold">{t('users.role')}</th>
+                <th className="px-5 py-3 font-semibold">{t('users.firstApprover')}</th>
                 <th className="px-5 py-3 font-semibold">{t('users.status')}</th>
                 <th className="px-5 py-3 font-semibold text-right">{t('users.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {users.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">{t('common.noData')}</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">{t('common.noData')}</td></tr>
               ) : users.map((u) => (
                 <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                   <td className="px-5 py-3 text-slate-500">{u.employeeCode}</td>
@@ -149,6 +150,7 @@ export function Users() {
                   <td className="px-5 py-3">
                     <span className="inline-block rounded-full bg-slate-100 text-slate-600 text-[12px] font-semibold px-2.5 py-1">{roleLabel(u.role)}</span>
                   </td>
+                  <td className="px-5 py-3 text-slate-500">{u.managerName || <span className="text-rose-500">— ยังไม่ตั้ง</span>}</td>
                   <td className="px-5 py-3">
                     <span className={'inline-flex items-center gap-1.5 text-[12px] font-semibold ' + (u.active ? 'text-emerald-600' : 'text-slate-400')}>
                       <span className={'w-2 h-2 rounded-full ' + (u.active ? 'bg-emerald-500' : 'bg-slate-300')} />
