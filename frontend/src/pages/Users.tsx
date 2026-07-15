@@ -37,8 +37,13 @@ export function Users() {
     setEditId(u.id); setMsg('');
     reset({
       employeeCode: u.employeeCode, name: u.name, email: u.email, password: '',
-      companyId: u.companyId, departmentId: u.departmentId ?? '', role: u.role,
-      managerId: u.managerId ?? '',
+      // select values are strings — coerce so the dropdowns show the CURRENT
+      // choice (a number wouldn't match the string <option value>, so the field
+      // would look empty and a save could wipe it).
+      companyId: u.companyId != null ? String(u.companyId) : '',
+      departmentId: u.departmentId != null ? String(u.departmentId) : '',
+      role: u.role,
+      managerId: u.managerId != null ? String(u.managerId) : '',
     });
     setOpen(true);
     focusForm();
