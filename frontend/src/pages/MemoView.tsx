@@ -353,8 +353,9 @@ export function MemoView() {
             {memo.memoNo && <button className="btn btn-ghost" onClick={openPdfPreview} disabled={pdfBusy}>{pdfBusy ? (lang === 'th' ? 'กำลังเปิด…' : 'Opening…') : (lang === 'th' ? 'ดูตัวอย่าง PDF' : 'Preview PDF')}</button>}
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
-              !(memo.category === 'budget' && memo.actualAmount == null) &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
+            {isCreator && memo.status === 'approved' && !memo.forwardedAt &&
+              <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
           </div>
           {memo.forwardedAt && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-[12.5px] px-3 py-2">

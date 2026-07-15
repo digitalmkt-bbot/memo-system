@@ -244,7 +244,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
         </div>
 
         <div className="flex gap-2.5 mt-4">
-          {status === 'pending_manager' ? (
+          {status === 'pending_manager' || status === 'approved' ? (
             <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={busy}>{lang === 'th' ? 'บันทึกการแก้ไข' : 'Save changes'}</button>
           ) : (
             <>
