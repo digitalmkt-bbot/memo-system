@@ -299,7 +299,7 @@ export function MemoView() {
                 </div>
                 <div className="flex justify-between items-center text-[13.5px] py-2.5">
                   <span className="text-slate-500">{lang === 'th' ? 'ยอดใช้จริง (แนบบิลด้านขวา)' : 'Actual used'}</span>
-                  {memo.forwardedAt || overPending ? (
+                  {overPending ? (
                     <span className="font-bold">฿{money(actual || 0)}</span>
                   ) : (
                     <span className="flex items-center gap-2">

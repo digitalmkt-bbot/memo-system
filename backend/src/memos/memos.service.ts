@@ -421,8 +421,8 @@ export class MemosService {
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
     if (memo.forwardedAt) throw new BadRequestException('memo นี้ส่งปิดงานไปแล้ว');
-    if (memo.category === 'budget' && memo.actualAmount == null)
-      throw new BadRequestException('ประเภทงบประมาณการ: กรุณากรอกยอดใช้จริงก่อนส่งปิดงาน');
+    // Budget memos may be closed on the FIRST round without the actual amount —
+    // the actual is reconciled later (see settle(), which works post-close too).
     const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
     if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
 
@@ -472,8 +472,8 @@ export class MemosService {
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่กรอกยอดใช้จริงได้');
     if (memo.category !== 'budget') throw new BadRequestException('กรอกยอดใช้จริงได้เฉพาะประเภทงบประมาณการ');
+    // Allowed after approval AND after close (reconcile the actual amount later).
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติก่อนจึงจะกรอกยอดใช้จริงได้');
-    if (memo.forwardedAt) throw new BadRequestException('memo นี้ส่งปิดงานไปแล้ว');
     const actual = Number(actualAmount);
     if (!isFinite(actual) || actual < 0) throw new BadRequestException('ยอดใช้จริงไม่ถูกต้อง');
 
