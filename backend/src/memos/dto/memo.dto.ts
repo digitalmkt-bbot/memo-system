@@ -39,5 +39,6 @@ export class ForwardDto {
 }
 
 export class SettleDto {
-  @IsNumber() actualAmount: number;
+  @IsOptional() @IsNumber() actualAmount?: number;
+  @IsOptional() @IsArray() actualItems?: any[];
 }

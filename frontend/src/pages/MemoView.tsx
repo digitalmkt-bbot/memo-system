@@ -41,15 +41,19 @@ export function MemoView() {
   const [submitBusy, setSubmitBusy] = useState(false);
   const [pdfView, setPdfView] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [actualInput, setActualInput] = useState('');
+  const [actRows, setActRows] = useState<any[]>([]);
   const [settleBusy, setSettleBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const actTotal = actRows.reduce((s, r) => s + (Number(r.qty) || 0) * (Number(String(r.unitPrice).replace(/,/g, '')) || 0), 0);
 
   const settle = async () => {
-    const v = Number(String(actualInput).replace(/,/g, ''));
-    if (!isFinite(v) || v < 0) { alert(lang === 'th' ? 'กรุณากรอกยอดใช้จริงให้ถูกต้อง' : 'Enter a valid amount'); return; }
+    const items = actRows
+      .filter((r) => String(r.name || '').trim())
+      .map((r) => ({ name: String(r.name).trim(), detail: r.detail || '', qty: Number(r.qty) || 0, unit: r.unit || '', unitPrice: Number(String(r.unitPrice).replace(/,/g, '')) || 0 }));
+    if (!items.length) { alert(lang === 'th' ? 'กรุณาใส่รายการใช้จริงอย่างน้อย 1 รายการ' : 'Add at least one item'); return; }
     setSettleBusy(true);
-    try { await api.settleMemo(mid, v); load(); } catch (e: any) { alert(e?.response?.data?.message || e.message); } finally { setSettleBusy(false); }
+    try { await api.settleMemo(mid, { actualItems: items }); setActRows([]); load(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); } finally { setSettleBusy(false); }
   };
 
   const openPdfPreview = async () => {
@@ -297,19 +301,50 @@ export function MemoView() {
                   <span className="text-slate-500">{lang === 'th' ? 'งบประมาณการ (ที่อนุมัติ)' : 'Approved estimate'}</span>
                   <span className="font-bold">฿{money(estimate)}</span>
                 </div>
-                <div className="flex justify-between items-center text-[13.5px] py-2.5">
-                  <span className="text-slate-500">{lang === 'th' ? 'ยอดใช้จริง (แนบบิลด้านขวา)' : 'Actual used'}</span>
-                  {overPending ? (
+                {settled && (memo.actualItems?.length > 0) && (
+                  <div className="text-[12px] text-slate-500 py-2 border-b border-dashed border-indigo-200/70">
+                    {lang === 'th' ? 'รายการใช้จริงที่บันทึกไว้:' : 'Saved actual items:'}{' '}
+                    {(memo.actualItems as any[]).map((it: any, i: number) => `${it.name} (${money((Number(it.qty)||0)*(Number(it.unitPrice)||0))})`).join(', ')} = <b>฿{money(actual)}</b>
+                  </div>
+                )}
+                {overPending ? (
+                  <div className="flex justify-between text-[13.5px] py-2.5">
+                    <span className="text-slate-500">{lang === 'th' ? 'ยอดใช้จริง' : 'Actual used'}</span>
                     <span className="font-bold">฿{money(actual || 0)}</span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <input className="input !w-40 !py-1.5 text-right" inputMode="decimal"
-                        value={actualInput} placeholder={settled ? money(actual) : '0.00'}
-                        onChange={(e) => setActualInput(e.target.value)} />
-                      <button className="btn btn-primary !py-1.5" onClick={settle} disabled={settleBusy}>{lang === 'th' ? 'คำนวณ' : 'Calc'}</button>
-                    </span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="py-2">
+                    <div className="text-slate-500 text-[13px] mb-1.5">{lang === 'th' ? 'กรอกรายการใช้จริง (ระบบรวมยอดให้อัตโนมัติ)' : 'Enter actual usage items'}</div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[12.5px]">
+                        <thead><tr className="text-slate-400">
+                          <th className="text-left font-semibold px-1 py-1">{lang === 'th' ? 'รายการ' : 'Item'}</th>
+                          <th className="text-right font-semibold px-1 py-1 w-16">{lang === 'th' ? 'จำนวน' : 'Qty'}</th>
+                          <th className="text-right font-semibold px-1 py-1 w-24">{lang === 'th' ? 'ราคา/หน่วย' : 'Unit'}</th>
+                          <th className="text-right font-semibold px-1 py-1 w-24">{lang === 'th' ? 'รวม' : 'Total'}</th>
+                          <th className="w-6" />
+                        </tr></thead>
+                        <tbody>
+                          {actRows.map((r, i) => (
+                            <tr key={i}>
+                              <td className="px-1 py-1"><input className="input !py-1 text-[12.5px]" value={r.name} onChange={(e) => setActRows((xs) => xs.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} /></td>
+                              <td className="px-1 py-1"><input className="input !py-1 text-right text-[12.5px]" type="number" min="0" value={r.qty} onChange={(e) => setActRows((xs) => xs.map((x, idx) => idx === i ? { ...x, qty: e.target.value } : x))} /></td>
+                              <td className="px-1 py-1"><input className="input !py-1 text-right text-[12.5px]" type="number" min="0" value={r.unitPrice} onChange={(e) => setActRows((xs) => xs.map((x, idx) => idx === i ? { ...x, unitPrice: e.target.value } : x))} /></td>
+                              <td className="px-1 py-1 text-right font-semibold text-ocean-dark whitespace-nowrap">{money((Number(r.qty) || 0) * (Number(String(r.unitPrice).replace(/,/g, '')) || 0))}</td>
+                              <td className="px-1 py-1 text-center"><button type="button" className="text-red-400 hover:text-red-600 text-base leading-none" onClick={() => setActRows((xs) => xs.filter((_, idx) => idx !== i))}>×</button></td>
+                            </tr>
+                          ))}
+                          {actRows.length === 0 && <tr><td colSpan={5} className="text-center text-slate-400 py-2">{lang === 'th' ? 'กด "เพิ่มรายการ" เพื่อเริ่ม' : 'Add a row to start'}</td></tr>}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <button type="button" className="btn btn-ghost !py-1 text-[12.5px]" onClick={() => setActRows((xs) => [...xs, { name: '', qty: 1, unitPrice: '' }])}>+ {lang === 'th' ? 'เพิ่มรายการ' : 'Add row'}</button>
+                      <div className="text-[13px]">{lang === 'th' ? 'รวมใช้จริง' : 'Total'}: <span className="font-bold text-ocean-dark">฿{money(actTotal)}</span></div>
+                    </div>
+                    <button className="btn btn-primary !py-1.5 mt-2 w-full" onClick={settle} disabled={settleBusy || actRows.length === 0}>{lang === 'th' ? 'บันทึกยอดใช้จริง & คำนวณ' : 'Save & calculate'}</button>
+                  </div>
+                )}
                 {settled && (
                   <div className={'rounded-xl px-4 py-3 mt-1 flex items-center justify-between text-[13.5px] ' + (over ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800')}>
                     <span className="font-bold">

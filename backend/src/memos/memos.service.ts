@@ -467,15 +467,21 @@ export class MemosService {
    *                          to the MD/HRM for a quick "approve the over-budget"
    *                          before it can be closed.
    */
-  async settle(user: JwtUser, id: number, actualAmount: number) {
+  async settle(user: JwtUser, id: number, actualAmount?: number, actualItems?: any[]) {
     const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่กรอกยอดใช้จริงได้');
     if (memo.category !== 'budget') throw new BadRequestException('กรอกยอดใช้จริงได้เฉพาะประเภทงบประมาณการ');
     // Allowed after approval AND after close (reconcile the actual amount later).
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติก่อนจึงจะกรอกยอดใช้จริงได้');
-    const actual = Number(actualAmount);
+
+    // Actual usage may be entered as line items — the total is their sum.
+    const items = this.cleanItems(actualItems ?? []);
+    const actual = items.length
+      ? items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0)
+      : Number(actualAmount);
     if (!isFinite(actual) || actual < 0) throw new BadRequestException('ยอดใช้จริงไม่ถูกต้อง');
+    const itemsJson: any = items.length ? items : null;
 
     const estimate = this.shape(memo).grandTotal as number;
     if (actual > estimate) {
@@ -486,7 +492,7 @@ export class MemosService {
       if (!approverId) throw new BadRequestException('ไม่พบผู้อนุมัติสำหรับส่วนเกินงบ');
       const updated = await this.prisma.memo.update({
         where: { id },
-        data: { actualAmount: actual, settledAt: new Date(), overBudget: true, status: 'pending_hrmd', currentApproverId: approverId, closedAt: null },
+        data: { actualAmount: actual, actualItems: itemsJson, settledAt: new Date(), overBudget: true, status: 'pending_hrmd', currentApproverId: approverId, closedAt: null },
         include: INCLUDE,
       });
       await this.audit(id, user.id, 'settle_over', `ยอดใช้จริง ${actual} เกินงบ ${estimate} → ขออนุมัติเพิ่ม ${actual - estimate}`);
@@ -495,7 +501,7 @@ export class MemosService {
     }
     const updated = await this.prisma.memo.update({
       where: { id },
-      data: { actualAmount: actual, settledAt: new Date(), overBudget: false },
+      data: { actualAmount: actual, actualItems: itemsJson, settledAt: new Date(), overBudget: false },
       include: INCLUDE,
     });
     await this.audit(id, user.id, 'settle', `ยอดใช้จริง ${actual} (คืนเงิน ${estimate - actual})`);

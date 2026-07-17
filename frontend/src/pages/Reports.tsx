@@ -19,6 +19,23 @@ export function Reports() {
   const [companyId, setCompanyId] = useState('');
   const canFilter = user?.role === 'admin' || user?.role === 'executive';
 
+  // history-by-department (admin/executive only)
+  const [depts, setDepts] = useState<any[]>([]);
+  const [deptId, setDeptId] = useState('');
+  const [status, setStatus] = useState('');
+  const [histMemos, setHistMemos] = useState<any[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  useEffect(() => { if (canFilter) api.departments(companyId ? Number(companyId) : undefined).then(setDepts).catch(() => setDepts([])); }, [canFilter, companyId]);
+  useEffect(() => {
+    if (!canFilter) return;
+    setHistLoading(true);
+    const params: Record<string, string> = {};
+    if (companyId) params.companyId = companyId;
+    if (deptId) params.departmentId = deptId;
+    if (status) params.status = status;
+    api.memos(params).then(setHistMemos).catch(() => setHistMemos([])).finally(() => setHistLoading(false));
+  }, [canFilter, companyId, deptId, status]);
+
   useEffect(() => { if (canFilter) api.companies().then(setCompanies).catch(() => {}); }, [canFilter]);
   useEffect(() => { api.overview(companyId ? { companyId } : {}).then(setOv).catch(() => {}); }, [companyId]);
   useEffect(() => { api.series(range, companyId || undefined).then(setMonths).catch(() => {}); }, [range, companyId]);
@@ -158,6 +175,58 @@ export function Reports() {
         <ChartBars title={t('reports.byCompany')} rows={byCompany} keyName="name" color="#10b981" />
         <ChartBars title={t('reports.byDept')} rows={byDept} keyName="department" color="#7c9cf5" />
       </div>
+
+      {canFilter && (
+        <div className="card p-5 mt-6">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div className="font-bold text-ink text-[15px]">📁 {lang === 'th' ? 'บันทึกย้อนหลังรายแผนก' : 'Memo history by department'}</div>
+            <div className="flex gap-2 flex-wrap">
+              <select className="input !w-auto !py-1.5 text-[13px]" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
+                <option value="">{lang === 'th' ? 'ทุกแผนก' : 'All departments'}</option>
+                {depts.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+              </select>
+              <select className="input !w-auto !py-1.5 text-[13px]" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="">{lang === 'th' ? 'ทุกสถานะ' : 'All statuses'}</option>
+                <option value="draft">{lang === 'th' ? 'ฉบับร่าง' : 'Draft'}</option>
+                <option value="pending_manager">{lang === 'th' ? 'รออนุมัติขั้นแรก' : 'Awaiting first'}</option>
+                <option value="pending_hrmd">{lang === 'th' ? 'รอ HRM/MD' : 'Awaiting HRM/MD'}</option>
+                <option value="approved">{lang === 'th' ? 'อนุมัติแล้ว' : 'Approved'}</option>
+                <option value="rejected">{lang === 'th' ? 'ไม่อนุมัติ' : 'Rejected'}</option>
+              </select>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            {histLoading ? <div className="py-8 text-center text-slate-400">{t('common.loading')}</div> :
+              histMemos.length === 0 ? <div className="py-8 text-center text-slate-400">{t('memos.noMemos')}</div> : (
+                <table className="w-full text-[13px] min-w-[720px]">
+                  <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
+                    <th className="text-left px-3 py-2">{t('memos.colNo')}</th>
+                    <th className="text-left px-3 py-2">{t('memos.colSubject')}</th>
+                    <th className="text-left px-3 py-2">{t('memos.colCompanyDept')}</th>
+                    <th className="text-left px-3 py-2">{t('memos.colFrom')}</th>
+                    <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวนเงิน' : 'Amount'}</th>
+                    <th className="text-left px-3 py-2">{lang === 'th' ? 'วันที่' : 'Date'}</th>
+                    <th className="text-right px-3 py-2">{t('memos.colStatus')}</th>
+                  </tr></thead>
+                  <tbody>
+                    {histMemos.map((m) => (
+                      <tr key={m.id} onClick={() => nav(`/memos/view/${m.id}`)} className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
+                        <td className="px-3 py-2 text-[12px] text-gray-500 whitespace-nowrap">{m.memoNo || '—'}</td>
+                        <td className="px-3 py-2">{m.subject}</td>
+                        <td className="px-3 py-2 text-[12px] text-gray-500">{m.companyCode}/{m.deptCode}</td>
+                        <td className="px-3 py-2 text-[12.5px]">{m.fromName}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">฿{(Number(m.grandTotal ?? m.totalAmount) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                        <td className="px-3 py-2 text-[12px] text-gray-500 whitespace-nowrap">{fmtDate(m.createdAt, lang)}</td>
+                        <td className="px-3 py-2 text-right"><StatusTag s={m.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+          </div>
+          <div className="text-[12px] text-slate-400 mt-2">{lang === 'th' ? `พบ ${histMemos.length} รายการ` : `${histMemos.length} memos`}</div>
+        </div>
+      )}
     </>
   );
 }

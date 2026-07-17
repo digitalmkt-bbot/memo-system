@@ -48,7 +48,7 @@ export class MemosController {
   forward(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ForwardDto) { return this.svc.forward(req.user, id, dto.recipients); }
 
   @Post(':id/settle')
-  settle(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SettleDto) { return this.svc.settle(req.user, id, dto.actualAmount); }
+  settle(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SettleDto) { return this.svc.settle(req.user, id, dto.actualAmount, dto.actualItems); }
 
   // ---- Attachments ----
   @Post(':id/attachments')

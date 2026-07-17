@@ -48,7 +48,7 @@ export const api = {
   rejectMemo: (id: number, comment: string) => http.post(`/memos/${id}/reject`, { comment }).then((r) => r.data),
   holdMemo: (id: number, comment?: string) => http.post(`/memos/${id}/hold`, { comment }).then((r) => r.data),
   forwardMemo: (id: number, recipients: string[]) => http.post(`/memos/${id}/forward`, { recipients }).then((r) => r.data),
-  settleMemo: (id: number, actualAmount: number) => http.post(`/memos/${id}/settle`, { actualAmount }).then((r) => r.data),
+  settleMemo: (id: number, body: { actualAmount?: number; actualItems?: any[] }) => http.post(`/memos/${id}/settle`, body).then((r) => r.data),
   announcements: () => http.get('/announcements').then((r) => r.data),
   createAnnouncement: (dto: any) => http.post('/announcements', dto).then((r) => r.data),
   updateAnnouncement: (id: number, dto: any) => http.patch(`/announcements/${id}`, dto).then((r) => r.data),
