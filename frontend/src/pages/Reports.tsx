@@ -8,8 +8,9 @@ const money = (n: number) => '฿' + (Number(n) || 0).toLocaleString(undefined, 
 const num = (n: number) => (Number(n) || 0).toLocaleString();
 
 export function Reports() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
+  const nav = useNavigate();
   const [ov, setOv] = useState<any>({ summary: {}, totalAmount: 0, byDept: [] });
   const [months, setMonths] = useState<any[]>([]);
   const [byCompany, setByCompany] = useState<any[]>([]);
