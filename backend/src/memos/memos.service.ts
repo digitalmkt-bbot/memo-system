@@ -223,6 +223,8 @@ export class MemosService {
         category: dto.category?.trim() || null,
         categoryNote: dto.categoryNote?.trim() || null,
         neededDate: dto.neededDate ? new Date(dto.neededDate) : null,
+        expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : null,
+        backdateReason: dto.backdateReason?.trim() || null,
         items: { create: items },
       },
       include: INCLUDE,
@@ -235,10 +237,11 @@ export class MemosService {
     const memo = await this.prisma.memo.findUnique({ where: { id } });
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
-    // Editable while still a draft, OR after submit but BEFORE the first approval
-    // (status pending_manager = the first approver has not acted yet).
-    if (memo.status !== 'draft' && memo.status !== 'pending_manager')
-      throw new BadRequestException('แก้ไขได้เฉพาะก่อนการอนุมัติขั้นแรกเท่านั้น');
+    // Editable while a draft, before the first approval (pending_manager), and
+    // also after final approval — until the memo is closed (ส่งปิดงาน).
+    if (!['draft', 'pending_manager', 'approved'].includes(memo.status))
+      throw new BadRequestException('แก้ไขไม่ได้ในสถานะนี้ (อยู่ระหว่างการอนุมัติ)');
+    if ((memo as any).forwardedAt) throw new BadRequestException('ส่งปิดงานแล้ว แก้ไขไม่ได้');
     const updated = await this.prisma.memo.update({
       where: { id },
       data: {
@@ -252,6 +255,8 @@ export class MemosService {
         category: dto.category ?? memo.category,
         categoryNote: dto.categoryNote !== undefined ? (dto.categoryNote?.trim() || null) : memo.categoryNote,
         neededDate: dto.neededDate !== undefined ? (dto.neededDate ? new Date(dto.neededDate) : null) : memo.neededDate,
+        expenseDate: dto.expenseDate !== undefined ? (dto.expenseDate ? new Date(dto.expenseDate) : null) : (memo as any).expenseDate,
+        backdateReason: dto.backdateReason !== undefined ? (dto.backdateReason?.trim() || null) : (memo as any).backdateReason,
         ...(dto.items !== undefined
           ? { items: { deleteMany: {}, create: this.cleanItems(dto.items) } }
           : {}),
@@ -334,8 +339,16 @@ export class MemosService {
         const r = await tx.$queryRaw<{ no: string }[]>`SELECT next_memo_no(${memo.companyId}::int) AS no`;
         memoNo = r[0].no;
       }
-      const data: any = { memoNo, status: 'pending_manager', currentApproverId: approver, submittedAt: new Date() };
-      const detail = `Assigned ${memoNo}, routed to first approver #${approver}`;
+      // Backdated-request control: if the expense (receipt) date is more than 24h
+      // before submission, flag it and REQUIRE the reason for the delay.
+      const now = new Date();
+      const exp = (memo as any).expenseDate ? new Date((memo as any).expenseDate) : null;
+      const backdated = !!exp && (now.getTime() - exp.getTime()) > 24 * 60 * 60 * 1000;
+      if (backdated && !((memo as any).backdateReason && String((memo as any).backdateReason).trim())) {
+        throw new BadRequestException('BACKDATE_REASON_REQUIRED');
+      }
+      const data: any = { memoNo, status: 'pending_manager', currentApproverId: approver, submittedAt: now, backdated };
+      const detail = `Assigned ${memoNo}, routed to first approver #${approver}${backdated ? ' (ย้อนหลัง)' : ''}`;
 
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });

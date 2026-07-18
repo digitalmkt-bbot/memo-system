@@ -11,6 +11,8 @@ export class CreateMemoDto {
   @IsOptional() @IsString() category?: string;
   @IsOptional() @IsString() categoryNote?: string;
   @IsOptional() @IsString() neededDate?: string;
+  @IsOptional() @IsString() expenseDate?: string;
+  @IsOptional() @IsString() backdateReason?: string;
   @IsOptional() @IsArray() items?: any[];
 }
 
@@ -25,6 +27,8 @@ export class UpdateMemoDto {
   @IsOptional() @IsString() category?: string;
   @IsOptional() @IsString() categoryNote?: string;
   @IsOptional() @IsString() neededDate?: string;
+  @IsOptional() @IsString() expenseDate?: string;
+  @IsOptional() @IsString() backdateReason?: string;
   @IsOptional() @IsArray() items?: any[];
 }
 

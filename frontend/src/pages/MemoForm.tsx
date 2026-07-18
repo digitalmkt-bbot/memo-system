@@ -31,6 +31,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const [category, setCategory] = useState<string>(initial?.category || 'general');
   const [categoryNote, setCategoryNote] = useState<string>(initial?.categoryNote || '');
   const [neededDate, setNeededDate] = useState<string>(initial?.neededDate || '');
+  const [expenseDate, setExpenseDate] = useState<string>((initial as any)?.expenseDate ? String((initial as any).expenseDate).slice(0, 10) : '');
+  const [backdateReason, setBackdateReason] = useState<string>((initial as any)?.backdateReason || '');
+  const isBackdated = !!expenseDate && (Date.now() - new Date(expenseDate).getTime()) > 24 * 60 * 60 * 1000;
   const fileRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MemoFormValues>({
     defaultValues: { companyId: 0, departmentId: 0, fromName: '', subject: '', attachment: '', detail: '', ...initial },
@@ -60,7 +63,8 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     companyId: Number(v.companyId), departmentId: Number(v.departmentId),
     fromName: v.fromName.trim(), subject: v.subject.trim(),
     attachment: v.attachment?.trim() || undefined, detail: v.detail.trim(),
-    vat, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined, items: cleanItems(),
+    vat, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined,
+    expenseDate: expenseDate || undefined, backdateReason: backdateReason.trim() || undefined, items: cleanItems(),
   });
 
   const uploadIfAny = async (id: number) => {
@@ -77,6 +81,10 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     } finally { setBusy(false); }
   });
   const submit = handleSubmit(async (v) => {
+    if (isBackdated && !backdateReason.trim()) {
+      alert(lang === 'th' ? '🚩 เอกสารย้อนหลัง — กรุณากรอก "เหตุผลความจำเป็นฉุกเฉิน" ก่อนส่ง' : 'Backdated: a reason is required.');
+      return;
+    }
     setBusy(true);
     try {
       let id = memoId;
@@ -154,11 +162,29 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                 <label className="label">{t('form.neededDate')}</label>
                 <input type="date" className="input" value={neededDate} onChange={(e) => setNeededDate(e.target.value)} />
               </div>
+              <div>
+                <label className="label">{lang === 'th' ? 'วันที่ในใบเสร็จ/บิล' : 'Receipt/bill date'}</label>
+                <input type="date" className="input" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
+              </div>
             </div>
             {category === 'other' && (
               <div>
                 <label className="label">{t('form.categoryNote')}</label>
                 <input className="input" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} placeholder={t('form.categoryNotePh')} />
+              </div>
+            )}
+            {isBackdated && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 mt-1">
+                <div className="flex items-center gap-2 text-rose-700 font-bold text-[13px]">
+                  🚩 {lang === 'th' ? 'เอกสารขออนุมัติย้อนหลัง' : 'Backdated request'}
+                </div>
+                <p className="text-[12px] text-rose-600 mt-1">
+                  {lang === 'th'
+                    ? 'วันที่ในใบเสร็จเกิดขึ้นก่อนวันที่ส่งเอกสาร — กรุณาระบุเหตุผลความจำเป็นฉุกเฉินที่ไม่สามารถขออนุมัติล่วงหน้าได้ (จำเป็นต้องกรอกจึงจะส่งได้)'
+                    : 'The receipt date precedes submission — a reason is required.'}
+                </p>
+                <textarea className="input min-h-[70px] mt-2" value={backdateReason} onChange={(e) => setBackdateReason(e.target.value)}
+                  placeholder={lang === 'th' ? 'เหตุผลความจำเป็นฉุกเฉินที่ไม่สามารถขออนุมัติล่วงหน้าได้…' : 'Reason…'} />
               </div>
             )}
             <div className="grid sm:grid-cols-2 gap-4">
