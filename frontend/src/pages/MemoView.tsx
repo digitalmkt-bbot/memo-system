@@ -284,6 +284,31 @@ export function MemoView() {
             </div>
           </div>
 
+          {(() => {
+            const pendingStatuses = ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'];
+            if (!pendingStatuses.includes(memo.status) || !memo.submittedAt) return null;
+            const hrs = (Date.now() - new Date(memo.submittedAt).getTime()) / 36e5;
+            if (hrs < 48) return null;
+            const days = Math.floor(hrs / 24);
+            const esc = !!memo.escalatedAt;
+            return (
+              <div className={`mt-5 rounded-xl border p-4 ${esc ? 'border-red-300 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
+                <div className={`flex items-center gap-2 font-bold text-[13.5px] ${esc ? 'text-red-700' : 'text-amber-700'}`}>
+                  {esc ? '🚨' : '⏰'} {lang === 'th'
+                    ? (esc ? 'ค้างอนุมัติเกินกำหนด — แจ้งผู้บริหารแล้ว' : 'เอกสารค้างรออนุมัติ')
+                    : (esc ? 'Overdue — escalated to executives' : 'Awaiting approval too long')}
+                </div>
+                <p className={`text-[12.5px] mt-1 ${esc ? 'text-red-700/80' : 'text-amber-700/80'}`}>
+                  {lang === 'th'
+                    ? <>ค้างอยู่ที่ <b>{memo.currentApproverName || '—'}</b> มาแล้ว <b>{days} วัน ({Math.floor(hrs)} ชม.)</b>
+                        {memo.reminderCount ? <> · ส่งอีเมลเตือนแล้ว <b>{memo.reminderCount}</b> ครั้ง</> : null}</>
+                    : <>Pending with <b>{memo.currentApproverName || '—'}</b> for <b>{days} day(s)</b>
+                        {memo.reminderCount ? <> · {memo.reminderCount} reminder(s) sent</> : null}</>}
+                </p>
+              </div>
+            );
+          })()}
+
           {memo.backdated && (
             <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4">
               <div className="flex items-center gap-2 text-rose-700 font-bold text-[13.5px]">

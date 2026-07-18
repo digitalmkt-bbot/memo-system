@@ -195,4 +195,75 @@ export class MailService {
     );
     await this.send(creator.email, `[MEMO] ${subj}: ${memo.memoNo || ''}`.trim(), html);
   }
+
+  /** Reminder to the current approver that a memo has been waiting too long. */
+  async notifyApproverReminder(memo: any, hours: number) {
+    if (!memo?.currentApproverId) return;
+    const approver = await this.prisma.user.findUnique({ where: { id: memo.currentApproverId } });
+    if (!approver?.email) return;
+    if (approver.role === 'executive') return;
+    const creator = memo.createdBy ? await this.prisma.user.findUnique({ where: { id: memo.createdBy } }) : null;
+    const html = this.layout(
+      '⏰ เตือน: มีบันทึกข้อความค้างรออนุมัติ',
+      [
+        `เรียน คุณ${this.esc(approver.name)}`,
+        `<div style="background:#fff4e5;border-left:4px solid #f59e0b;padding:10px 12px;border-radius:6px;margin:8px 0">
+           บันทึกข้อความฉบับนี้ <b>ค้างรอการอนุมัติจากท่านมาแล้ว ${Math.floor(hours)} ชั่วโมง</b> กรุณาพิจารณาโดยเร็ว
+         </div>`,
+        `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+        `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+        `<b>ผู้ขอ:</b> ${this.esc(creator?.name || memo.fromName || '-')}`,
+        `<b>ส่งเมื่อ:</b> ${this.esc(this.thDate(memo.submittedAt))}`,
+      ],
+      memo.id,
+      'เปิดเพื่ออนุมัติ',
+    );
+    await this.send(approver.email, `[MEMO] ⏰ เตือนอนุมัติ (ค้าง ${Math.floor(hours)} ชม.): ${memo.memoNo || ''}`.trim(), html);
+  }
+
+  /** Summary alert to higher-level executives about memos stuck past the SLA. */
+  async notifyEscalation(rows: { memo: any; approverName: string; days: number }[], recipients: string[]) {
+    const list = (recipients || []).filter(Boolean);
+    if (!list.length || !rows.length) return;
+    const base = this.appUrl();
+    const items = rows
+      .map(
+        (r) => `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eef2f5;font-size:13px"><a href="${base}/#/memos/view/${r.memo.id}" style="color:#0f766e;text-decoration:none">${this.esc(r.memo.memoNo || r.memo.id)}</a></td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eef2f5;font-size:13px">${this.esc(r.memo.subject || '-')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eef2f5;font-size:13px">${this.esc(r.approverName)}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eef2f5;font-size:13px;color:#dc2626;font-weight:700;text-align:center">${r.days} วันทำการ</td>
+        </tr>`,
+      )
+      .join('');
+    const html = `<div style="font-family:Tahoma,Arial,sans-serif;max-width:720px;margin:auto;color:#1d2733">
+      <div style="background:#dc2626;color:#fff;padding:16px 20px;border-radius:10px 10px 0 0;font-size:18px;font-weight:700">🚨 สรุปเอกสารค้างอนุมัติเกินกำหนด</div>
+      <div style="border:1px solid #e2e8ec;border-top:none;border-radius:0 0 10px 10px;padding:20px">
+        <div style="font-size:14px;margin-bottom:12px">มีบันทึกข้อความ <b>${rows.length} ฉบับ</b> ค้างอยู่ที่ผู้อนุมัติเกิน <b>3 วันทำการ</b> ยังไม่ได้รับการพิจารณา</div>
+        <table style="width:100%;border-collapse:collapse">
+          <tr style="background:#f7fafc">
+            <th style="padding:8px;text-align:left;font-size:12px;color:#64748b">เลขที่</th>
+            <th style="padding:8px;text-align:left;font-size:12px;color:#64748b">เรื่อง</th>
+            <th style="padding:8px;text-align:left;font-size:12px;color:#64748b">ค้างที่</th>
+            <th style="padding:8px;text-align:center;font-size:12px;color:#64748b">ค้างนาน</th>
+          </tr>
+          ${items}
+        </table>
+        <a href="${base}/#/memos" style="display:inline-block;margin-top:16px;background:#dc2626;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">เปิดระบบ MEMO</a>
+        <div style="color:#8a98a5;font-size:12px;margin-top:16px">อีเมลนี้ส่งอัตโนมัติจากระบบ MEMO กรุณาอย่าตอบกลับ</div>
+      </div>
+    </div>`;
+    for (const to of list) {
+      await this.send(to, `[MEMO] 🚨 สรุปเอกสารค้างอนุมัติเกิน 3 วันทำการ (${rows.length} ฉบับ)`, html);
+    }
+  }
+
+  private thDate(d: any) {
+    if (!d) return '-';
+    try {
+      return new Date(d).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
+    } catch {
+      return '-';
+    }
+  }
 }

@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { MemosController } from './memos.controller';
 import { MemosService } from './memos.service';
 import { PdfService } from './pdf.service';
+import { ReminderService } from './reminder.service';
 import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [MailModule],
   controllers: [MemosController],
-  providers: [MemosService, PdfService],
+  providers: [MemosService, PdfService, ReminderService],
 })
 export class MemosModule {}
