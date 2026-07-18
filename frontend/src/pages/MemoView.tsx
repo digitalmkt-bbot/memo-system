@@ -315,12 +315,20 @@ export function MemoView() {
                 🚩 {lang === 'th' ? 'เอกสารขออนุมัติย้อนหลัง (Backdated)' : 'Backdated request'}
               </div>
               <p className="text-[12.5px] text-rose-700/80 mt-1">
-                {lang === 'th' ? 'วันที่ในใบเสร็จ/บิล' : 'Receipt date'}: <b>{memo.expenseDate ? fmtDate(memo.expenseDate, lang) : '—'}</b>
+                {memo.expenseDate
+                  ? <>{lang === 'th' ? 'วันที่ในใบเสร็จ/บิล' : 'Receipt date'}: <b>{fmtDate(memo.expenseDate, lang)}</b></>
+                  : <>{lang === 'th' ? 'วันที่บนหัวเอกสาร' : 'Document date'}: <b>{memo.date ? fmtDate(memo.date, lang) : '—'}</b></>}
                 {' · '}{lang === 'th' ? 'วันที่ส่งเอกสาร' : 'Submitted'}: <b>{memo.submittedAt ? fmtDate(memo.submittedAt, lang) : '—'}</b>
               </p>
-              {memo.backdateReason && (
+              {memo.backdateReason ? (
                 <p className="text-[12.5px] text-rose-800 mt-2 bg-white/60 rounded-lg px-3 py-2">
                   <b>{lang === 'th' ? 'เหตุผลความจำเป็น:' : 'Reason:'}</b> {memo.backdateReason}
+                </p>
+              ) : (
+                <p className="text-[12.5px] text-rose-700/70 mt-2 bg-white/60 rounded-lg px-3 py-2 italic">
+                  {lang === 'th'
+                    ? 'เอกสารเดิมก่อนเริ่มใช้ระบบควบคุมย้อนหลัง — ไม่ได้ระบุเหตุผลความจำเป็นไว้'
+                    : 'Legacy memo — submitted before backdate control, no reason recorded'}
                 </p>
               )}
             </div>

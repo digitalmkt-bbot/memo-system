@@ -320,6 +320,26 @@ async function main() {
   }
   if (reopened) console.log(`Re-opened ${reopened} over-1,000 memo(s) finalized by HR → routed to MD`);
 
+  // 15) Retro-flag BACKDATED requests on memos created before the "receipt date"
+  //     field existed. Those memos have no expenseDate, so we compare the memo's
+  //     own document date against the date it was actually submitted: submitted
+  //     more than 1 day after the document date = backdated. Applies to every
+  //     status, including already-approved memos, so history is auditable.
+  const legacy = await prisma.memo.findMany({
+    where: { expenseDate: null, backdated: false, submittedAt: { not: null } },
+    select: { id: true, date: true, submittedAt: true },
+  });
+  const lateIds: number[] = [];
+  for (const m of legacy) {
+    if (!m.date || !m.submittedAt) continue;
+    const gap = new Date(m.submittedAt).getTime() - new Date(m.date).getTime();
+    if (gap > 24 * 60 * 60 * 1000) lateIds.push(m.id);
+  }
+  if (lateIds.length) {
+    await prisma.memo.updateMany({ where: { id: { in: lateIds } }, data: { backdated: true } });
+    console.log(`Retro-flagged ${lateIds.length} legacy memo(s) as backdated (doc date vs submitted date)`);
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');

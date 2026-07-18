@@ -215,7 +215,15 @@ export function Reports() {
                     {histMemos.map((m) => (
                       <tr key={m.id} onClick={() => nav(`/memos/view/${m.id}`)} className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
                         <td className="px-3 py-2 text-[12px] text-gray-500 whitespace-nowrap">{m.memoNo || '—'}</td>
-                        <td className="px-3 py-2">{m.subject}</td>
+                        <td className="px-3 py-2">
+                          {m.backdated && (
+                            <span
+                              title={lang === 'th' ? 'เอกสารขออนุมัติย้อนหลัง' : 'Backdated request'}
+                              className="inline-block mr-1.5 align-middle text-rose-600"
+                            >🚩</span>
+                          )}
+                          {m.subject}
+                        </td>
                         <td className="px-3 py-2 text-[12px] text-gray-500">{m.companyCode}/{m.deptCode}</td>
                         <td className="px-3 py-2 text-[12.5px]">{m.fromName}</td>
                         <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">฿{(Number(m.grandTotal ?? m.totalAmount) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
