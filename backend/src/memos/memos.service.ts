@@ -433,11 +433,20 @@ export class MemosService {
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
-    if (memo.forwardedAt) throw new BadRequestException('memo นี้ส่งปิดงานไปแล้ว');
     // Budget memos may be closed on the FIRST round without the actual amount —
     // the actual is reconciled later (see settle(), which works post-close too).
-    const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
-    if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
+    // Re-forwarding is allowed: a memo may be closed to more recipients later.
+    // We only mail the NEW recipients (never re-send to ones already notified).
+    const already = new Set(
+      String((memo as any).forwardedTo || '')
+        .split(',')
+        .map((r) => r.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const requested = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
+    if (!requested.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
+    const to = requested.filter((r) => !already.has(r));
+    if (!to.length) throw new BadRequestException('ปลายทางที่เลือกส่งปิดงานไปแล้วทั้งหมด กรุณาเลือกปลายทางใหม่');
 
     const shaped = this.shape(memo);
     const approvals = await this.prisma.approval.findMany({
@@ -464,8 +473,9 @@ export class MemosService {
     const creator = await this.prisma.user.findUnique({ where: { id: memo.createdBy }, select: { email: true } });
     const cc = creator?.email ? [creator.email] : [];
     await this.mail.sendMemoForward(to, shaped, attachments, cc, skipped);
+    const allRecipients = Array.from(new Set([...already, ...to]));
     const updated = await this.prisma.memo.update({
-      where: { id }, data: { forwardedAt: new Date(), forwardedTo: to.join(', ') }, include: INCLUDE,
+      where: { id }, data: { forwardedAt: new Date(), forwardedTo: allRecipients.join(', ') }, include: INCLUDE,
     });
     await this.audit(id, user.id, 'forwarded', `ส่งปิดงานถึง: ${to.join(', ')}`);
     return this.shape(updated);

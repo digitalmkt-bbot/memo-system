@@ -139,6 +139,7 @@ export function MemoView() {
       }
     } finally { setSubmitBusy(false); }
   };
+  const sentRecips = String(memo?.forwardedTo || '').split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
   const toggleRecip = (email: string) => setRecips((r) => r.includes(email) ? r.filter((x) => x !== email) : [...r, email]);
   const doForward = async () => {
     if (!recips.length) return alert(t('view.forwardDesc'));
@@ -439,6 +440,8 @@ export function MemoView() {
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
+            {memo.status === 'approved' && (isCreator || user?.role === 'admin') && memo.forwardedAt && sentRecips.length < FWD_OPTS.length &&
+              <button className="btn btn-ghost" onClick={() => setFwd(true)}>{lang === 'th' ? 'ส่งปิดงานเพิ่ม' : 'Close to more'}</button>}
             {isCreator && memo.status === 'approved' && !memo.forwardedAt &&
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
           </div>
@@ -517,12 +520,16 @@ export function MemoView() {
             <h3 className="text-lg font-bold">{t('view.forwardTitle')}</h3>
             <p className="text-gray-500 text-[13px] mt-1">{t('view.forwardDesc')}</p>
             <div className="mt-3 space-y-2">
-              {FWD_OPTS.map((o) => (
-                <label key={o.email} className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-[13.5px] cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={recips.includes(o.email)} onChange={() => toggleRecip(o.email)} />
-                  {o.label}
-                </label>
-              ))}
+              {FWD_OPTS.map((o) => {
+                const alreadySent = sentRecips.includes(o.email);
+                return (
+                  <label key={o.email} className={`flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-[13.5px] ${alreadySent ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:bg-slate-50'}`}>
+                    <input type="checkbox" className="h-4 w-4 accent-emerald-600" disabled={alreadySent} checked={alreadySent || recips.includes(o.email)} onChange={() => !alreadySent && toggleRecip(o.email)} />
+                    <span className="flex-1">{o.label}</span>
+                    {alreadySent && <span className="text-[11.5px] text-emerald-600">{lang === 'th' ? 'ส่งแล้ว' : 'sent'}</span>}
+                  </label>
+                );
+              })}
             </div>
             <div className="flex gap-2.5 justify-end mt-4">
               <button className="btn btn-ghost" onClick={() => setFwd(false)}>{t('common.cancel')}</button>
