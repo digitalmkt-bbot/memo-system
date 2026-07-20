@@ -145,7 +145,7 @@ export class MemosService {
     };
   }
 
-  async list(user: JwtUser, f: { box?: string; status?: string; companyId?: string; departmentId?: string; q?: string }) {
+  async list(user: JwtUser, f: { box?: string; status?: string; companyId?: string; departmentId?: string; deptCode?: string; q?: string }) {
     const where: any = {};
     if (f.box === 'inbox') {
       where.currentApproverId = user.id;
@@ -162,6 +162,9 @@ export class MemosService {
     if (f.status) where.status = f.status;
     if (f.companyId) where.companyId = parseInt(f.companyId, 10);
     if (f.departmentId) where.departmentId = parseInt(f.departmentId, 10);
+    // Filter by department CODE (shared across companies) so one pick covers every
+    // company's matching department — used by the report's "by department" filter.
+    if (f.deptCode) where.department = { code: f.deptCode };
     if (f.q) {
       const search = [
         { subject: { contains: f.q, mode: 'insensitive' } },

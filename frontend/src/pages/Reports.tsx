@@ -24,7 +24,7 @@ export function Reports() {
 
   // history-by-department (admin/executive only)
   const [depts, setDepts] = useState<any[]>([]);
-  const [deptId, setDeptId] = useState('');
+  const [deptCode, setDeptCode] = useState('');
   const [status, setStatus] = useState('');
   const [histMemos, setHistMemos] = useState<any[]>([]);
   const [histLoading, setHistLoading] = useState(false);
@@ -34,10 +34,10 @@ export function Reports() {
     setHistLoading(true);
     const params: Record<string, string> = {};
     if (companyId) params.companyId = companyId;
-    if (deptId) params.departmentId = deptId;
+    if (deptCode) params.deptCode = deptCode;
     if (status) params.status = status;
     api.memos(params).then(setHistMemos).catch(() => setHistMemos([])).finally(() => setHistLoading(false));
-  }, [canFilter, companyId, deptId, status]);
+  }, [canFilter, companyId, deptCode, status]);
 
   useEffect(() => { if (canFilter) api.companies().then(setCompanies).catch(() => {}); }, [canFilter]);
   useEffect(() => { api.overview(companyId ? { companyId } : {}).then(setOv).catch(() => {}); }, [companyId]);
@@ -184,9 +184,11 @@ export function Reports() {
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div className="font-bold text-ink text-[15px]">📁 {lang === 'th' ? 'บันทึกย้อนหลังรายแผนก' : 'Memo history by department'}</div>
             <div className="flex gap-2 flex-wrap">
-              <select className="input !w-auto !py-1.5 text-[13px]" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
+              <select className="input !w-auto !py-1.5 text-[13px]" value={deptCode} onChange={(e) => setDeptCode(e.target.value)}>
                 <option value="">{lang === 'th' ? 'ทุกแผนก' : 'All departments'}</option>
-                {depts.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                {Array.from(new Map(depts.map((d) => [d.code, d])).values()).map((d: any) => (
+                  <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
+                ))}
               </select>
               <select className="input !w-auto !py-1.5 text-[13px]" value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="">{lang === 'th' ? 'ทุกสถานะ' : 'All statuses'}</option>
