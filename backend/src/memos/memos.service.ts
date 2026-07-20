@@ -580,6 +580,22 @@ export class MemosService {
     if (!ap) throw new ForbiddenException('Not allowed');
   }
 
+  /**
+   * Multer decodes the uploaded filename with latin1, so Thai (and other
+   * multi-byte UTF-8) names arrive as mojibake ("à¸ˆà¸±à¸”…"). Re-interpret the
+   * bytes as UTF-8. The round-trip guard makes it a no-op for names that are
+   * already correct, so it's always safe to call.
+   */
+  private decodeFilename(name: string): string {
+    if (!name) return name;
+    try {
+      const utf8 = Buffer.from(name, 'latin1').toString('utf8');
+      if (utf8.includes('�')) return name; // invalid UTF-8 → leave as-is
+      if (Buffer.from(utf8, 'utf8').toString('latin1') === name) return utf8;
+    } catch { /* noop */ }
+    return name;
+  }
+
   async addAttachment(user: JwtUser, memoId: number, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }) {
     if (!file) throw new BadRequestException('No file uploaded');
     const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
@@ -587,10 +603,11 @@ export class MemosService {
     if (memo.createdBy !== user.id && user.role !== 'admin') {
       throw new ForbiddenException('Only the creator can attach files');
     }
+    const filename = this.decodeFilename(file.originalname);
     const att = await this.prisma.attachment.create({
       data: {
         memoId,
-        filename: file.originalname,
+        filename,
         mimeType: file.mimetype || 'application/octet-stream',
         size: file.size,
         data: file.buffer,
@@ -598,7 +615,7 @@ export class MemosService {
       },
       select: { id: true, filename: true, mimeType: true, size: true, createdAt: true },
     });
-    await this.audit(memoId, user.id, 'attachment_added', file.originalname);
+    await this.audit(memoId, user.id, 'attachment_added', filename);
     return att;
   }
 

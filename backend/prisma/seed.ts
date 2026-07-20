@@ -340,6 +340,29 @@ async function main() {
     console.log(`Retro-flagged ${lateIds.length} legacy memo(s) as backdated (doc date vs submitted date)`);
   }
 
+  // 16) Repair attachment filenames stored as mojibake. Older uploads saved the
+  //     latin1-decoded name, so Thai names became "à¸ˆà¸±à¸”…". Re-interpret the
+  //     bytes as UTF-8 (round-trip guarded, so correct names are left alone).
+  const decodeName = (name: string): string => {
+    if (!name) return name;
+    try {
+      const utf8 = Buffer.from(name, 'latin1').toString('utf8');
+      if (utf8.includes('�')) return name;
+      if (Buffer.from(utf8, 'utf8').toString('latin1') === name) return utf8;
+    } catch { /* noop */ }
+    return name;
+  };
+  const atts = await prisma.attachment.findMany({ select: { id: true, filename: true } });
+  let fixedNames = 0;
+  for (const a of atts) {
+    const fixed = decodeName(a.filename);
+    if (fixed !== a.filename) {
+      await prisma.attachment.update({ where: { id: a.id }, data: { filename: fixed } });
+      fixedNames++;
+    }
+  }
+  if (fixedNames) console.log(`Repaired ${fixedNames} attachment filename(s) (latin1 → UTF-8)`);
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');

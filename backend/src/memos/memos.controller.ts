@@ -74,9 +74,10 @@ export class MemosController {
     @Res() res: Response,
   ) {
     const att = await this.svc.getAttachment(req.user, id, attId);
+    const asciiName = (att.filename || 'file').replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
     res.set({
       'Content-Type': att.mimeType,
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(att.filename)}"`,
+      'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(att.filename || 'file')}`,
     });
     res.send(Buffer.from(att.data as any));
   }
