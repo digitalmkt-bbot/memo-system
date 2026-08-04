@@ -80,6 +80,7 @@ export class MailService {
     to: string[], subject: string, html: string,
     attachments: { filename: string; mimeType: string; base64: string }[],
     cc?: string[],
+    customHeaders?: { header: string; value: string }[],
   ) {
     const list = (to || []).filter(Boolean);
     if (!list.length) return;
@@ -96,6 +97,7 @@ export class MailService {
           sender: process.env.MAIL_FROM,
           subject,
           html_body: html,
+          ...(customHeaders && customHeaders.length ? { custom_headers: customHeaders } : {}),
           attachments: (attachments || []).map((a) => ({ filename: a.filename, fileblob: a.base64, mimetype: a.mimeType })),
         }),
       });
@@ -144,7 +146,16 @@ export class MailService {
       memo.id,
       'เปิดดู / ดาวน์โหลดไฟล์ทั้งหมดในระบบ',
     );
-    await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments, cc);
+    // Thread every send for the SAME memo into one e-mail conversation: a stable
+    // References/In-Reply-To token + an identical subject makes Gmail/Outlook group
+    // follow-ups (e.g. the settled/updated close) under the original message
+    // instead of starting a brand-new e-mail.
+    const threadRoot = `<memo-${memo.memoNo || memo.id}.thread@loveandaman.com>`;
+    const headers = [
+      { header: 'References', value: threadRoot },
+      { header: 'In-Reply-To', value: threadRoot },
+    ];
+    await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments, cc, headers);
   }
 
   /** Notify the user who must approve next that a memo is waiting. */

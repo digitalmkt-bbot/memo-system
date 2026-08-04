@@ -440,8 +440,8 @@ export function MemoView() {
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
-            {memo.status === 'approved' && (isCreator || user?.role === 'admin') && memo.forwardedAt && sentRecips.length < FWD_OPTS.length &&
-              <button className="btn btn-ghost" onClick={() => setFwd(true)}>{lang === 'th' ? 'ส่งปิดงานเพิ่ม' : 'Close to more'}</button>}
+            {memo.status === 'approved' && (isCreator || user?.role === 'admin') && memo.forwardedAt &&
+              <button className="btn btn-ghost" onClick={() => setFwd(true)}>{lang === 'th' ? 'ส่งปิดงานเพิ่ม / ส่งอัปเดต' : 'Close to more / resend'}</button>}
             {isCreator && memo.status === 'approved' && !memo.forwardedAt &&
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
           </div>
@@ -519,14 +519,21 @@ export function MemoView() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold">{t('view.forwardTitle')}</h3>
             <p className="text-gray-500 text-[13px] mt-1">{t('view.forwardDesc')}</p>
+            {memo.forwardedAt && (
+              <p className="text-[12px] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-2">
+                {lang === 'th'
+                  ? 'เอกสารเลขเดิม — ระบบจะส่งต่อในอีเมลเดิม (thread เดียวกัน) ไม่ขึ้นอีเมลใหม่ เลือกปลายทางเดิมเพื่อส่งเวอร์ชันอัปเดต (เช่น หลังบันทึกยอดใช้จริง) ได้'
+                  : 'Same memo — sent as a follow-up in the original email thread. Re-select a recipient to send the updated version (e.g. after settling actuals).'}
+              </p>
+            )}
             <div className="mt-3 space-y-2">
               {FWD_OPTS.map((o) => {
                 const alreadySent = sentRecips.includes(o.email);
                 return (
-                  <label key={o.email} className={`flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-[13.5px] ${alreadySent ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:bg-slate-50'}`}>
-                    <input type="checkbox" className="h-4 w-4 accent-emerald-600" disabled={alreadySent} checked={alreadySent || recips.includes(o.email)} onChange={() => !alreadySent && toggleRecip(o.email)} />
+                  <label key={o.email} className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-[13.5px] cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={recips.includes(o.email)} onChange={() => toggleRecip(o.email)} />
                     <span className="flex-1">{o.label}</span>
-                    {alreadySent && <span className="text-[11.5px] text-emerald-600">{lang === 'th' ? 'ส่งแล้ว' : 'sent'}</span>}
+                    {alreadySent && <span className="text-[11.5px] text-slate-400">{lang === 'th' ? 'ส่งแล้ว · ส่งซ้ำได้' : 'sent · resend ok'}</span>}
                   </label>
                 );
               })}

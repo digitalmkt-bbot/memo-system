@@ -446,10 +446,12 @@ export class MemosService {
         .map((r) => r.trim().toLowerCase())
         .filter(Boolean),
     );
-    const requested = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
-    if (!requested.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
-    const to = requested.filter((r) => !already.has(r));
-    if (!to.length) throw new BadRequestException('ปลายทางที่เลือกส่งปิดงานไปแล้วทั้งหมด กรุณาเลือกปลายทางใหม่');
+    // Allow re-sending to a recipient who was already notified — after recording
+    // the ACTUAL usage the creator must be able to send the finalized/updated
+    // document to the same mailboxes. It threads into the original e-mail (see
+    // mail.service), so it's a follow-up, not a new e-mail.
+    const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
+    if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
 
     const shaped = this.shape(memo);
     const approvals = await this.prisma.approval.findMany({
