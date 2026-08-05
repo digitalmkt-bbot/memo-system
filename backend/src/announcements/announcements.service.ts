@@ -19,6 +19,7 @@ export class AnnouncementsService {
       data: {
         title: (dto.title ?? '').trim(),
         message: (dto.message ?? '').trim(),
+        image: dto.image ? dto.image : null,
         active: dto.active ?? true,
         publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : new Date(),
         updatedBy: userId,
@@ -34,6 +35,7 @@ export class AnnouncementsService {
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
         ...(dto.message !== undefined ? { message: dto.message.trim() } : {}),
+        ...(dto.image !== undefined ? { image: dto.image || null } : {}),
         ...(dto.active !== undefined ? { active: dto.active } : {}),
         ...(dto.publishedAt !== undefined ? { publishedAt: new Date(dto.publishedAt) } : {}),
         updatedBy: userId,

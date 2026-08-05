@@ -206,6 +206,7 @@ model Announcement {
   id          Int      @id @default(autoincrement())
   title       String   @default("")
   message     String
+  image       String?  @db.Text
   active      Boolean  @default(true)
   publishedAt DateTime @default(now()) @map("published_at")
   updatedBy   Int?     @map("updated_by")

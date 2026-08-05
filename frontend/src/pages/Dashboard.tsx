@@ -42,11 +42,35 @@ export function Dashboard() {
     if (!annForm) return;
     setAnnSaving(true);
     try {
-      const dto = { title: annForm.title, message: annForm.message, active: annForm.active, publishedAt: annForm.publishedAt || undefined };
+      const dto = { title: annForm.title, message: annForm.message, image: annForm.image ?? '', active: annForm.active, publishedAt: annForm.publishedAt || undefined };
       if (annForm.id) await api.updateAnnouncement(annForm.id, dto); else await api.createAnnouncement(dto);
       setAnnForm(null); loadAnns();
     } catch (e: any) { alert(e?.response?.data?.message || e.message); }
     finally { setAnnSaving(false); }
+  };
+  // Compress an uploaded image (resize to max 1400px, JPEG q0.82) so the stored
+  // base64 stays small enough for the DB and loads fast.
+  const pickAnnImage = (file?: File) => {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { alert('กรุณาเลือกไฟล์รูปภาพ'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { setAnnForm((f: any) => ({ ...f, image: String(reader.result) })); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL('image/jpeg', 0.82);
+        setAnnForm((f: any) => ({ ...f, image: out }));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
   const delAnn = async (id: number) => {
     if (!window.confirm('ลบข่าวนี้?')) return;
@@ -95,7 +119,7 @@ export function Dashboard() {
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
           <h3 className="text-[16px] font-bold text-ocean-dark">📢 ข่าวประชาสัมพันธ์องค์กร</h3>
-          {isAdmin && <button className="btn btn-primary !py-1.5 text-[13px]" onClick={() => setAnnForm({ title: '', message: '', active: true, publishedAt: '' })}>+ เพิ่มข่าว</button>}
+          {isAdmin && <button className="btn btn-primary !py-1.5 text-[13px]" onClick={() => setAnnForm({ title: '', message: '', image: '', active: true, publishedAt: '' })}>+ เพิ่มข่าว</button>}
         </div>
         {anns.length === 0 ? (
           <p className="text-slate-400 text-[13px]">ยังไม่มีข่าวประกาศ</p>
@@ -110,7 +134,7 @@ export function Dashboard() {
                 </div>
                 {isAdmin && (
                   <div className="mt-2.5 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                    <button className="text-[12px] text-slate-500 hover:underline" onClick={() => setAnnForm({ id: a.id, title: a.title, message: a.message, active: a.active, publishedAt: a.publishedAt ? String(a.publishedAt).slice(0, 10) : '' })}>แก้ไข</button>
+                    <button className="text-[12px] text-slate-500 hover:underline" onClick={() => setAnnForm({ id: a.id, title: a.title, message: a.message, image: a.image || '', active: a.active, publishedAt: a.publishedAt ? String(a.publishedAt).slice(0, 10) : '' })}>แก้ไข</button>
                     <button className="text-[12px] text-rose-500 hover:underline" onClick={() => delAnn(a.id)}>ลบ</button>
                     {!a.active && <span className="text-[11px] text-amber-600">(ซ่อนอยู่)</span>}
                   </div>
@@ -141,6 +165,9 @@ export function Dashboard() {
               <div className="text-[15px]"><span className="font-bold text-[#17263f]">เรื่อง :</span> {viewAnn.title || '-'}</div>
               <div className="mt-1 text-[12px] text-slate-500">วันที่ประกาศ : {fmtD(viewAnn.publishedAt)}{viewAnn.updatedAt ? ` · แก้ไขล่าสุด ${fmtD(viewAnn.updatedAt)}` : ''}</div>
               <div className="mt-4 whitespace-pre-wrap text-[14px] leading-8 text-slate-700">{viewAnn.message}</div>
+              {viewAnn.image && (
+                <img src={viewAnn.image} alt="รูปประกอบประกาศ" className="mt-4 w-full rounded-lg border border-slate-200 object-contain" />
+              )}
               <div className="mt-10 text-right">
                 <img src="/md-signature.png" alt="ลายเซ็นกรรมการผู้จัดการ" className="ml-auto -mb-2 h-[64px] w-auto object-contain" />
                 <div className="mx-auto mr-0 w-[240px] border-t border-slate-400" />
@@ -161,6 +188,15 @@ export function Dashboard() {
             <input className="input" value={annForm.title} onChange={(e) => setAnnForm({ ...annForm, title: e.target.value })} placeholder="เช่น วันหยุดนักขัตฤกษ์ ประจำปี 2569" />
             <label className="label mt-3">รายละเอียด</label>
             <textarea className="input min-h-[120px]" value={annForm.message} onChange={(e) => setAnnForm({ ...annForm, message: e.target.value })} placeholder="เนื้อหาข่าวแบบเต็ม…" />
+            <label className="label mt-3">รูปภาพประกอบ (ถ้ามี)</label>
+            {annForm.image ? (
+              <div className="mt-1 rounded-lg border border-slate-200 p-2">
+                <img src={annForm.image} alt="ตัวอย่างรูปประกาศ" className="max-h-52 w-full rounded object-contain" />
+                <button type="button" className="mt-2 text-[12px] text-rose-600 hover:underline" onClick={() => setAnnForm({ ...annForm, image: '' })}>ลบรูป</button>
+              </div>
+            ) : (
+              <input type="file" accept="image/*" className="mt-1 block w-full text-[13px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-[13px]" onChange={(e) => pickAnnImage(e.target.files?.[0])} />
+            )}
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div><label className="label">วันที่ประกาศ</label><input type="date" className="input" value={annForm.publishedAt} onChange={(e) => setAnnForm({ ...annForm, publishedAt: e.target.value })} /></div>
               <label className="flex items-end gap-2 pb-2.5 text-[13px] text-slate-600"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={annForm.active} onChange={(e) => setAnnForm({ ...annForm, active: e.target.checked })} />แสดงให้ทุกคนเห็น</label>
