@@ -363,6 +363,21 @@ async function main() {
   }
   if (fixedNames) console.log(`Repaired ${fixedNames} attachment filename(s) (latin1 → UTF-8)`);
 
+  // 17) One-time password reset for accounts locked out of login. Guarded by an
+  //     AuditLog marker so it runs EXACTLY ONCE — it will never overwrite a
+  //     password the user sets afterwards. Also re-activates the account.
+  const RESET_ONCE: string[] = ['salescounter@loveandaman.com'];
+  for (const email of RESET_ONCE) {
+    const marker = `seed_pwreset:${email}`;
+    const done = await prisma.auditLog.findFirst({ where: { action: marker } });
+    if (done) continue;
+    const u = await prisma.user.findUnique({ where: { email } });
+    if (!u) { console.warn(`pwreset: ${email} not found — skip`); continue; }
+    await prisma.user.update({ where: { id: u.id }, data: { passwordHash: demoPw, active: true } });
+    await prisma.auditLog.create({ data: { action: marker, detail: 'reset to default Password123! (one-time)', userId: u.id } });
+    console.log(`pwreset: ${email} reset to default Password123! (one-time)`);
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
