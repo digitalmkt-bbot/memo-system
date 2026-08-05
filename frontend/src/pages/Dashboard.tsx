@@ -142,9 +142,10 @@ export function Dashboard() {
               <div className="mt-1 text-[12px] text-slate-500">วันที่ประกาศ : {fmtD(viewAnn.publishedAt)}{viewAnn.updatedAt ? ` · แก้ไขล่าสุด ${fmtD(viewAnn.updatedAt)}` : ''}</div>
               <div className="mt-4 whitespace-pre-wrap text-[14px] leading-8 text-slate-700">{viewAnn.message}</div>
               <div className="mt-10 text-right">
-                <div className="text-slate-400 tracking-widest">.........................................</div>
-                <div className="mt-1 text-[13px] font-bold text-[#17263f]">กรรมการผู้จัดการ / MD</div>
-                <div className="text-[13px] text-slate-600">นายอรรควิชญ์ หาญนวโชค</div>
+                <img src="/md-signature.png" alt="ลายเซ็นกรรมการผู้จัดการ" className="ml-auto -mb-2 h-[64px] w-auto object-contain" />
+                <div className="mx-auto mr-0 w-[240px] border-t border-slate-400" />
+                <div className="mt-1 text-[13px] text-slate-700">นายอรรควิชญ์ หาญนวโชค</div>
+                <div className="text-[13px] font-bold text-[#17263f]">กรรมการผู้จัดการ / MD</div>
               </div>
             </div>
           </div>
