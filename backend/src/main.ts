@@ -4,10 +4,12 @@ import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Disable Nest's built-in body parser so ours (with a larger limit) is the only
+  // one registered — otherwise the default 100kb JSON parser runs first and
+  // rejects inline base64 images before our middleware is reached.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.enableCors({ origin: true, credentials: true });
-  // Allow base64 image payloads (e.g. announcement images) — the Express default
-  // JSON limit is only 100kb, which is too small for an inline image.
+  // Allow base64 image payloads (e.g. announcement images).
   app.use(json({ limit: '15mb' }));
   app.use(urlencoded({ extended: true, limit: '15mb' }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
