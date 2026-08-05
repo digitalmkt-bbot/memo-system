@@ -10,7 +10,10 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase().trim() } });
-    if (!user || !user.active || !bcrypt.compareSync(dto.password, user.passwordHash)) {
+    // Trim the password too: mobile keyboards / autofill frequently append a stray
+    // space, which otherwise fails the exact bcrypt comparison.
+    const pw = (dto.password ?? '').trim();
+    if (!user || !user.active || !bcrypt.compareSync(pw, user.passwordHash)) {
       throw new UnauthorizedException('Invalid email or password');
     }
     const token = await this.jwt.signAsync({
@@ -28,12 +31,14 @@ export class AuthService {
 
   async changePassword(dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase().trim() } });
-    if (!user || !bcrypt.compareSync(dto.currentPassword, user.passwordHash)) {
+    const current = (dto.currentPassword ?? '').trim();
+    const next = (dto.newPassword ?? '').trim();
+    if (!user || !bcrypt.compareSync(current, user.passwordHash)) {
       throw new UnauthorizedException('อีเมลหรือรหัสผ่านปัจจุบันไม่ถูกต้อง');
     }
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: bcrypt.hashSync(dto.newPassword, 10) },
+      data: { passwordHash: bcrypt.hashSync(next, 10) },
     });
     return { ok: true };
   }
