@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, LabelList } from 'recharts';
 import { api } from '../api';
 import { StatusTag, fmtDate } from '../ui';
 import { useAuth } from '../auth';
@@ -93,7 +93,8 @@ export function Reports() {
     return top;
   })();
   // Bars: top 10 items by amount (used when a department is selected).
-  const itemBars = itemRows.slice(0, 10).map((it) => ({ name: it.name.length > 22 ? it.name.slice(0, 21) + '…' : it.name, amount: Math.round(it.amount) }));
+  const itemBars = itemRows.slice(0, 10).map((it) => ({ name: it.name.length > 30 ? it.name.slice(0, 29) + '…' : it.name, amount: Math.round(it.amount) }));
+  const moneyShort = (n: number) => { const v = Number(n) || 0; return v >= 1000 ? '฿' + (v / 1000).toFixed(v >= 100000 ? 0 : 1) + 'k' : '฿' + v; };
 
   const sum = ov.summary || {};
   const total = sum.total || 0;
@@ -322,20 +323,20 @@ export function Reports() {
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <button onClick={() => setDeptCode('')} className="text-[12.5px] text-ocean-dark hover:underline">← {lang === 'th' ? 'ทุกแผนก' : 'All departments'}</button>
-                    <span className="text-slate-300">·</span>
-                    <span className="text-[13px] font-bold text-ink">{lang === 'th' ? `รายการที่ใช้จ่าย — แผนก ${deptCode}` : `Items — ${deptCode}`}</span>
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
+                    <button onClick={() => setDeptCode('')} className="inline-flex items-center gap-1.5 rounded-lg bg-ocean-dark text-white text-[13px] font-semibold px-4 py-2 hover:opacity-90 shadow-sm">← {lang === 'th' ? 'ทุกแผนก' : 'All departments'}</button>
+                    <span className="text-[15px] font-extrabold text-ink">{lang === 'th' ? `แผนก ${deptCode} — รายการที่ใช้จ่าย` : `${deptCode} — items`}</span>
                   </div>
                   {itemBars.length > 0 && (
-                    <div className="h-[300px] mb-4">
+                    <div className="mb-4" style={{ height: Math.max(240, itemBars.length * 42 + 30) }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={itemBars} layout="vertical" margin={{ left: 8, right: 16 }}>
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                          <XAxis type="number" tickFormatter={(v: any) => money(Number(v))} tick={{ fontSize: 11 }} />
-                          <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v: any) => money(Number(v))} />
-                          <Bar dataKey="amount" fill="#0ea5a3" radius={[0, 4, 4, 0]} />
+                        <BarChart data={itemBars} layout="vertical" margin={{ left: 8, right: 64, top: 4, bottom: 4 }} barCategoryGap="22%">
+                          <XAxis type="number" hide />
+                          <YAxis type="category" dataKey="name" width={210} tick={{ fontSize: 12 }} interval={0} />
+                          <Tooltip formatter={(v: any) => money(Number(v))} cursor={{ fill: '#f1f5f9' }} />
+                          <Bar dataKey="amount" fill="#0ea5a3" radius={[0, 6, 6, 0]}>
+                            <LabelList dataKey="amount" position="right" formatter={(v: any) => moneyShort(Number(v))} style={{ fill: '#0f766e', fontSize: 12, fontWeight: 700 }} />
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
