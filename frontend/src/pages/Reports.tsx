@@ -32,6 +32,7 @@ export function Reports() {
   const [depts, setDepts] = useState<any[]>([]);
   const [deptCode, setDeptCode] = useState('');
   const [showOthers, setShowOthers] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(false);
   const [status, setStatus] = useState('');
   const [histMemos, setHistMemos] = useState<any[]>([]);
   const [histLoading, setHistLoading] = useState(false);
@@ -361,28 +362,37 @@ export function Reports() {
                       </div>
                     </div>
                   )}
-                  <div className="overflow-x-auto">
-                  {itemRows.length === 0 ? (
-                    <div className="py-4 text-slate-400 text-[13px]">{lang === 'th' ? 'ไม่มีรายการสินค้า/บริการในเอกสารกลุ่มนี้' : 'No line items in these memos.'}</div>
-                  ) : (
-                    <table className="w-full text-[13px] min-w-[520px]">
-                      <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
-                        <th className="text-left px-3 py-2">{lang === 'th' ? 'รายการ' : 'Item'}</th>
-                        <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวน' : 'Qty'}</th>
-                        <th className="text-right px-3 py-2">{lang === 'th' ? 'รวมเงิน' : 'Amount'}</th>
-                      </tr></thead>
-                      <tbody>
-                        {itemRows.map((it, i) => (
-                          <tr key={i} className="border-t border-slate-200/70">
-                            <td className="px-3 py-2 text-ink">{it.name}</td>
-                            <td className="px-3 py-2 text-right text-slate-600">{num(it.qty)}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(it.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {itemRows.length > 0 && (
+                    <button onClick={() => setShowAllItems((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg border border-ocean-dark/30 text-ocean-dark text-[13px] font-semibold px-4 py-2 hover:bg-ocean-light">
+                      {showAllItems
+                        ? (lang === 'th' ? 'ซ่อนรายการทั้งหมด ▲' : 'Hide all items ▲')
+                        : (lang === 'th' ? `ดูรายการทั้งหมด (${itemRows.length} รายการ) ▼` : `See all items (${itemRows.length}) ▼`)}
+                    </button>
                   )}
-                  </div>
+                  {showAllItems && (
+                    <div className="overflow-x-auto mt-3">
+                    {itemRows.length === 0 ? (
+                      <div className="py-4 text-slate-400 text-[13px]">{lang === 'th' ? 'ไม่มีรายการสินค้า/บริการในเอกสารกลุ่มนี้' : 'No line items in these memos.'}</div>
+                    ) : (
+                      <table className="w-full text-[13px] min-w-[520px]">
+                        <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
+                          <th className="text-left px-3 py-2">{lang === 'th' ? 'รายการ' : 'Item'}</th>
+                          <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวน' : 'Qty'}</th>
+                          <th className="text-right px-3 py-2">{lang === 'th' ? 'รวมเงิน' : 'Amount'}</th>
+                        </tr></thead>
+                        <tbody>
+                          {itemRows.map((it, i) => (
+                            <tr key={i} className="border-t border-slate-200/70">
+                              <td className="px-3 py-2 text-ink">{it.name}</td>
+                              <td className="px-3 py-2 text-right text-slate-600">{num(it.qty)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(it.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
