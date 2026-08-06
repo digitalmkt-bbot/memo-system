@@ -22,6 +22,7 @@ export function Reports() {
   const [range, setRange] = useState('12m');
   const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState('');
+  const [period, setPeriod] = useState(''); // '' all · week · month · lastmonth · year · custom
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [tier, setTier] = useState(''); // '' = all · 'small' ≤1,000 · 'large' >1,000
@@ -46,11 +47,26 @@ export function Reports() {
   }, [companyId]);
 
   const amountOf = (m: any) => Number(m.grandTotal ?? m.totalAmount) || 0;
+  // Resolve the selected period preset (or custom) into a from/to window.
+  const periodRange = (): { from: Date | null; to: Date | null } => {
+    const now = new Date();
+    if (period === 'week') { const d = new Date(now); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); d.setHours(0, 0, 0, 0); return { from: d, to: now }; }
+    if (period === 'month') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: now };
+    if (period === 'lastmonth') return { from: new Date(now.getFullYear(), now.getMonth() - 1, 1), to: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999) };
+    if (period === 'year') return { from: new Date(now.getFullYear(), 0, 1), to: now };
+    if (period === 'custom') {
+      const f = dateFrom ? new Date(dateFrom) : null;
+      let tt: Date | null = null;
+      if (dateTo) { tt = new Date(dateTo); tt.setHours(23, 59, 59, 999); }
+      return { from: f, to: tt };
+    }
+    return { from: null, to: null };
+  };
   // Global filter: date range + tier (company is already applied server-side).
   const baseMemos = (() => {
-    const fromT = dateFrom ? new Date(dateFrom).getTime() : null;
-    let toT: number | null = null;
-    if (dateTo) { const e = new Date(dateTo); e.setHours(23, 59, 59, 999); toT = e.getTime(); }
+    const { from, to } = periodRange();
+    const fromT = from ? from.getTime() : null;
+    const toT = to ? to.getTime() : null;
     return allMemos.filter((m) => {
       const ts = new Date(m.createdAt).getTime();
       if (fromT !== null && ts < fromT) return false;
@@ -226,19 +242,26 @@ export function Reports() {
             <option value="small">{lang === 'th' ? 'ยอด ≤ 1,000 (หัวหน้าอนุมัติ)' : '≤ 1,000'}</option>
             <option value="large">{lang === 'th' ? 'ยอด > 1,000 (ถึง MD)' : '> 1,000'}</option>
           </select>
-          <div className="flex items-end gap-1">
-            <div>
-              <label className="block text-[10.5px] text-slate-400 mb-0.5">{lang === 'th' ? 'ตั้งแต่' : 'From'}</label>
-              <input type="date" className="input !w-auto !py-2 text-[13px]" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} />
+          <select className="input !w-auto !py-2" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <option value="">{lang === 'th' ? 'ทุกช่วงเวลา' : 'All time'}</option>
+            <option value="week">{lang === 'th' ? 'สัปดาห์นี้' : 'This week'}</option>
+            <option value="month">{lang === 'th' ? 'เดือนนี้' : 'This month'}</option>
+            <option value="lastmonth">{lang === 'th' ? 'เดือนที่แล้ว' : 'Last month'}</option>
+            <option value="year">{lang === 'th' ? 'ปีนี้' : 'This year'}</option>
+            <option value="custom">{lang === 'th' ? 'กำหนดเอง…' : 'Custom…'}</option>
+          </select>
+          {period === 'custom' && (
+            <div className="flex items-end gap-1">
+              <div>
+                <label className="block text-[10.5px] text-slate-400 mb-0.5">{lang === 'th' ? 'ตั้งแต่' : 'From'}</label>
+                <input type="date" className="input !w-auto !py-2 text-[13px]" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10.5px] text-slate-400 mb-0.5">{lang === 'th' ? 'ถึง' : 'To'}</label>
+                <input type="date" className="input !w-auto !py-2 text-[13px]" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="block text-[10.5px] text-slate-400 mb-0.5">{lang === 'th' ? 'ถึง' : 'To'}</label>
-              <input type="date" className="input !w-auto !py-2 text-[13px]" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-            {(dateFrom || dateTo || tier) && (
-              <button className="btn btn-ghost !py-2 text-[12px]" onClick={() => { setDateFrom(''); setDateTo(''); setTier(''); }}>{lang === 'th' ? 'ล้าง' : 'Clear'}</button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
