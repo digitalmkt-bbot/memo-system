@@ -100,9 +100,10 @@ export function Reports() {
   const topItems = itemSpent.slice(0, 8);
   const otherItems = itemSpent.slice(8);
   const otherItemsSum = otherItems.reduce((s, it) => s + it.amount, 0);
+  const otherItemsQty = otherItems.reduce((s, it) => s + it.qty, 0);
   const itemDonut = (() => {
-    const top = topItems.map((it) => ({ name: it.name, value: Math.round(it.amount) }));
-    if (otherItemsSum > 0) top.push({ name: OTHERS_LABEL, value: Math.round(otherItemsSum) });
+    const top = topItems.map((it) => ({ name: it.name, value: Math.round(it.amount), qty: it.qty }));
+    if (otherItemsSum > 0) top.push({ name: OTHERS_LABEL, value: Math.round(otherItemsSum), qty: otherItemsQty });
     return top;
   })();
 
@@ -354,6 +355,7 @@ export function Reports() {
                           <div key={i} className="flex items-center gap-2 px-2 py-1">
                             <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
                             <span className="text-[12.5px] text-ink flex-1 truncate" title={d.name}>{d.name}</span>
+                            <span className="text-[11px] text-slate-500 w-16 text-right">{lang === 'th' ? `จำนวน ${num(d.qty)}` : `qty ${num(d.qty)}`}</span>
                             <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(d.value)}</span>
                             <span className="text-[11px] text-slate-400 w-9 text-right">{itemTotal ? Math.round((d.value / itemTotal) * 100) : 0}%</span>
                           </div>
