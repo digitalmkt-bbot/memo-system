@@ -44,6 +44,36 @@ export function Reports() {
   useEffect(() => { api.series(range, companyId || undefined).then(setMonths).catch(() => {}); }, [range, companyId]);
   useEffect(() => { api.byCompany().then(setByCompany).catch(() => {}); api.byDept().then(setByDept).catch(() => {}); }, []);
 
+  // Per-department spend summary + item breakdown, derived from the filtered
+  // history (respects the company/department/status filters below).
+  const deptRows = (() => {
+    const map = new Map<string, { code: string; name: string; count: number; requested: number; approved: number }>();
+    for (const m of histMemos) {
+      const code = m.deptCode || '—';
+      const cur = map.get(code) || { code, name: m.deptName || code, count: 0, requested: 0, approved: 0 };
+      const amt = Number(m.grandTotal ?? m.totalAmount) || 0;
+      cur.count++; cur.requested += amt;
+      if (m.status === 'approved') cur.approved += amt;
+      map.set(code, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.approved - a.approved);
+  })();
+  const itemRows = (() => {
+    const map = new Map<string, { name: string; qty: number; amount: number; count: number }>();
+    for (const m of histMemos) {
+      for (const it of (m.items || [])) {
+        const name = (it.name || '—').trim() || '—';
+        const cur = map.get(name) || { name, qty: 0, amount: 0, count: 0 };
+        cur.qty += Number(it.qty) || 0;
+        cur.amount += Number(it.lineTotal ?? (Number(it.qty || 0) * Number(it.unitPrice || 0))) || 0;
+        cur.count++;
+        map.set(name, cur);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+  })();
+  const histTotals = deptRows.reduce((s, d) => ({ count: s.count + d.count, requested: s.requested + d.requested, approved: s.approved + d.approved }), { count: 0, requested: 0, approved: 0 });
+
   const sum = ov.summary || {};
   const total = sum.total || 0;
   const approved = sum.approved || 0;
@@ -200,6 +230,76 @@ export function Reports() {
               </select>
             </div>
           </div>
+
+          {!histLoading && histMemos.length > 0 && (
+            <div className="mb-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                <div className="rounded-xl bg-sand p-3">
+                  <div className="text-[11.5px] text-slate-500">{lang === 'th' ? 'จำนวนเอกสาร' : 'Documents'}{deptCode ? ` · ${deptCode}` : ''}</div>
+                  <div className="text-[22px] font-extrabold text-ink leading-tight mt-0.5">{num(histTotals.count)}</div>
+                </div>
+                <div className="rounded-xl bg-emerald-50 p-3">
+                  <div className="text-[11.5px] text-emerald-700">{lang === 'th' ? 'ใช้จ่ายจริง (อนุมัติแล้ว)' : 'Approved spend'}</div>
+                  <div className="text-[22px] font-extrabold text-emerald-700 leading-tight mt-0.5">{money(histTotals.approved)}</div>
+                </div>
+                <div className="rounded-xl bg-ocean-light p-3 col-span-2 sm:col-span-1">
+                  <div className="text-[11.5px] text-ocean-dark">{lang === 'th' ? 'ยอดขอทั้งหมด' : 'Total requested'}</div>
+                  <div className="text-[22px] font-extrabold text-ocean-dark leading-tight mt-0.5">{money(histTotals.requested)}</div>
+                </div>
+              </div>
+
+              {!deptCode ? (
+                <div className="overflow-x-auto">
+                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? 'ใช้จ่ายรายแผนก (คลิกเพื่อดูรายละเอียด)' : 'Spending by department (click to drill in)'}</div>
+                  <table className="w-full text-[13px] min-w-[520px]">
+                    <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
+                      <th className="text-left px-3 py-2">{lang === 'th' ? 'แผนก' : 'Department'}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวน' : 'Docs'}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'อนุมัติแล้ว' : 'Approved'}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'ยอดขอรวม' : 'Requested'}</th>
+                    </tr></thead>
+                    <tbody>
+                      {deptRows.map((d) => (
+                        <tr key={d.code} onClick={() => setDeptCode(d.code)} className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
+                          <td className="px-3 py-2 font-semibold text-ink">{d.code} <span className="text-slate-400 font-normal">· {d.name}</span></td>
+                          <td className="px-3 py-2 text-right text-slate-600">{num(d.count)}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-emerald-700 whitespace-nowrap">{money(d.approved)}</td>
+                          <td className="px-3 py-2 text-right text-ocean-dark whitespace-nowrap">{money(d.requested)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? `รายการที่ใช้จ่าย — แผนก ${deptCode}` : `Items — ${deptCode}`}</div>
+                  {itemRows.length === 0 ? (
+                    <div className="py-4 text-slate-400 text-[13px]">{lang === 'th' ? 'ไม่มีรายการสินค้า/บริการในเอกสารกลุ่มนี้' : 'No line items in these memos.'}</div>
+                  ) : (
+                    <table className="w-full text-[13px] min-w-[520px]">
+                      <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
+                        <th className="text-left px-3 py-2">{lang === 'th' ? 'รายการ' : 'Item'}</th>
+                        <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวนรวม' : 'Total qty'}</th>
+                        <th className="text-right px-3 py-2">{lang === 'th' ? 'พบใน (ครั้ง)' : 'Times'}</th>
+                        <th className="text-right px-3 py-2">{lang === 'th' ? 'รวมเงิน' : 'Amount'}</th>
+                      </tr></thead>
+                      <tbody>
+                        {itemRows.map((it, i) => (
+                          <tr key={i} className="border-t border-slate-200/70">
+                            <td className="px-3 py-2 text-ink">{it.name}</td>
+                            <td className="px-3 py-2 text-right text-slate-600">{num(it.qty)}</td>
+                            <td className="px-3 py-2 text-right text-slate-400">{num(it.count)}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(it.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             {histLoading ? <div className="py-8 text-center text-slate-400">{t('common.loading')}</div> :
               histMemos.length === 0 ? <div className="py-8 text-center text-slate-400">{t('memos.noMemos')}</div> : (
