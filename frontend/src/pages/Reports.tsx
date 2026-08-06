@@ -31,7 +31,7 @@ export function Reports() {
   // history-by-department (admin/executive only)
   const [depts, setDepts] = useState<any[]>([]);
   const [deptCode, setDeptCode] = useState('');
-  const [status, setStatus] = useState('approved');
+  const [status, setStatus] = useState('');
   const [histMemos, setHistMemos] = useState<any[]>([]);
   const [histLoading, setHistLoading] = useState(false);
   useEffect(() => { if (canFilter) api.departments(companyId ? Number(companyId) : undefined).then(setDepts).catch(() => setDepts([])); }, [canFilter, companyId]);
@@ -249,8 +249,8 @@ export function Reports() {
 
           {!histLoading && histMemos.length > 0 && (
             <div className="mb-5">
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
-                <span>✓</span>{statusLabelTH(status, lang)}
+              <div className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold ${status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                <span>{status === 'approved' ? '✓' : '⧉'}</span>{lang === 'th' ? 'กำลังแสดง: ' : 'Showing: '}{statusLabelTH(status, lang)}
               </div>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="rounded-xl bg-sand p-3">
