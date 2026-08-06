@@ -93,8 +93,18 @@ export function Reports() {
     return top;
   })();
   // Bars: top 10 items by amount (used when a department is selected).
-  const itemBars = itemRows.slice(0, 10).map((it) => ({ name: it.name.length > 30 ? it.name.slice(0, 29) + '…' : it.name, amount: Math.round(it.amount) }));
   const moneyShort = (n: number) => { const v = Number(n) || 0; return v >= 1000 ? '฿' + (v / 1000).toFixed(v >= 100000 ? 0 : 1) + 'k' : '฿' + v; };
+  // Item donut: spend share by item for the selected department (top 8 + others).
+  const itemSpent = itemRows.filter((it) => it.amount > 0);
+  const itemTotal = itemSpent.reduce((s, it) => s + it.amount, 0);
+  const topItems = itemSpent.slice(0, 8);
+  const otherItems = itemSpent.slice(8);
+  const otherItemsSum = otherItems.reduce((s, it) => s + it.amount, 0);
+  const itemDonut = (() => {
+    const top = topItems.map((it) => ({ name: it.name, value: Math.round(it.amount) }));
+    if (otherItemsSum > 0) top.push({ name: OTHERS_LABEL, value: Math.round(otherItemsSum) });
+    return top;
+  })();
 
   const sum = ov.summary || {};
   const total = sum.total || 0;
@@ -327,18 +337,28 @@ export function Reports() {
                     <button onClick={() => setDeptCode('')} className="inline-flex items-center gap-1.5 rounded-lg bg-ocean-dark text-white text-[13px] font-semibold px-4 py-2 hover:opacity-90 shadow-sm">← {lang === 'th' ? 'ทุกแผนก' : 'All departments'}</button>
                     <span className="text-[15px] font-extrabold text-ink">{lang === 'th' ? `แผนก ${deptCode} — รายการที่ใช้จ่าย` : `${deptCode} — items`}</span>
                   </div>
-                  {itemBars.length > 0 && (
-                    <div className="mb-4" style={{ height: Math.max(240, itemBars.length * 42 + 30) }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={itemBars} layout="vertical" margin={{ left: 8, right: 64, top: 4, bottom: 4 }} barCategoryGap="22%">
-                          <XAxis type="number" hide />
-                          <YAxis type="category" dataKey="name" width={210} tick={{ fontSize: 12 }} interval={0} />
-                          <Tooltip formatter={(v: any) => money(Number(v))} cursor={{ fill: '#f1f5f9' }} />
-                          <Bar dataKey="amount" fill="#0ea5a3" radius={[0, 6, 6, 0]}>
-                            <LabelList dataKey="amount" position="right" formatter={(v: any) => moneyShort(Number(v))} style={{ fill: '#0f766e', fontSize: 12, fontWeight: 700 }} />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                  {itemDonut.length > 0 && (
+                    <div className="grid md:grid-cols-2 gap-4 items-center mb-4">
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={itemDonut} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={66} outerRadius={104} paddingAngle={2}>
+                              {itemDonut.map((_, i) => <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip formatter={(v: any) => money(Number(v))} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {itemDonut.map((d, i) => (
+                          <div key={i} className="flex items-center gap-2 px-2 py-1">
+                            <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
+                            <span className="text-[12.5px] text-ink flex-1 truncate" title={d.name}>{d.name}</span>
+                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(d.value)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{itemTotal ? Math.round((d.value / itemTotal) * 100) : 0}%</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div className="overflow-x-auto">
