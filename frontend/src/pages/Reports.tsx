@@ -31,6 +31,7 @@ export function Reports() {
   // history-by-department (admin/executive only)
   const [depts, setDepts] = useState<any[]>([]);
   const [deptCode, setDeptCode] = useState('');
+  const [showOthers, setShowOthers] = useState(false);
   const [status, setStatus] = useState('');
   const [histMemos, setHistMemos] = useState<any[]>([]);
   const [histLoading, setHistLoading] = useState(false);
@@ -80,11 +81,15 @@ export function Reports() {
   })();
   const histTotals = deptRows.reduce((s, d) => ({ count: s.count + d.count, requested: s.requested + d.requested, approved: s.approved + d.approved }), { count: 0, requested: 0, approved: 0 });
   // Donut: approved spend share by department (top 8 + others).
+  const spentDepts = deptRows.filter((d) => d.requested > 0);
+  const topDepts = spentDepts.slice(0, 8);
+  const otherDepts = spentDepts.slice(8);
+  const otherSum = otherDepts.reduce((s, d) => s + d.requested, 0);
+  const otherCount = otherDepts.reduce((s, d) => s + d.count, 0);
+  const OTHERS_LABEL = lang === 'th' ? 'อื่นๆ' : 'Others';
   const donutData = (() => {
-    const rows = deptRows.filter((d) => d.requested > 0);
-    const top = rows.slice(0, 8).map((d) => ({ name: d.code, full: d.name, value: d.requested }));
-    const rest = rows.slice(8).reduce((s, d) => s + d.requested, 0);
-    if (rest > 0) top.push({ name: lang === 'th' ? 'อื่นๆ' : 'Others', full: '', value: rest });
+    const top = topDepts.map((d) => ({ name: d.code, full: d.name, value: d.requested }));
+    if (otherSum > 0) top.push({ name: OTHERS_LABEL, full: '', value: otherSum });
     return top;
   })();
   // Bars: top 10 items by amount (used when a department is selected).
@@ -269,7 +274,7 @@ export function Reports() {
 
               {!deptCode ? (
                 <div>
-                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? 'สัดส่วนใช้จ่ายรายแผนก (อนุมัติแล้ว)' : 'Approved spend share by department'}</div>
+                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? 'สัดส่วนใช้จ่ายรายแผนก' : 'Spend share by department'}</div>
                   {donutData.length > 0 && (
                     <div className="grid md:grid-cols-2 gap-4 items-center mb-4">
                       <div className="h-[260px]">
@@ -282,13 +287,32 @@ export function Reports() {
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="flex flex-col gap-1.5">
-                        {donutData.map((d, i) => (
-                          <button key={i} onClick={() => d.name !== (lang === 'th' ? 'อื่นๆ' : 'Others') && setDeptCode(d.name)} className="flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg px-2 py-1">
+                      <div className="flex flex-col gap-1">
+                        {topDepts.map((d, i) => (
+                          <button key={d.code} onClick={() => setDeptCode(d.code)} className="flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg px-2 py-1">
                             <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
-                            <span className="text-[12.5px] text-ink flex-1 truncate">{d.name}{d.full ? ` · ${d.full}` : ''}</span>
-                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap">{money(d.value)}</span>
-                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.requested ? Math.round((d.value / histTotals.requested) * 100) : 0}%</span>
+                            <span className="text-[12.5px] text-ink flex-1 truncate">{d.code} <span className="text-slate-400">· {d.name}</span></span>
+                            <span className="text-[11px] text-slate-500 w-14 text-right">{num(d.count)} {lang === 'th' ? 'ใบ' : 'docs'}</span>
+                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(d.requested)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.requested ? Math.round((d.requested / histTotals.requested) * 100) : 0}%</span>
+                          </button>
+                        ))}
+                        {otherDepts.length > 0 && (
+                          <button onClick={() => setShowOthers((v) => !v)} className="flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg px-2 py-1">
+                            <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[8 % DEPT_COLORS.length] }} />
+                            <span className="text-[12.5px] text-ink flex-1 truncate">{OTHERS_LABEL} <span className="text-slate-400">· {otherDepts.length} {lang === 'th' ? 'แผนก' : 'depts'} {showOthers ? '▲' : '▼'}</span></span>
+                            <span className="text-[11px] text-slate-500 w-14 text-right">{num(otherCount)} {lang === 'th' ? 'ใบ' : 'docs'}</span>
+                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(otherSum)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.requested ? Math.round((otherSum / histTotals.requested) * 100) : 0}%</span>
+                          </button>
+                        )}
+                        {showOthers && otherDepts.map((d) => (
+                          <button key={d.code} onClick={() => setDeptCode(d.code)} className="flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg pl-6 pr-2 py-1">
+                            <span className="h-2 w-2 rounded-full shrink-0 bg-slate-300" />
+                            <span className="text-[12px] text-slate-600 flex-1 truncate">{d.code} <span className="text-slate-400">· {d.name}</span></span>
+                            <span className="text-[11px] text-slate-400 w-14 text-right">{num(d.count)} {lang === 'th' ? 'ใบ' : 'docs'}</span>
+                            <span className="text-[12px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(d.requested)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.requested ? Math.round((d.requested / histTotals.requested) * 100) : 0}%</span>
                           </button>
                         ))}
                       </div>
