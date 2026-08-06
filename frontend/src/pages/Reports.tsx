@@ -25,7 +25,6 @@ export function Reports() {
   const [period, setPeriod] = useState(''); // '' all · week · month · lastmonth · year · custom
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [tier, setTier] = useState(''); // '' = all · 'small' ≤1,000 · 'large' >1,000
   const canFilter = user?.role === 'admin' || user?.role === 'executive';
 
   // history-by-department (admin/executive only)
@@ -71,9 +70,6 @@ export function Reports() {
       const ts = new Date(m.createdAt).getTime();
       if (fromT !== null && ts < fromT) return false;
       if (toT !== null && ts > toT) return false;
-      const amt = amountOf(m);
-      if (tier === 'small' && amt > 1000) return false;
-      if (tier === 'large' && amt <= 1000) return false;
       return true;
     });
   })();
@@ -237,11 +233,6 @@ export function Reports() {
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-          <select className="input !w-auto !py-2" value={tier} onChange={(e) => setTier(e.target.value)}>
-            <option value="">{lang === 'th' ? 'ทุก Tier (ภาพรวม)' : 'All tiers'}</option>
-            <option value="small">{lang === 'th' ? 'ยอด ≤ 1,000 (หัวหน้าอนุมัติ)' : '≤ 1,000'}</option>
-            <option value="large">{lang === 'th' ? 'ยอด > 1,000 (ถึง MD)' : '> 1,000'}</option>
-          </select>
           <select className="input !w-auto !py-2" value={period} onChange={(e) => setPeriod(e.target.value)}>
             <option value="">{lang === 'th' ? 'ทุกช่วงเวลา' : 'All time'}</option>
             <option value="week">{lang === 'th' ? 'สัปดาห์นี้' : 'This week'}</option>
