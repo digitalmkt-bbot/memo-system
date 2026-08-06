@@ -32,6 +32,7 @@ export function Reports() {
   const [depts, setDepts] = useState<any[]>([]);
   const [deptCode, setDeptCode] = useState('');
   const [showOthers, setShowOthers] = useState(false);
+  const [showItemOthers, setShowItemOthers] = useState(false);
   const [status, setStatus] = useState('');
   const [histMemos, setHistMemos] = useState<any[]>([]);
   const [histLoading, setHistLoading] = useState(false);
@@ -351,13 +352,31 @@ export function Reports() {
                         </ResponsiveContainer>
                       </div>
                       <div className="flex flex-col gap-1">
-                        {itemDonut.map((d, i) => (
-                          <div key={i} className="flex items-center gap-2 px-2 py-1">
+                        {topItems.map((it, i) => (
+                          <div key={it.name} className="flex items-center gap-2 px-2 py-1">
                             <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
-                            <span className="text-[12.5px] text-ink flex-1 truncate" title={d.name}>{d.name}</span>
-                            <span className="text-[11px] text-slate-500 w-16 text-right">{lang === 'th' ? `จำนวน ${num(d.qty)}` : `qty ${num(d.qty)}`}</span>
-                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(d.value)}</span>
-                            <span className="text-[11px] text-slate-400 w-9 text-right">{itemTotal ? Math.round((d.value / itemTotal) * 100) : 0}%</span>
+                            <span className="text-[12.5px] text-ink flex-1 truncate" title={it.name}>{it.name}</span>
+                            <span className="text-[11px] text-slate-500 w-16 text-right">{lang === 'th' ? `จำนวน ${num(it.qty)}` : `qty ${num(it.qty)}`}</span>
+                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(it.amount)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{itemTotal ? Math.round((it.amount / itemTotal) * 100) : 0}%</span>
+                          </div>
+                        ))}
+                        {otherItems.length > 0 && (
+                          <button onClick={() => setShowItemOthers((v) => !v)} className="flex items-center gap-2 px-2 py-1 text-left hover:bg-slate-50 rounded-lg">
+                            <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[8 % DEPT_COLORS.length] }} />
+                            <span className="text-[12.5px] text-ink flex-1 truncate">{OTHERS_LABEL} <span className="text-slate-400">· {otherItems.length} {lang === 'th' ? 'รายการ' : 'items'} {showItemOthers ? '▲' : '▼'}</span></span>
+                            <span className="text-[11px] text-slate-500 w-16 text-right">{lang === 'th' ? `จำนวน ${num(otherItemsQty)}` : `qty ${num(otherItemsQty)}`}</span>
+                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(otherItemsSum)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{itemTotal ? Math.round((otherItemsSum / itemTotal) * 100) : 0}%</span>
+                          </button>
+                        )}
+                        {showItemOthers && otherItems.map((it) => (
+                          <div key={it.name} className="flex items-center gap-2 pl-6 pr-2 py-1">
+                            <span className="h-2 w-2 rounded-full shrink-0 bg-slate-300" />
+                            <span className="text-[12px] text-slate-600 flex-1 truncate" title={it.name}>{it.name}</span>
+                            <span className="text-[11px] text-slate-400 w-16 text-right">{lang === 'th' ? `จำนวน ${num(it.qty)}` : `qty ${num(it.qty)}`}</span>
+                            <span className="text-[12px] font-semibold text-ocean-dark whitespace-nowrap w-20 text-right">{money(it.amount)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{itemTotal ? Math.round((it.amount / itemTotal) * 100) : 0}%</span>
                           </div>
                         ))}
                       </div>
