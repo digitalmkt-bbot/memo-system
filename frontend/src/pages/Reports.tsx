@@ -8,6 +8,7 @@ import { useI18n } from '../i18n';
 
 const money = (n: number) => '฿' + (Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 const num = (n: number) => (Number(n) || 0).toLocaleString();
+const DEPT_COLORS = ['#0ea5a3', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#10b981', '#6366f1', '#f97316', '#14b8a6', '#a855f7', '#64748b'];
 
 export function Reports() {
   const { t, lang } = useI18n();
@@ -73,6 +74,16 @@ export function Reports() {
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
   })();
   const histTotals = deptRows.reduce((s, d) => ({ count: s.count + d.count, requested: s.requested + d.requested, approved: s.approved + d.approved }), { count: 0, requested: 0, approved: 0 });
+  // Donut: approved spend share by department (top 8 + others).
+  const donutData = (() => {
+    const rows = deptRows.filter((d) => d.approved > 0);
+    const top = rows.slice(0, 8).map((d) => ({ name: d.code, full: d.name, value: d.approved }));
+    const rest = rows.slice(8).reduce((s, d) => s + d.approved, 0);
+    if (rest > 0) top.push({ name: lang === 'th' ? 'อื่นๆ' : 'Others', full: '', value: rest });
+    return top;
+  })();
+  // Bars: top 10 items by amount (used when a department is selected).
+  const itemBars = itemRows.slice(0, 10).map((it) => ({ name: it.name.length > 22 ? it.name.slice(0, 21) + '…' : it.name, amount: Math.round(it.amount) }));
 
   const sum = ov.summary || {};
   const total = sum.total || 0;
@@ -249,8 +260,34 @@ export function Reports() {
               </div>
 
               {!deptCode ? (
-                <div className="overflow-x-auto">
-                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? 'ใช้จ่ายรายแผนก (คลิกเพื่อดูรายละเอียด)' : 'Spending by department (click to drill in)'}</div>
+                <div>
+                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? 'สัดส่วนใช้จ่ายรายแผนก (อนุมัติแล้ว)' : 'Approved spend share by department'}</div>
+                  {donutData.length > 0 && (
+                    <div className="grid md:grid-cols-2 gap-4 items-center mb-4">
+                      <div className="h-[260px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={98} paddingAngle={2}>
+                              {donutData.map((_, i) => <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip formatter={(v: any) => money(Number(v))} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {donutData.map((d, i) => (
+                          <button key={i} onClick={() => d.name !== (lang === 'th' ? 'อื่นๆ' : 'Others') && setDeptCode(d.name)} className="flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg px-2 py-1">
+                            <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
+                            <span className="text-[12.5px] text-ink flex-1 truncate">{d.name}{d.full ? ` · ${d.full}` : ''}</span>
+                            <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap">{money(d.value)}</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.approved ? Math.round((d.value / histTotals.approved) * 100) : 0}%</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-[12.5px] text-slate-500 mb-2">{lang === 'th' ? 'คลิกที่แผนก (ในกราฟหรือตาราง) เพื่อดูรายละเอียด' : 'Click a department to drill in'}</div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-[13px] min-w-[520px]">
                     <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                       <th className="text-left px-3 py-2">{lang === 'th' ? 'แผนก' : 'Department'}</th>
@@ -269,10 +306,29 @@ export function Reports() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <div className="text-[13px] font-bold text-ink mb-2">{lang === 'th' ? `รายการที่ใช้จ่าย — แผนก ${deptCode}` : `Items — ${deptCode}`}</div>
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <button onClick={() => setDeptCode('')} className="text-[12.5px] text-ocean-dark hover:underline">← {lang === 'th' ? 'ทุกแผนก' : 'All departments'}</button>
+                    <span className="text-slate-300">·</span>
+                    <span className="text-[13px] font-bold text-ink">{lang === 'th' ? `รายการที่ใช้จ่าย — แผนก ${deptCode}` : `Items — ${deptCode}`}</span>
+                  </div>
+                  {itemBars.length > 0 && (
+                    <div className="h-[300px] mb-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={itemBars} layout="vertical" margin={{ left: 8, right: 16 }}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                          <XAxis type="number" tickFormatter={(v: any) => money(Number(v))} tick={{ fontSize: 11 }} />
+                          <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v: any) => money(Number(v))} />
+                          <Bar dataKey="amount" fill="#0ea5a3" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  <div className="overflow-x-auto">
                   {itemRows.length === 0 ? (
                     <div className="py-4 text-slate-400 text-[13px]">{lang === 'th' ? 'ไม่มีรายการสินค้า/บริการในเอกสารกลุ่มนี้' : 'No line items in these memos.'}</div>
                   ) : (
@@ -295,11 +351,15 @@ export function Reports() {
                       </tbody>
                     </table>
                   )}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
+          {!histLoading && histMemos.length > 0 && (
+            <div className="text-[13px] font-bold text-ink mb-2 mt-2">{lang === 'th' ? 'รายการเอกสาร' : 'Documents'}</div>
+          )}
           <div className="overflow-x-auto">
             {histLoading ? <div className="py-8 text-center text-slate-400">{t('common.loading')}</div> :
               histMemos.length === 0 ? <div className="py-8 text-center text-slate-400">{t('memos.noMemos')}</div> : (
