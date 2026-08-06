@@ -318,25 +318,7 @@ export function Reports() {
                       </div>
                     </div>
                   )}
-                  <div className="text-[12.5px] text-slate-500 mb-2">{lang === 'th' ? 'คลิกที่แผนก (ในกราฟหรือตาราง) เพื่อดูรายละเอียด' : 'Click a department to drill in'}</div>
-                  <div className="overflow-x-auto">
-                  <table className="w-full text-[13px] min-w-[420px]">
-                    <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
-                      <th className="text-left px-3 py-2">{lang === 'th' ? 'แผนก' : 'Department'}</th>
-                      <th className="text-right px-3 py-2">{lang === 'th' ? 'เอกสาร' : 'Docs'}</th>
-                      <th className="text-right px-3 py-2">{lang === 'th' ? 'ยอดใช้จ่าย' : 'Spend'}</th>
-                    </tr></thead>
-                    <tbody>
-                      {deptRows.map((d) => (
-                        <tr key={d.code} onClick={() => setDeptCode(d.code)} className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
-                          <td className="px-3 py-2 font-semibold text-ink">{d.code} <span className="text-slate-400 font-normal">· {d.name}</span></td>
-                          <td className="px-3 py-2 text-right text-slate-600">{num(d.count)}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-emerald-700 whitespace-nowrap">{money(d.requested)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
+                  <div className="text-[12.5px] text-slate-500 mb-2">{lang === 'th' ? 'คลิกที่แผนก (ในกราฟหรือคำอธิบาย) เพื่อดูรายละเอียด' : 'Click a department to drill in'}</div>
                 </div>
               ) : (
                 <div>
