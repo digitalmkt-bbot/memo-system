@@ -19,13 +19,12 @@ export function Reports() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
   const nav = useNavigate();
-  const [ov, setOv] = useState<any>({ summary: {}, totalAmount: 0, byDept: [] });
-  const [months, setMonths] = useState<any[]>([]);
-  const [byCompany, setByCompany] = useState<any[]>([]);
-  const [byDept, setByDept] = useState<any[]>([]);
   const [range, setRange] = useState('12m');
   const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [tier, setTier] = useState(''); // '' = all · 'small' ≤1,000 · 'large' >1,000
   const canFilter = user?.role === 'admin' || user?.role === 'executive';
 
   // history-by-department (admin/executive only)
@@ -34,23 +33,79 @@ export function Reports() {
   const [showOthers, setShowOthers] = useState(false);
   const [showItemOthers, setShowItemOthers] = useState(false);
   const [status, setStatus] = useState('');
-  const [histMemos, setHistMemos] = useState<any[]>([]);
-  const [histLoading, setHistLoading] = useState(false);
+  // Single source of truth: fetch all memos the user may see (scoped server-side),
+  // then apply date-range + tier + status + dept filters entirely client-side so
+  // every card, chart and table on the page stays perfectly consistent.
+  const [allMemos, setAllMemos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   useEffect(() => { if (canFilter) api.departments(companyId ? Number(companyId) : undefined).then(setDepts).catch(() => setDepts([])); }, [canFilter, companyId]);
-  useEffect(() => {
-    if (!canFilter) return;
-    setHistLoading(true);
-    const params: Record<string, string> = {};
-    if (companyId) params.companyId = companyId;
-    if (deptCode) params.deptCode = deptCode;
-    if (status) params.status = status;
-    api.memos(params).then(setHistMemos).catch(() => setHistMemos([])).finally(() => setHistLoading(false));
-  }, [canFilter, companyId, deptCode, status]);
-
   useEffect(() => { if (canFilter) api.companies().then(setCompanies).catch(() => {}); }, [canFilter]);
-  useEffect(() => { api.overview(companyId ? { companyId } : {}).then(setOv).catch(() => {}); }, [companyId]);
-  useEffect(() => { api.series(range, companyId || undefined).then(setMonths).catch(() => {}); }, [range, companyId]);
-  useEffect(() => { api.byCompany().then(setByCompany).catch(() => {}); api.byDept().then(setByDept).catch(() => {}); }, []);
+  useEffect(() => {
+    setLoading(true);
+    api.memos(companyId ? { companyId } : {}).then(setAllMemos).catch(() => setAllMemos([])).finally(() => setLoading(false));
+  }, [companyId]);
+
+  const amountOf = (m: any) => Number(m.grandTotal ?? m.totalAmount) || 0;
+  // Global filter: date range + tier (company is already applied server-side).
+  const baseMemos = (() => {
+    const fromT = dateFrom ? new Date(dateFrom).getTime() : null;
+    let toT: number | null = null;
+    if (dateTo) { const e = new Date(dateTo); e.setHours(23, 59, 59, 999); toT = e.getTime(); }
+    return allMemos.filter((m) => {
+      const ts = new Date(m.createdAt).getTime();
+      if (fromT !== null && ts < fromT) return false;
+      if (toT !== null && ts > toT) return false;
+      const amt = amountOf(m);
+      if (tier === 'small' && amt > 1000) return false;
+      if (tier === 'large' && amt <= 1000) return false;
+      return true;
+    });
+  })();
+  const histLoading = loading;
+  const histMemos = baseMemos.filter((m) => (!status || m.status === status) && (!deptCode || m.deptCode === deptCode));
+
+  const total = baseMemos.length;
+  const approved = baseMemos.filter((m) => m.status === 'approved').length;
+  const rejected = baseMemos.filter((m) => m.status === 'rejected').length;
+  const pending = baseMemos.filter((m) => ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(m.status)).length;
+  const draft = baseMemos.filter((m) => m.status === 'draft').length;
+  const totalAmount = baseMemos.reduce((s, m) => s + amountOf(m), 0);
+
+  const byCompany = (() => {
+    const map = new Map<string, any>();
+    for (const m of baseMemos) {
+      const key = m.companyCode || '—';
+      const cur = map.get(key) || { name: m.companyName || key, company: '', amount: 0, count: 0 };
+      cur.amount += amountOf(m); cur.count++;
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+  })();
+  const byDept = (() => {
+    const map = new Map<string, any>();
+    for (const m of baseMemos) {
+      const key = (m.companyCode || '') + '/' + (m.deptCode || '—');
+      const cur = map.get(key) || { department: m.deptName || m.deptCode || '—', company: m.companyCode || '', amount: 0, count: 0 };
+      cur.amount += amountOf(m); cur.count++;
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+  })();
+
+  // Trend buckets computed from the filtered set (respects the global filters).
+  const bars = (() => {
+    const now = new Date();
+    const buckets: { label: string; key: string; count: number }[] = [];
+    if (range === '12m') {
+      for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; buckets.push({ label: key, key, count: 0 }); }
+      for (const m of baseMemos) { const d = new Date(m.createdAt); const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; const b = buckets.find((x) => x.key === key); if (b) b.count++; }
+    } else {
+      const n = range === '7d' ? 7 : range === '90d' ? 90 : 30;
+      for (let i = n - 1; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); const key = d.toISOString().slice(0, 10); buckets.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, key, count: 0 }); }
+      for (const m of baseMemos) { const key = new Date(m.createdAt).toISOString().slice(0, 10); const b = buckets.find((x) => x.key === key); if (b) b.count++; }
+    }
+    return buckets.map((b) => ({ label: b.label, count: b.count }));
+  })();
 
   // Per-department spend summary + item breakdown, derived from the filtered
   // history (respects the company/department/status filters below).
@@ -108,14 +163,6 @@ export function Reports() {
     return top;
   })();
 
-  const sum = ov.summary || {};
-  const total = sum.total || 0;
-  const approved = sum.approved || 0;
-  const rejected = sum.rejected || 0;
-  const pending = (sum.pending_manager || 0) + (sum.pending_hrmd || 0) + (sum.pending_fc || 0) + (sum.pending_executive || 0);
-  const draft = sum.draft || 0;
-
-  const bars = months.map((m) => ({ label: m.label, count: m.count || 0, amount: m.amount || 0 }));
   const lastIdx = bars.length - 1;
   const RANGES: [string, string][] = [['7d', 'r7d'], ['30d', 'r30d'], ['90d', 'r90d'], ['12m', 'r12m']];
 
@@ -167,12 +214,32 @@ export function Reports() {
           <h2 className="text-2xl font-bold">{t('reports.title')}</h2>
           <p className="text-slate-500 text-[13px] mt-0.5">{t('reports.subtitle')}</p>
         </div>
-        {canFilter && (
-          <select className="input !w-auto !py-2" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-            <option value="">{t('dashboard.allCompanies')}</option>
-            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <div className="flex items-end gap-2 flex-wrap">
+          {canFilter && (
+            <select className="input !w-auto !py-2" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+              <option value="">{t('dashboard.allCompanies')}</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <select className="input !w-auto !py-2" value={tier} onChange={(e) => setTier(e.target.value)}>
+            <option value="">{lang === 'th' ? 'ทุก Tier (ภาพรวม)' : 'All tiers'}</option>
+            <option value="small">{lang === 'th' ? 'ยอด ≤ 1,000 (หัวหน้าอนุมัติ)' : '≤ 1,000'}</option>
+            <option value="large">{lang === 'th' ? 'ยอด > 1,000 (ถึง MD)' : '> 1,000'}</option>
           </select>
-        )}
+          <div className="flex items-end gap-1">
+            <div>
+              <label className="block text-[10.5px] text-slate-400 mb-0.5">{lang === 'th' ? 'ตั้งแต่' : 'From'}</label>
+              <input type="date" className="input !w-auto !py-2 text-[13px]" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-[10.5px] text-slate-400 mb-0.5">{lang === 'th' ? 'ถึง' : 'To'}</label>
+              <input type="date" className="input !w-auto !py-2 text-[13px]" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+            {(dateFrom || dateTo || tier) && (
+              <button className="btn btn-ghost !py-2 text-[12px]" onClick={() => { setDateFrom(''); setDateTo(''); setTier(''); }}>{lang === 'th' ? 'ล้าง' : 'Clear'}</button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
@@ -180,7 +247,7 @@ export function Reports() {
         <KPI label={t('dashboard.barApproved')} value={num(approved)} color="text-emerald-600" />
         <KPI label={t('dashboard.barRejected')} value={num(rejected)} color="text-pink-500" />
         <KPI label={t('dashboard.kpiPending')} value={num(pending)} color="text-amber-500" />
-        <KPI label={t('dashboard.kpiTotalValue')} value={money(ov.totalAmount)} />
+        <KPI label={t('dashboard.kpiTotalValue')} value={money(totalAmount)} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6 mb-6">
