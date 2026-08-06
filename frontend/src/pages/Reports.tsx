@@ -9,6 +9,11 @@ import { useI18n } from '../i18n';
 const money = (n: number) => '฿' + (Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 const num = (n: number) => (Number(n) || 0).toLocaleString();
 const DEPT_COLORS = ['#0ea5a3', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#10b981', '#6366f1', '#f97316', '#14b8a6', '#a855f7', '#64748b'];
+const statusLabelTH = (s: string, lang: string) => {
+  const th: Record<string, string> = { '': 'ทุกสถานะ', approved: 'เฉพาะที่อนุมัติแล้ว (ใช้จ่ายจริง)', pending_manager: 'รออนุมัติขั้นแรก', pending_hrmd: 'รอ HRM/MD', rejected: 'ไม่อนุมัติ', draft: 'ฉบับร่าง' };
+  const en: Record<string, string> = { '': 'All statuses', approved: 'Approved only (actual spend)', pending_manager: 'Awaiting first', pending_hrmd: 'Awaiting HRM/MD', rejected: 'Rejected', draft: 'Draft' };
+  return (lang === 'th' ? th : en)[s] ?? s;
+};
 
 export function Reports() {
   const { t, lang } = useI18n();
@@ -26,7 +31,7 @@ export function Reports() {
   // history-by-department (admin/executive only)
   const [depts, setDepts] = useState<any[]>([]);
   const [deptCode, setDeptCode] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('approved');
   const [histMemos, setHistMemos] = useState<any[]>([]);
   const [histLoading, setHistLoading] = useState(false);
   useEffect(() => { if (canFilter) api.departments(companyId ? Number(companyId) : undefined).then(setDepts).catch(() => setDepts([])); }, [canFilter, companyId]);
@@ -57,7 +62,7 @@ export function Reports() {
       if (m.status === 'approved') cur.approved += amt;
       map.set(code, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.approved - a.approved);
+    return Array.from(map.values()).sort((a, b) => b.requested - a.requested);
   })();
   const itemRows = (() => {
     const map = new Map<string, { name: string; qty: number; amount: number; count: number }>();
@@ -76,9 +81,9 @@ export function Reports() {
   const histTotals = deptRows.reduce((s, d) => ({ count: s.count + d.count, requested: s.requested + d.requested, approved: s.approved + d.approved }), { count: 0, requested: 0, approved: 0 });
   // Donut: approved spend share by department (top 8 + others).
   const donutData = (() => {
-    const rows = deptRows.filter((d) => d.approved > 0);
-    const top = rows.slice(0, 8).map((d) => ({ name: d.code, full: d.name, value: d.approved }));
-    const rest = rows.slice(8).reduce((s, d) => s + d.approved, 0);
+    const rows = deptRows.filter((d) => d.requested > 0);
+    const top = rows.slice(0, 8).map((d) => ({ name: d.code, full: d.name, value: d.requested }));
+    const rest = rows.slice(8).reduce((s, d) => s + d.requested, 0);
     if (rest > 0) top.push({ name: lang === 'th' ? 'อื่นๆ' : 'Others', full: '', value: rest });
     return top;
   })();
@@ -244,18 +249,21 @@ export function Reports() {
 
           {!histLoading && histMemos.length > 0 && (
             <div className="mb-5">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+                <span>✓</span>{statusLabelTH(status, lang)}
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="rounded-xl bg-sand p-3">
                   <div className="text-[11.5px] text-slate-500">{lang === 'th' ? 'จำนวนเอกสาร' : 'Documents'}{deptCode ? ` · ${deptCode}` : ''}</div>
                   <div className="text-[22px] font-extrabold text-ink leading-tight mt-0.5">{num(histTotals.count)}</div>
                 </div>
                 <div className="rounded-xl bg-emerald-50 p-3">
-                  <div className="text-[11.5px] text-emerald-700">{lang === 'th' ? 'ใช้จ่ายจริง (อนุมัติแล้ว)' : 'Approved spend'}</div>
-                  <div className="text-[22px] font-extrabold text-emerald-700 leading-tight mt-0.5">{money(histTotals.approved)}</div>
+                  <div className="text-[11.5px] text-emerald-700">{lang === 'th' ? 'ยอดใช้จ่ายรวม' : 'Total spend'}</div>
+                  <div className="text-[22px] font-extrabold text-emerald-700 leading-tight mt-0.5">{money(histTotals.requested)}</div>
                 </div>
-                <div className="rounded-xl bg-ocean-light p-3 col-span-2 sm:col-span-1">
-                  <div className="text-[11.5px] text-ocean-dark">{lang === 'th' ? 'ยอดขอทั้งหมด' : 'Total requested'}</div>
-                  <div className="text-[22px] font-extrabold text-ocean-dark leading-tight mt-0.5">{money(histTotals.requested)}</div>
+                <div className="rounded-xl bg-ocean-light p-3">
+                  <div className="text-[11.5px] text-ocean-dark">{lang === 'th' ? 'เฉลี่ยต่อเอกสาร' : 'Avg / doc'}</div>
+                  <div className="text-[22px] font-extrabold text-ocean-dark leading-tight mt-0.5">{money(histTotals.count ? histTotals.requested / histTotals.count : 0)}</div>
                 </div>
               </div>
 
@@ -280,7 +288,7 @@ export function Reports() {
                             <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
                             <span className="text-[12.5px] text-ink flex-1 truncate">{d.name}{d.full ? ` · ${d.full}` : ''}</span>
                             <span className="text-[12.5px] font-semibold text-ocean-dark whitespace-nowrap">{money(d.value)}</span>
-                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.approved ? Math.round((d.value / histTotals.approved) * 100) : 0}%</span>
+                            <span className="text-[11px] text-slate-400 w-9 text-right">{histTotals.requested ? Math.round((d.value / histTotals.requested) * 100) : 0}%</span>
                           </button>
                         ))}
                       </div>
@@ -288,20 +296,18 @@ export function Reports() {
                   )}
                   <div className="text-[12.5px] text-slate-500 mb-2">{lang === 'th' ? 'คลิกที่แผนก (ในกราฟหรือตาราง) เพื่อดูรายละเอียด' : 'Click a department to drill in'}</div>
                   <div className="overflow-x-auto">
-                  <table className="w-full text-[13px] min-w-[520px]">
+                  <table className="w-full text-[13px] min-w-[420px]">
                     <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                       <th className="text-left px-3 py-2">{lang === 'th' ? 'แผนก' : 'Department'}</th>
-                      <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวน' : 'Docs'}</th>
-                      <th className="text-right px-3 py-2">{lang === 'th' ? 'อนุมัติแล้ว' : 'Approved'}</th>
-                      <th className="text-right px-3 py-2">{lang === 'th' ? 'ยอดขอรวม' : 'Requested'}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'เอกสาร' : 'Docs'}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'ยอดใช้จ่าย' : 'Spend'}</th>
                     </tr></thead>
                     <tbody>
                       {deptRows.map((d) => (
                         <tr key={d.code} onClick={() => setDeptCode(d.code)} className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
                           <td className="px-3 py-2 font-semibold text-ink">{d.code} <span className="text-slate-400 font-normal">· {d.name}</span></td>
                           <td className="px-3 py-2 text-right text-slate-600">{num(d.count)}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-emerald-700 whitespace-nowrap">{money(d.approved)}</td>
-                          <td className="px-3 py-2 text-right text-ocean-dark whitespace-nowrap">{money(d.requested)}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-emerald-700 whitespace-nowrap">{money(d.requested)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -335,8 +341,7 @@ export function Reports() {
                     <table className="w-full text-[13px] min-w-[520px]">
                       <thead><tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                         <th className="text-left px-3 py-2">{lang === 'th' ? 'รายการ' : 'Item'}</th>
-                        <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวนรวม' : 'Total qty'}</th>
-                        <th className="text-right px-3 py-2">{lang === 'th' ? 'พบใน (ครั้ง)' : 'Times'}</th>
+                        <th className="text-right px-3 py-2">{lang === 'th' ? 'จำนวน' : 'Qty'}</th>
                         <th className="text-right px-3 py-2">{lang === 'th' ? 'รวมเงิน' : 'Amount'}</th>
                       </tr></thead>
                       <tbody>
@@ -344,7 +349,6 @@ export function Reports() {
                           <tr key={i} className="border-t border-slate-200/70">
                             <td className="px-3 py-2 text-ink">{it.name}</td>
                             <td className="px-3 py-2 text-right text-slate-600">{num(it.qty)}</td>
-                            <td className="px-3 py-2 text-right text-slate-400">{num(it.count)}</td>
                             <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(it.amount)}</td>
                           </tr>
                         ))}
