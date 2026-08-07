@@ -115,7 +115,8 @@ export function MemoView() {
     const logo = window.location.origin + '/love-logo.png';
     const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบรับรองแทนใบเสร็จรับเงิน ${esc(memo.memoNo || '')}</title>
     <style>
-      *{box-sizing:border-box} body{font-family:'Sarabun','TH Sarabun New',Tahoma,sans-serif;color:#111;padding:32px;max-width:820px;margin:auto}
+      @page{size:A4;margin:14mm}
+      *{box-sizing:border-box} body{font-family:'Sarabun','TH Sarabun New',Tahoma,sans-serif;color:#111;padding:24px;width:210mm;max-width:100%;margin:auto}
       .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
       .co{font-size:22px;font-weight:800;color:#17263f;margin:0}
       .bar{height:6px;width:96px;background:linear-gradient(90deg,#17263f 55%,#23b4d8 55%);margin:6px 0 10px}
@@ -168,11 +169,11 @@ export function MemoView() {
       </table>
       <div class="sum"><div class="words">( <span id="words">ศูนย์บาทถ้วน</span> )</div><div class="lbl">รวมทั้งสิ้น</div><div class="val"><span id="total">0.00</span></div></div>
       <div class="body">
-        ข้าพเจ้า <span class="fill" contenteditable="true"></span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill" contenteditable="true"></span><br>
+        ข้าพเจ้า <span class="fill" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill" contenteditable="true">${esc(memo.creatorRole ? roleLabel(memo.creatorRole) : '')}</span><br>
         ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของทาง บจก.เลิฟไอแลนด์ โดยแท้ &nbsp;
         ตั้งแต่วันที่ <span class="fill" contenteditable="true"></span> ถึงวันที่ <span class="fill" contenteditable="true"></span>
       </div>
-      <div class="sign">ลงชื่อ <span class="fill" contenteditable="true"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" style="min-width:240px" contenteditable="true"></span> )</div>
+      <div class="sign">ลงชื่อ <span class="fill" contenteditable="true"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" style="min-width:240px" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> )</div>
       <script>
         var digits=['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
         var places=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
