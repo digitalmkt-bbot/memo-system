@@ -6,6 +6,44 @@ import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 
 function money(n: number) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+// Amount → Thai baht text (e.g. 230 → "สองร้อยสามสิบบาทถ้วน").
+function bahtText(amount: number): string {
+  const num = Math.abs(Math.round((Number(amount) || 0) * 100) / 100);
+  const baht = Math.floor(num);
+  const satang = Math.round((num - baht) * 100);
+  const digits = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+  const places = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+  const readGroup = (numStr: string): string => {
+    let res = '';
+    const len = numStr.length;
+    for (let i = 0; i < len; i++) {
+      const d = parseInt(numStr[i], 10);
+      const place = len - i - 1;
+      if (d === 0) continue;
+      if (place === 0 && d === 1 && len > 1) res += 'เอ็ด';
+      else if (place === 1 && d === 1) res += 'สิบ';
+      else if (place === 1 && d === 2) res += 'ยี่สิบ';
+      else res += digits[d] + places[place];
+    }
+    return res;
+  };
+  const readNumber = (n: number): string => {
+    if (n === 0) return 'ศูนย์';
+    const parts: string[] = [];
+    let str = String(n);
+    while (str.length > 6) { parts.unshift(str.slice(-6)); str = str.slice(0, -6); }
+    parts.unshift(str);
+    let out = '';
+    for (let i = 0; i < parts.length; i++) {
+      out += readGroup(parts[i]);
+      if (i < parts.length - 1) out += 'ล้าน';
+    }
+    return out || 'ศูนย์';
+  };
+  let text = readNumber(baht) + 'บาท';
+  text += satang > 0 ? readNumber(satang) + 'สตางค์' : 'ถ้วน';
+  return text;
+}
 const CAT_KEY: Record<string, string> = { general: 'catGeneral', budget: 'catBudget', procurement: 'catProcurement', info: 'catInfo', other: 'catOther' };
 const FWD_OPTS = [
   { email: 'ac@loveandaman.com', label: 'ฝ่ายบัญชี · ac@loveandaman.com' },
@@ -107,6 +145,61 @@ export function MemoView() {
   const grandTotal = subtotal + vatAmount;
   const isSmall = subtotal <= 1000; // ≤ 1,000: skip MD (manager finalizes or forwards to HRM)
   const isCreator = memo.createdBy === user?.id;
+
+  // "ใบรับรองแทนใบเสร็จรับเงิน" — open a printable form pre-filled from this memo.
+  const openSubstitute = () => {
+    const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+    const dateStr = memo.expenseDate ? fmtDate(memo.expenseDate, 'th') : (memo.date ? fmtDate(memo.date, 'th') : '');
+    const MIN_ROWS = 8;
+    const rowsHtml = items.map((it: any) => {
+      const amt = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+      return `<tr><td class="c">${esc(dateStr)}</td><td>${esc(it.name)}${it.detail ? ' — ' + esc(it.detail) : ''}</td><td class="r">${money(amt)}</td><td></td></tr>`;
+    }).join('');
+    const padHtml = Array.from({ length: Math.max(0, MIN_ROWS - items.length) }).map(() => '<tr><td>&nbsp;</td><td></td><td></td><td></td></tr>').join('');
+    const total = grandTotal;
+    const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบรับรองแทนใบเสร็จรับเงิน ${esc(memo.memoNo || '')}</title>
+    <style>
+      *{box-sizing:border-box} body{font-family:'Sarabun','TH Sarabun New',Tahoma,sans-serif;color:#111;padding:32px;max-width:800px;margin:auto}
+      h1{text-align:center;font-size:22px;margin:0 0 24px;font-weight:700}
+      .top{display:flex;align-items:flex-end;gap:8px;margin-bottom:10px;font-size:15px}
+      .line{flex:1;border-bottom:1px dotted #333;min-height:20px;padding:0 6px;font-weight:600}
+      table{width:100%;border-collapse:collapse;font-size:14px}
+      th,td{border:1px solid #333;padding:6px 8px;vertical-align:top}
+      th{background:#1f2937;color:#fff;text-align:center;font-weight:600}
+      td.c{text-align:center;white-space:nowrap} td.r{text-align:right;white-space:nowrap}
+      .sum{display:flex;margin-top:0}
+      .sum .words{flex:1;border:1px solid #333;border-top:none;text-align:center;padding:8px;font-weight:600;background:#f3f4f6}
+      .sum .lbl{border:1px solid #333;border-top:none;padding:8px 12px;font-weight:600}
+      .sum .val{border:1px solid #333;border-top:none;border-left:none;padding:8px 16px;text-align:right;font-weight:700;min-width:130px;background:#f3f4f6}
+      .body{font-size:15px;line-height:2;margin-top:22px}
+      .u{border-bottom:1px dotted #333;padding:0 8px;font-weight:600}
+      .sign{margin-top:48px;text-align:center;font-size:15px}
+      .sign .u{display:inline-block;min-width:280px}
+      @media print{body{padding:0}.noprint{display:none}}
+      .noprint{text-align:center;margin-bottom:20px}
+      button{font-family:inherit;font-size:14px;padding:8px 18px;border-radius:8px;border:1px solid #10b981;background:#10b981;color:#fff;cursor:pointer}
+    </style></head><body>
+      <div class="noprint"><button onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>
+      <h1>ใบรับรองแทนใบเสร็จรับเงิน</h1>
+      <div class="top"><span>บจ. / หจก.</span><span class="line">${esc(memo.companyName || '')}</span><span>(ผู้ซื้อ/ผู้รับบริการ)</span></div>
+      <table>
+        <thead><tr><th style="width:110px">วัน เดือน ปี</th><th>รายละเอียดรายจ่าย</th><th style="width:120px">จำนวนเงิน</th><th style="width:120px">หมายเหตุ</th></tr></thead>
+        <tbody>${rowsHtml}${padHtml}</tbody>
+      </table>
+      <div class="sum"><div class="words">( ${esc(bahtText(total))} )</div><div class="lbl">รวมทั้งสิ้น</div><div class="val">${money(total)}</div></div>
+      <div class="body">
+        ข้าพเจ้า <span class="u">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="u">${esc(memo.creatorRole ? roleLabel(memo.creatorRole) : '')}</span><br>
+        ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของทาง บจก.เลิฟไอแลนด์ โดยแท้ &nbsp;
+        ตั้งแต่วันที่ <span class="u">${esc(dateStr)}</span> ถึงวันที่ <span class="u">${esc(dateStr)}</span>
+      </div>
+      <div class="sign">ลงชื่อ <span class="u"></span> (ผู้เบิกจ่าย)<br>( <span class="u" style="min-width:240px">${esc(memo.creatorName || memo.fromName || '')}</span> )</div>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { alert(lang === 'th' ? 'กรุณาอนุญาตให้เปิดหน้าต่างใหม่ (ป๊อปอัป)' : 'Please allow pop-ups'); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
   const isOpen = !['approved', 'rejected', 'cancelled'].includes(memo.status);
   // creator may attach files while in progress AND after final approval/close
   // (e.g. tax invoice / receipt / bill for the approved memo)
@@ -438,6 +531,7 @@ export function MemoView() {
             )}
             {memo.memoNo && <button className="btn btn-ghost" onClick={openPdfPreview} disabled={pdfBusy}>{pdfBusy ? (lang === 'th' ? 'กำลังเปิด…' : 'Opening…') : (lang === 'th' ? 'ดูตัวอย่าง PDF' : 'Preview PDF')}</button>}
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
+            <button className="btn btn-ghost" onClick={openSubstitute}>{lang === 'th' ? 'ออกใบแทน' : 'Receipt substitute'}</button>
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && memo.forwardedAt &&
