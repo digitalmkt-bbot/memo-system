@@ -167,6 +167,7 @@ export function MemoView() {
         <thead><tr><th style="width:120px">วัน เดือน ปี</th><th>รายละเอียดรายจ่าย</th><th style="width:130px">จำนวนเงิน</th><th style="width:120px">หมายเหตุ</th><th class="act" style="width:34px"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
+      <div class="noprint" style="margin:8px 0 0"><button type="button" id="add2" class="alt">+ เพิ่มแถว</button></div>
       <div class="sum"><div class="words">( <span id="words">ศูนย์บาทถ้วน</span> )</div><div class="lbl">รวมทั้งสิ้น</div><div class="val"><span id="total">0.00</span></div></div>
       <div class="body">
         ข้าพเจ้า <span class="fill" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill" contenteditable="true">${esc(memo.creatorRole ? roleLabel(memo.creatorRole) : '')}</span><br>
@@ -184,6 +185,7 @@ export function MemoView() {
         function addRow(){var tr=document.createElement('tr');var mk=function(cls){var td=document.createElement('td');td.contentEditable='true';if(cls)td.className=cls;return td;};tr.appendChild(mk('c'));tr.appendChild(mk(''));tr.appendChild(mk('amt r'));tr.appendChild(mk(''));var act=document.createElement('td');act.className='act';var del=document.createElement('button');del.type='button';del.className='del';del.textContent='✕';del.onclick=function(){tr.remove();recompute();};act.appendChild(del);tr.appendChild(act);document.getElementById('rows').appendChild(tr);}
         document.getElementById('rows').addEventListener('input',recompute);
         document.getElementById('add').onclick=addRow;
+        var a2=document.getElementById('add2'); if(a2)a2.onclick=addRow;
         for(var i=0;i<6;i++)addRow();
       <\/script>
     </body></html>`;
