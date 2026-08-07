@@ -252,7 +252,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
           </div>
           <div className="flex items-start justify-between mt-3 flex-wrap gap-4">
             <div className="flex flex-col gap-3">
-              <button type="button" className="btn btn-ghost !py-2 text-[13px] self-start" onClick={addRow}>{t('items.addRow')}</button>
+              <button type="button" style={{ WebkitTapHighlightColor: 'transparent' }} className="inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-400 bg-white px-4 py-2 text-[13px] font-semibold text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 self-start" onClick={addRow}>{t('items.addRow')}</button>
               <label className="flex items-center gap-2 text-[13px] text-ink cursor-pointer select-none">
                 <input type="checkbox" className="w-4 h-4 accent-ocean" checked={vat} onChange={(e) => setVat(e.target.checked)} />
                 {t('items.vatLabel')}

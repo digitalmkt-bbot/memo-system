@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150; }
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150; -webkit-tap-highlight-color: transparent; }
   .btn-primary { @apply text-white bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-neu-sm hover:brightness-[1.03] active:brightness-95; }
   .btn-ghost { @apply bg-surface text-ink border border-slate-200 hover:bg-slate-50 active:bg-slate-100; }
   .btn-green { @apply text-white bg-gradient-to-br from-[#4ade80] to-[#22c55e] shadow-neu-sm hover:brightness-[1.03]; }
