@@ -144,10 +144,13 @@ export function MemoView() {
       .noprint{text-align:center;margin-bottom:18px;display:flex;gap:8px;justify-content:center}
       .noprint button{font-family:inherit;font-size:14px;padding:8px 18px;border-radius:8px;border:1px solid #10b981;background:#10b981;color:#fff;cursor:pointer}
       .noprint button.alt{background:#fff;color:#0f766e;border-color:#0f766e}
+      .addbtn{font-family:inherit;font-size:14px;padding:9px 20px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;font-weight:600}
+      .addbtn:hover{background:#f8fafc}
+      td.empty{text-align:center;color:#94a3b8;padding:18px}
       td .del{border:none;background:transparent;color:#dc2626;cursor:pointer;font-size:14px}
       @media print{body{padding:0}.noprint{display:none}.act{display:none}}
     </style></head><body>
-      <div class="noprint"><button type="button" id="add" class="alt">+ เพิ่มแถว</button><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>
+      <div class="noprint"><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>
       <div class="head">
         <div>
           <div class="co">Love Island Co., Ltd.</div>
@@ -167,7 +170,7 @@ export function MemoView() {
         <thead><tr><th style="width:120px">วัน เดือน ปี</th><th>รายละเอียดรายจ่าย</th><th style="width:130px">จำนวนเงิน</th><th style="width:120px">หมายเหตุ</th><th class="act" style="width:34px"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
-      <div class="noprint" style="margin:8px 0 0"><button type="button" id="add2" class="alt">+ เพิ่มแถว</button></div>
+      <div class="noprint" style="margin:10px 0 0"><button type="button" id="add2" class="addbtn">+ เพิ่มรายการ</button></div>
       <div class="sum"><div class="words">( <span id="words">ศูนย์บาทถ้วน</span> )</div><div class="lbl">รวมทั้งสิ้น</div><div class="val"><span id="total">0.00</span></div></div>
       <div class="body">
         ข้าพเจ้า <span class="fill" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill" contenteditable="true">${esc(memo.creatorRole ? roleLabel(memo.creatorRole) : '')}</span><br>
@@ -181,12 +184,13 @@ export function MemoView() {
         function readGroup(s){var r='';var len=s.length;for(var i=0;i<len;i++){var d=parseInt(s[i],10);var pl=len-i-1;if(!d)continue;if(pl===0&&d===1&&len>1)r+='เอ็ด';else if(pl===1&&d===1)r+='สิบ';else if(pl===1&&d===2)r+='ยี่สิบ';else r+=digits[d]+places[pl];}return r;}
         function readNumber(n){if(n===0)return 'ศูนย์';var parts=[];var str=String(n);while(str.length>6){parts.unshift(str.slice(-6));str=str.slice(0,-6);}parts.unshift(str);var out='';for(var i=0;i<parts.length;i++){out+=readGroup(parts[i]);if(i<parts.length-1)out+='ล้าน';}return out||'ศูนย์';}
         function bahtText(a){var num=Math.abs(Math.round((Number(a)||0)*100)/100);var b=Math.floor(num);var st=Math.round((num-b)*100);var t=readNumber(b)+'บาท';t+=st>0?readNumber(st)+'สตางค์':'ถ้วน';return t;}
+        var rows=document.getElementById('rows');
+        function emptyState(){if(!rows.querySelector('tr.row')){rows.innerHTML='<tr id="empty"><td class="empty" colspan="5">ยังไม่มีรายการ — กดปุ่ม "+ เพิ่มรายการ" ด้านล่าง</td></tr>';}}
         function recompute(){var cells=document.querySelectorAll('td.amt');var sum=0;cells.forEach(function(c){var v=parseFloat((c.innerText||'').replace(/[, ]/g,''))||0;sum+=v;});document.getElementById('total').innerText=sum.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});document.getElementById('words').innerText=bahtText(sum);}
-        function addRow(){var tr=document.createElement('tr');var mk=function(cls){var td=document.createElement('td');td.contentEditable='true';if(cls)td.className=cls;return td;};tr.appendChild(mk('c'));tr.appendChild(mk(''));tr.appendChild(mk('amt r'));tr.appendChild(mk(''));var act=document.createElement('td');act.className='act';var del=document.createElement('button');del.type='button';del.className='del';del.textContent='✕';del.onclick=function(){tr.remove();recompute();};act.appendChild(del);tr.appendChild(act);document.getElementById('rows').appendChild(tr);}
-        document.getElementById('rows').addEventListener('input',recompute);
-        document.getElementById('add').onclick=addRow;
+        function addRow(){var e=document.getElementById('empty'); if(e)e.remove(); var tr=document.createElement('tr');tr.className='row';var mk=function(cls){var td=document.createElement('td');td.contentEditable='true';if(cls)td.className=cls;return td;};tr.appendChild(mk('c'));tr.appendChild(mk(''));tr.appendChild(mk('amt r'));tr.appendChild(mk(''));var act=document.createElement('td');act.className='act';var del=document.createElement('button');del.type='button';del.className='del';del.textContent='✕';del.onclick=function(){tr.remove();recompute();emptyState();};act.appendChild(del);tr.appendChild(act);rows.appendChild(tr);}
+        rows.addEventListener('input',recompute);
         var a2=document.getElementById('add2'); if(a2)a2.onclick=addRow;
-        for(var i=0;i<6;i++)addRow();
+        emptyState();
       <\/script>
     </body></html>`;
     const w = window.open('', '_blank');
