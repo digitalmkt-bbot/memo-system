@@ -339,8 +339,23 @@ export class MemosService {
 
       let memoNo = memo.memoNo;
       if (!memoNo) {
-        const r = await tx.$queryRaw<{ no: string }[]>`SELECT next_memo_no(${memo.companyId}::int) AS no`;
-        memoNo = r[0].no;
+        // Format: No.<COMPANY>-<DEPT>-<YEAR>-<MONTH>-<SEQ>  (running number is
+        // atomic per company + month; department code makes the number readable).
+        const r = await tx.$queryRaw<{ seq: number; yr: number; mo: number; ccode: string | null; dcode: string | null }[]>`
+          WITH ins AS (
+            INSERT INTO memo_running (company_id, year, month, last_number)
+            VALUES (${memo.companyId}, EXTRACT(YEAR FROM now())::int, EXTRACT(MONTH FROM now())::int, 1)
+            ON CONFLICT (company_id, year, month)
+            DO UPDATE SET last_number = memo_running.last_number + 1
+            RETURNING last_number, year, month
+          )
+          SELECT ins.last_number AS seq, ins.year AS yr, ins.month AS mo,
+                 (SELECT code FROM companies WHERE id = ${memo.companyId}) AS ccode,
+                 (SELECT code FROM departments WHERE id = ${memo.departmentId}) AS dcode
+          FROM ins`;
+        const row = r[0];
+        const pad = (n: number, w: number) => String(n).padStart(w, '0');
+        memoNo = `No.${row.ccode || 'CO'}-${row.dcode || 'GEN'}-${pad(row.yr, 4)}-${pad(row.mo, 2)}-${pad(row.seq, 3)}`;
       }
       // Backdated-request control: if the expense (receipt) date is more than 24h
       // before submission, flag it and REQUIRE the reason for the delay.

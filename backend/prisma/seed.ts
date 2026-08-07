@@ -378,6 +378,31 @@ async function main() {
     console.log(`pwreset: ${email} reset to default Password123! (one-time)`);
   }
 
+  // 18) Re-format legacy memo numbers to the new pattern that includes the
+  //     department code: "No.LOVE 2026-08-021" → "No.LOVE-SEC-2026-08-021".
+  //     Old numbers have a SPACE after the company code; new ones are all dashes.
+  const legacyNos = await prisma.memo.findMany({
+    where: { memoNo: { not: null, contains: ' ' } },
+    select: { id: true, memoNo: true, department: { select: { code: true } } },
+  });
+  let renum = 0;
+  for (const m of legacyNos) {
+    const no = m.memoNo || '';
+    const sp = no.indexOf(' ');
+    if (sp < 0) continue;
+    const head = no.slice(0, sp);        // "No.LOVE"
+    const tail = no.slice(sp + 1).trim(); // "2026-08-021"
+    const dcode = m.department?.code || 'GEN';
+    const nno = `${head}-${dcode}-${tail}`;
+    try {
+      await prisma.memo.update({ where: { id: m.id }, data: { memoNo: nno } });
+      renum++;
+    } catch (e: any) {
+      console.warn(`renumber: skip ${no} (${e?.code || e?.message})`);
+    }
+  }
+  if (renum) console.log(`Re-formatted ${renum} legacy memo number(s) to include department code`);
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
