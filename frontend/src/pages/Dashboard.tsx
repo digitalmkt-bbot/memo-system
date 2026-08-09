@@ -27,7 +27,7 @@ export function Dashboard() {
   const [range, setRange] = useState('12m');
   const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState('');
-  const canFilterCompany = user?.role === 'admin' || user?.role === 'executive';
+  const canFilterCompany = user?.role === 'admin' || user?.role === 'executive' || user?.role === 'md';
   const isAdmin = user?.role === 'admin';
 
   // announcements (news feed)

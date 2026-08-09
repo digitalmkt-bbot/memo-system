@@ -8,7 +8,7 @@ export class DashboardService {
 
   // executive/admin: all · manager: own department · staff: own memos
   private scopeWhere(user: JwtUser): any {
-    if (user.role === 'admin' || user.role === 'executive') return {};
+    if (['admin', 'executive', 'md'].includes(user.role)) return {};
     if (user.role === 'manager') return { OR: [{ companyId: user.companyId, departmentId: user.departmentId ?? -1 }, { createdBy: user.id }] };
     return { createdBy: user.id };
   }
@@ -109,7 +109,7 @@ export class DashboardService {
       scope.push(`m.created_by = ${p(user.id)}`);
     }
     // optional company filter (only meaningful for roles that see all companies)
-    const cid = companyId && (user.role === 'admin' || user.role === 'executive') ? parseInt(companyId, 10) : undefined;
+    const cid = companyId && ['admin', 'executive', 'md'].includes(user.role) ? parseInt(companyId, 10) : undefined;
     if (cid) scope.push(`m.company_id = ${p(cid)}`);
     const scopeClause = scope.length ? ' AND ' + scope.join(' AND ') : '';
 
@@ -143,7 +143,7 @@ export class DashboardService {
   // filtered overview for the PR/PO-style dashboard (cards + total value + by-dept value + recent)
   async overview(user: JwtUser, from?: string, to?: string, status?: string, companyId?: string) {
     const where: any = this.scopeWhere(user);
-    const cid = companyId && (user.role === 'admin' || user.role === 'executive') ? parseInt(companyId, 10) : undefined;
+    const cid = companyId && ['admin', 'executive', 'md'].includes(user.role) ? parseInt(companyId, 10) : undefined;
     if (cid) where.companyId = cid;
     const range: any = {};
     if (from) range.gte = new Date(from);

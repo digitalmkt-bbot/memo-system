@@ -25,7 +25,7 @@ export function Reports() {
   const [period, setPeriod] = useState(''); // '' all · week · month · lastmonth · year · custom
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const canFilter = user?.role === 'admin' || user?.role === 'executive';
+  const canFilter = user?.role === 'admin' || user?.role === 'executive' || user?.role === 'md';
 
   // history-by-department (admin/executive only)
   const [depts, setDepts] = useState<any[]>([]);
