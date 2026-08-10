@@ -15,7 +15,7 @@ type Extra = { items?: MemoItemRow[]; vat?: boolean; category?: string; category
 const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const lineTotal = (r: MemoItemRow) => (Number(r.qty) || 0) * (Number(r.unitPrice) || 0);
 const UNITS = ['ชิ้น', 'กล่อง', 'ชุด', 'แพ็ค', 'ม้วน', 'ลิตร', 'กิโลกรัม', 'เดือน', 'ครั้ง', 'รายการ'];
-const CATS: [string, string][] = [['general', 'catGeneral'], ['budget', 'catBudget'], ['procurement', 'catProcurement'], ['info', 'catInfo'], ['other', 'catOther']];
+const CATS: [string, string][] = [['general', 'catGeneral'], ['budget', 'catBudget'], ['procurement', 'catProcurement'], ['salary', 'catSalary'], ['info', 'catInfo'], ['other', 'catOther']];
 const STEPS: [string, string][] = [['create', 'steps.create'], ['pending_manager', 'steps.manager'], ['pending_hrmd', 'steps.hrmd'], ['pending_fc', 'steps.fc'], ['approved', 'steps.done']];
 
 export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoFormValues> & Extra); memoId?: number; status?: string }) {
@@ -157,6 +157,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                 <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
                   {CATS.map(([k, lbl]) => <option key={k} value={k}>{t('form.' + lbl)}</option>)}
                 </select>
+                {category === 'salary' && (
+                  <p className="mt-1 text-[12px] text-emerald-700">{lang === 'th' ? 'ส่งตรงถึงฝ่ายบุคคล (HR) และ HR อนุมัติจบ (ไม่ผ่านหัวหน้าแผนก/MD)' : 'Routed straight to HR; HR approval is final.'}</p>
+                )}
               </div>
               <div>
                 <label className="label">{t('form.neededDate')}</label>

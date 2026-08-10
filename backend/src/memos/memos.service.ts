@@ -319,23 +319,34 @@ export class MemosService {
       if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
       if (memo.status !== 'draft') throw new BadRequestException('Memo is not a draft');
 
-      // Resolve the FIRST approver. NEVER auto-guess:
+      // Resolve the FIRST approver. NEVER auto-guess (except the salary rule below):
       //  1) the per-user "ผู้อนุมัติขั้นแรก" (managerId) configured in the backend, or
       //  2) an approver the creator explicitly picked when submitting.
       // If neither exists, ask the creator to choose (frontend catches CHOOSE_APPROVER).
-      const creator = await tx.user.findUnique({ where: { id: user.id }, select: { managerId: true } });
       let approver: number | null = null;
-      if (creator?.managerId && creator.managerId !== user.id) {
-        const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
-        if (m) approver = m.id;
+      // Salary/payroll rule: goes STRAIGHT to the HR head, who approves & finalizes
+      // (skips the department manager and the MD, regardless of amount).
+      const isSalary = (memo as any).category === 'salary';
+      let firstStatus: 'pending_manager' | 'pending_hrmd' = 'pending_manager';
+      if (isSalary) {
+        const hr = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
+        if (!hr) throw new BadRequestException('ยังไม่มีผู้ใช้สิทธิ์ฝ่ายบุคคล (HR) ในระบบ กรุณาตั้งค่าก่อน');
+        approver = hr;
+        firstStatus = 'pending_hrmd';
+      } else {
+        const creator = await tx.user.findUnique({ where: { id: user.id }, select: { managerId: true } });
+        if (creator?.managerId && creator.managerId !== user.id) {
+          const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
+          if (m) approver = m.id;
+        }
+        if (!approver && approverId) {
+          const chosen = await tx.user.findFirst({ where: { id: approverId, active: true }, select: { id: true } });
+          if (!chosen) throw new BadRequestException('ผู้อนุมัติที่เลือกไม่ถูกต้องหรือถูกปิดใช้งาน');
+          if (chosen.id === user.id) throw new BadRequestException('เลือกตัวเองเป็นผู้อนุมัติไม่ได้');
+          approver = chosen.id;
+        }
+        if (!approver) throw new BadRequestException('CHOOSE_APPROVER');
       }
-      if (!approver && approverId) {
-        const chosen = await tx.user.findFirst({ where: { id: approverId, active: true }, select: { id: true } });
-        if (!chosen) throw new BadRequestException('ผู้อนุมัติที่เลือกไม่ถูกต้องหรือถูกปิดใช้งาน');
-        if (chosen.id === user.id) throw new BadRequestException('เลือกตัวเองเป็นผู้อนุมัติไม่ได้');
-        approver = chosen.id;
-      }
-      if (!approver) throw new BadRequestException('CHOOSE_APPROVER');
 
       let memoNo = memo.memoNo;
       if (!memoNo) {
@@ -365,8 +376,8 @@ export class MemosService {
       if (backdated && !((memo as any).backdateReason && String((memo as any).backdateReason).trim())) {
         throw new BadRequestException('BACKDATE_REASON_REQUIRED');
       }
-      const data: any = { memoNo, status: 'pending_manager', currentApproverId: approver, submittedAt: now, backdated };
-      const detail = `Assigned ${memoNo}, routed to first approver #${approver}${backdated ? ' (ย้อนหลัง)' : ''}`;
+      const data: any = { memoNo, status: firstStatus, currentApproverId: approver, submittedAt: now, backdated };
+      const detail = `Assigned ${memoNo}, routed to ${isSalary ? 'HR (salary)' : 'first approver'} #${approver}${backdated ? ' (ย้อนหลัง)' : ''}`;
 
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });
