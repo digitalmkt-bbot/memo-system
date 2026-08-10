@@ -10,7 +10,7 @@ export const useAuth = () => useContext(Ctx);
 function decode(tok: string): User | null {
   try {
     const p = JSON.parse(atob(tok.split('.')[1]));
-    return { id: p.sub, name: p.name, email: '', role: p.role, companyId: p.companyId };
+    return { id: p.sub, name: p.name, email: '', role: p.role, companyId: p.companyId, departmentId: p.departmentId };
   } catch { return null; }
 }
 

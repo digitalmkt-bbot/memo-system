@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { fmtDay } from '../ui';
 import { useI18n } from '../i18n';
+import { useAuth } from '../auth';
 
 export type MemoItemRow = { name: string; detail?: string; qty: any; unit?: string; unitPrice: any };
 export type MemoFormValues = {
@@ -21,6 +22,7 @@ const STEPS: [string, string][] = [['create', 'steps.create'], ['pending_manager
 export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoFormValues> & Extra); memoId?: number; status?: string }) {
   const nav = useNavigate();
   const { t, lang } = useI18n();
+  const { user } = useAuth();
   const [companies, setCompanies] = useState<any[]>([]);
   const [depts, setDepts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
@@ -41,11 +43,18 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const companyId = watch('companyId');
   const activeStep = Math.max(0, STEPS.findIndex(([k]) => k === (status || 'create')));
 
-  useEffect(() => { api.companies().then((c) => { setCompanies(c); if (!initial?.companyId && c[0]) setValue('companyId', c[0].id); }); }, []);
+  // Default to the CREATOR's own company + home department when creating a new memo.
+  useEffect(() => { api.companies().then((c) => { setCompanies(c); if (!initial?.companyId) setValue('companyId', (user?.companyId && c.find((x: any) => x.id === user.companyId)) ? user.companyId : (c[0]?.id ?? 0)); }); }, []);
   useEffect(() => {
     if (companyId) api.departments(Number(companyId)).then((d) => {
       setDepts(d);
-      if (!d.find((x: any) => x.id === Number(watch('departmentId'))) && d[0]) setValue('departmentId', d[0].id);
+      const cur = Number(watch('departmentId'));
+      if (!d.find((x: any) => x.id === cur)) {
+        // prefer the user's own department; fall back to the first in the list
+        const mine = !initial?.departmentId && user?.departmentId && d.find((x: any) => x.id === user.departmentId) ? user.departmentId : null;
+        if (mine) setValue('departmentId', mine);
+        else if (d[0]) setValue('departmentId', d[0].id);
+      }
     });
   }, [companyId]);
 
