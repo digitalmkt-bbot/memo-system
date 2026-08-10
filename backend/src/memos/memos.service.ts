@@ -120,6 +120,9 @@ export class MemosService {
   }
   // Memos with total ≤ this amount skip the MD approver entirely.
   private readonly SMALL_MAX = 1000;
+  // HR-approval categories: after the department head approves, these go to HR
+  // (ฝ่ายบุคคล) who finalizes — they never route to the MD, regardless of amount.
+  private readonly HR_APPROVAL_CATS = ['salary', 'allowance', 'fuel', 'island'];
 
   private canApprove(user: JwtUser, memo: any) {
     if (memo.currentApproverId !== user.id) return false;
@@ -323,30 +326,23 @@ export class MemosService {
       //  1) the per-user "ผู้อนุมัติขั้นแรก" (managerId) configured in the backend, or
       //  2) an approver the creator explicitly picked when submitting.
       // If neither exists, ask the creator to choose (frontend catches CHOOSE_APPROVER).
+      // All categories go to the FIRST approver first (department head). HR-type
+      // categories (salary/allowance/fuel/island) are then routed to HR — not the
+      // MD — at the approve() step (see HR_APPROVAL_CATS).
       let approver: number | null = null;
-      // Salary/payroll rule: goes STRAIGHT to the HR head, who approves & finalizes
-      // (skips the department manager and the MD, regardless of amount).
-      const isSalary = (memo as any).category === 'salary';
-      let firstStatus: 'pending_manager' | 'pending_hrmd' = 'pending_manager';
-      if (isSalary) {
-        const hr = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
-        if (!hr) throw new BadRequestException('ยังไม่มีผู้ใช้สิทธิ์ฝ่ายบุคคล (HR) ในระบบ กรุณาตั้งค่าก่อน');
-        approver = hr;
-        firstStatus = 'pending_hrmd';
-      } else {
-        const creator = await tx.user.findUnique({ where: { id: user.id }, select: { managerId: true } });
-        if (creator?.managerId && creator.managerId !== user.id) {
-          const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
-          if (m) approver = m.id;
-        }
-        if (!approver && approverId) {
-          const chosen = await tx.user.findFirst({ where: { id: approverId, active: true }, select: { id: true } });
-          if (!chosen) throw new BadRequestException('ผู้อนุมัติที่เลือกไม่ถูกต้องหรือถูกปิดใช้งาน');
-          if (chosen.id === user.id) throw new BadRequestException('เลือกตัวเองเป็นผู้อนุมัติไม่ได้');
-          approver = chosen.id;
-        }
-        if (!approver) throw new BadRequestException('CHOOSE_APPROVER');
+      const firstStatus: 'pending_manager' | 'pending_hrmd' = 'pending_manager';
+      const creator = await tx.user.findUnique({ where: { id: user.id }, select: { managerId: true } });
+      if (creator?.managerId && creator.managerId !== user.id) {
+        const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
+        if (m) approver = m.id;
       }
+      if (!approver && approverId) {
+        const chosen = await tx.user.findFirst({ where: { id: approverId, active: true }, select: { id: true } });
+        if (!chosen) throw new BadRequestException('ผู้อนุมัติที่เลือกไม่ถูกต้องหรือถูกปิดใช้งาน');
+        if (chosen.id === user.id) throw new BadRequestException('เลือกตัวเองเป็นผู้อนุมัติไม่ได้');
+        approver = chosen.id;
+      }
+      if (!approver) throw new BadRequestException('CHOOSE_APPROVER');
 
       let memoNo = memo.memoNo;
       if (!memoNo) {
@@ -377,7 +373,7 @@ export class MemosService {
         throw new BadRequestException('BACKDATE_REASON_REQUIRED');
       }
       const data: any = { memoNo, status: firstStatus, currentApproverId: approver, submittedAt: now, backdated };
-      const detail = `Assigned ${memoNo}, routed to ${isSalary ? 'HR (salary)' : 'first approver'} #${approver}${backdated ? ' (ย้อนหลัง)' : ''}`;
+      const detail = `Assigned ${memoNo}, routed to first approver #${approver}${backdated ? ' (ย้อนหลัง)' : ''}`;
 
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: 'submitted', detail } });
@@ -413,17 +409,23 @@ export class MemosService {
         data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
         action = 'approved_md_final';
       } else if (memo.status === 'pending_manager') {
-        // Any first approver (department manager OR the HR head): amounts ≤ 1,000
-        // finalize here; amounts > 1,000 must still reach the MD. (An MD who is the
-        // first approver finalizes — handled by the user.role === 'md' case above.)
-        const total = await this.memoTotal(tx, id);
-        if (total <= this.SMALL_MAX) {
-          data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-          action = 'approved_manager_final';
+        // HR-approval categories (salary/allowance/fuel/island): after the dept
+        // head, route to HR who finalizes — NEVER to the MD, any amount.
+        if (this.HR_APPROVAL_CATS.includes((memo as any).category)) {
+          const hr = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
+          if (hr) { data = { status: 'pending_hrmd', currentApproverId: hr }; action = 'approved_manager_to_hr'; }
+          else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final_no_hr'; }
         } else {
-          const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
-          if (md) { data = { status: 'pending_hrmd', currentApproverId: md }; action = 'approved_manager_to_md'; }
-          else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final'; }
+          // Any first approver: amounts ≤ 1,000 finalize here; > 1,000 reach the MD.
+          const total = await this.memoTotal(tx, id);
+          if (total <= this.SMALL_MAX) {
+            data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+            action = 'approved_manager_final';
+          } else {
+            const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
+            if (md) { data = { status: 'pending_hrmd', currentApproverId: md }; action = 'approved_manager_to_md'; }
+            else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final'; }
+          }
         }
       } else if (memo.status === 'pending_hrmd') {
         // HRM or MD approval finalizes the memo. FC no longer approves —
