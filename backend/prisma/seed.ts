@@ -403,6 +403,46 @@ async function main() {
   }
   if (renum) console.log(`Re-formatted ${renum} legacy memo number(s) to include department code`);
 
+  // 19) One-time: move every memo created by นางสาวนฤมน ซ้วนเซ่ง (pier.phuket)
+  //     to the PKTP (Phuket Pier) department, and fix the department code inside
+  //     the memo number. Guarded by an AuditLog marker so it runs exactly once.
+  {
+    const marker = 'seed_move_pktp:pier.phuket@loveandaman.com';
+    const done = await prisma.auditLog.findFirst({ where: { action: marker } });
+    if (!done) {
+      const her = await prisma.user.findUnique({ where: { email: 'pier.phuket@loveandaman.com' }, select: { id: true } });
+      // match by creator OR by name (surname ซ้วนเซ่ง stays intact even in older rows)
+      const mine = await prisma.memo.findMany({
+        where: {
+          OR: [
+            ...(her ? [{ createdBy: her.id }] : []),
+            { fromName: { contains: 'ซ้วนเซ่ง' } },
+          ],
+        },
+        select: { id: true, memoNo: true, companyId: true, departmentId: true },
+      });
+      let moved = 0;
+      for (const m of mine) {
+        const pktp = await prisma.department.findFirst({ where: { companyId: m.companyId, code: 'PKTP' }, select: { id: true } });
+        if (!pktp) continue;
+        // rewrite the dept segment of the number: No.<CO>-<DEPT>-<Y>-<M>-<SEQ>
+        let nno = m.memoNo || null;
+        if (nno) {
+          const parts = nno.split('-');
+          if (parts.length === 5 && parts[0].startsWith('No.')) { parts[1] = 'PKTP'; nno = parts.join('-'); }
+        }
+        try {
+          await prisma.memo.update({ where: { id: m.id }, data: { departmentId: pktp.id, ...(nno && nno !== m.memoNo ? { memoNo: nno } : {}) } });
+          moved++;
+        } catch (e: any) {
+          console.warn(`move-pktp: skip memo ${m.id} (${e?.code || e?.message})`);
+        }
+      }
+      await prisma.auditLog.create({ data: { action: marker, detail: `moved ${moved} memo(s) to PKTP`, userId: her?.id ?? null } });
+      if (moved) console.log(`Moved ${moved} memo(s) of pier.phuket to PKTP department`);
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
