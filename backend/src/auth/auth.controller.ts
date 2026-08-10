@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -17,6 +17,15 @@ export class AuthController {
   @Post('change-password')
   changePassword(@Body() dto: ChangePasswordDto) {
     return this.auth.changePassword(dto);
+  }
+
+  // Current user's profile (authoritative company/department from the DB) so the
+  // UI can default a new memo to the creator's own department reliably, even if
+  // an older token didn't carry departmentId.
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  me(@Req() req: any) {
+    return this.auth.me(req.user.id);
   }
 
   @Post('register')

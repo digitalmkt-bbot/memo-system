@@ -32,6 +32,7 @@ export const api = {
   logout: () => http.post('/auth/logout').then((r) => r.data),
   register: (body: any) => http.post('/auth/register', body).then((r) => r.data),
   changePassword: (body: any) => http.post('/auth/change-password', body).then((r) => r.data),
+  me: () => http.get('/auth/me').then((r) => r.data),
   users: () => http.get('/users').then((r) => r.data),
   updateUser: (id: number, body: any) => http.patch(`/users/${id}`, body).then((r) => r.data),
   deleteUser: (id: number) => http.delete(`/users/${id}`).then((r) => r.data),

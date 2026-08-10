@@ -42,21 +42,30 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   });
   const companyId = watch('companyId');
   const activeStep = Math.max(0, STEPS.findIndex(([k]) => k === (status || 'create')));
+  // Authoritative home company/department from the server (works even if an old
+  // token didn't carry departmentId). Falls back to the cached auth user.
+  const [me, setMe] = useState<any>(null);
+  const homeCompany = me?.companyId ?? user?.companyId;
+  const homeDept = me?.departmentId ?? user?.departmentId;
 
-  // Default to the CREATOR's own company + home department when creating a new memo.
-  useEffect(() => { api.companies().then((c) => { setCompanies(c); if (!initial?.companyId) setValue('companyId', (user?.companyId && c.find((x: any) => x.id === user.companyId)) ? user.companyId : (c[0]?.id ?? 0)); }); }, []);
+  useEffect(() => { api.companies().then(setCompanies).catch(() => {}); }, []);
+  useEffect(() => { api.me().then(setMe).catch(() => {}); }, []);
+  // Default company to the creator's own (once companies + profile are loaded).
   useEffect(() => {
-    if (companyId) api.departments(Number(companyId)).then((d) => {
-      setDepts(d);
-      const cur = Number(watch('departmentId'));
-      if (!d.find((x: any) => x.id === cur)) {
-        // prefer the user's own department; fall back to the first in the list
-        const mine = !initial?.departmentId && user?.departmentId && d.find((x: any) => x.id === user.departmentId) ? user.departmentId : null;
-        if (mine) setValue('departmentId', mine);
-        else if (d[0]) setValue('departmentId', d[0].id);
-      }
-    });
-  }, [companyId]);
+    if (initial?.companyId || !companies.length || Number(watch('companyId'))) return;
+    const cid = (homeCompany && companies.find((c: any) => c.id === homeCompany)) ? homeCompany : companies[0]?.id;
+    if (cid) setValue('companyId', cid);
+  }, [companies, me]);
+  // Load departments for the selected company.
+  useEffect(() => { if (companyId) api.departments(Number(companyId)).then(setDepts).catch(() => {}); }, [companyId]);
+  // Default department to the creator's home department (once departments loaded).
+  useEffect(() => {
+    if (initial?.departmentId || !depts.length) return;
+    const cur = Number(watch('departmentId'));
+    if (depts.find((x: any) => x.id === cur)) return; // a valid choice is already set
+    const did = (homeDept && depts.find((x: any) => x.id === homeDept)) ? homeDept : depts[0]?.id;
+    if (did) setValue('departmentId', did);
+  }, [depts, me]);
 
   const addRow = () => setItems((xs) => [...xs, { name: '', detail: '', qty: 1, unit: '', unitPrice: '' }]);
   const removeRow = (i: number) => setItems((xs) => xs.filter((_, idx) => idx !== i));

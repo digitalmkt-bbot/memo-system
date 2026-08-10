@@ -43,6 +43,14 @@ export class AuthService {
     return { ok: true };
   }
 
+  async me(userId: number) {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true, companyId: true, departmentId: true },
+    });
+    return u;
+  }
+
   async register(dto: RegisterDto) {
     const passwordHash = bcrypt.hashSync(dto.password, 10);
     try {
