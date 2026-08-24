@@ -59,23 +59,22 @@ export class UsersService {
 
   async remove(id: number, currentUserId: number) {
     if (id === currentUserId) throw new BadRequestException('ลบบัญชีของตัวเองไม่ได้');
-    const [created, approved, asApprover] = await Promise.all([
-      this.prisma.memo.count({ where: { createdBy: id } }),
-      this.prisma.approval.count({ where: { approvedBy: id } }),
-      this.prisma.memo.count({ where: { currentApproverId: id } }),
-    ]);
-    // Detach anyone who has this user set as their first approver, so there is no
-    // dangling reference (those users will be asked to pick an approver next time).
-    const detached = await this.prisma.user.updateMany({ where: { managerId: id }, data: { managerId: null } });
-    if (created > 0 || approved > 0 || asApprover > 0) {
-      // The user has documents/approval history — hard-deleting would destroy that
-      // history, so DEACTIVATE instead (data stays intact, they can no longer log in).
-      await this.prisma.user.update({ where: { id }, data: { active: false } });
-      const note = detached.count ? ` และย้ายหัวหน้าของ ${detached.count} คนออกแล้ว (โปรดตั้งหัวหน้าใหม่)` : '';
-      return { ok: true, deactivated: true, message: `ผู้ใช้มีประวัติเอกสาร/การอนุมัติในระบบ จึงปิดการใช้งานแทนการลบ (ข้อมูลเดิมยังอยู่ครบ)${note}` };
-    }
+    const target = await this.prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!target) throw new NotFoundException('ไม่พบผู้ใช้');
+    // HARD delete, but KEEP the documents: re-point every reference that would
+    // otherwise block the delete to the admin performing it. The memo's own
+    // "ผู้ขอ" text (fromName) is untouched, so the original requester still shows.
     try {
-      await this.prisma.user.delete({ where: { id } });
+      await this.prisma.$transaction([
+        // subordinates lose their first-approver link (must be reassigned later)
+        this.prisma.user.updateMany({ where: { managerId: id }, data: { managerId: null } }),
+        // memos they created & approvals they made survive, transferred to the admin
+        this.prisma.memo.updateMany({ where: { createdBy: id }, data: { createdBy: currentUserId } }),
+        this.prisma.approval.updateMany({ where: { approvedBy: id }, data: { approvedBy: currentUserId } }),
+        // any memo currently waiting on them is left without an approver (re-route)
+        this.prisma.memo.updateMany({ where: { currentApproverId: id }, data: { currentApproverId: null } }),
+        this.prisma.user.delete({ where: { id } }),
+      ]);
     } catch (e: any) {
       if (e.code === 'P2025') throw new NotFoundException('ไม่พบผู้ใช้');
       throw e;
