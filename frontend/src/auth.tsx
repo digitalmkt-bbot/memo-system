@@ -7,9 +7,15 @@ interface AuthCtx { user: User | null; login: (e: string, p: string) => Promise<
 const Ctx = createContext<AuthCtx>(null as any);
 export const useAuth = () => useContext(Ctx);
 
+// Decode the JWT payload with proper UTF-8 handling. atob() yields a binary
+// (latin1) string, so Thai names came out as mojibake — re-decode the bytes as
+// UTF-8 with TextDecoder.
 function decode(tok: string): User | null {
   try {
-    const p = JSON.parse(atob(tok.split('.')[1]));
+    const b64 = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const p = JSON.parse(new TextDecoder('utf-8').decode(bytes));
     return { id: p.sub, name: p.name, email: '', role: p.role, companyId: p.companyId, departmentId: p.departmentId };
   } catch { return null; }
 }
