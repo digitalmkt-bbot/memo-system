@@ -68,7 +68,7 @@ export class AuthService {
       });
       return { id: u.id };
     } catch (e: any) {
-      if (e.code === 'P2002') throw new ConflictException('Email or employee code already exists');
+      if (e.code === 'P2002') throw new ConflictException('อีเมลหรือรหัสพนักงานซ้ำกับผู้ใช้ที่มีอยู่แล้ว — กรุณาใช้รหัส/อีเมลใหม่');
       throw e;
     }
   }

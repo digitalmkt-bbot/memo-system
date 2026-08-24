@@ -64,8 +64,15 @@ export class UsersService {
       this.prisma.approval.count({ where: { approvedBy: id } }),
       this.prisma.memo.count({ where: { currentApproverId: id } }),
     ]);
+    // Detach anyone who has this user set as their first approver, so there is no
+    // dangling reference (those users will be asked to pick an approver next time).
+    const detached = await this.prisma.user.updateMany({ where: { managerId: id }, data: { managerId: null } });
     if (created > 0 || approved > 0 || asApprover > 0) {
-      throw new BadRequestException('ผู้ใช้มีบันทึก/ประวัติอนุมัติในระบบ ลบไม่ได้ — แนะนำให้ปิดใช้งานแทน');
+      // The user has documents/approval history — hard-deleting would destroy that
+      // history, so DEACTIVATE instead (data stays intact, they can no longer log in).
+      await this.prisma.user.update({ where: { id }, data: { active: false } });
+      const note = detached.count ? ` และย้ายหัวหน้าของ ${detached.count} คนออกแล้ว (โปรดตั้งหัวหน้าใหม่)` : '';
+      return { ok: true, deactivated: true, message: `ผู้ใช้มีประวัติเอกสาร/การอนุมัติในระบบ จึงปิดการใช้งานแทนการลบ (ข้อมูลเดิมยังอยู่ครบ)${note}` };
     }
     try {
       await this.prisma.user.delete({ where: { id } });

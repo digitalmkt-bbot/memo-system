@@ -74,7 +74,7 @@ export function Users() {
   const onDelete = async (u: any) => {
     if (!window.confirm(t('users.confirmDelete').replace('{name}', u.name))) return;
     setMsg('');
-    try { await api.deleteUser(u.id); setMsg(t('users.deleted')); loadUsers(); }
+    try { const r = await api.deleteUser(u.id); setMsg(r?.deactivated ? r.message : t('users.deleted')); loadUsers(); }
     catch (e: any) { setMsg(e?.response?.data?.message || e.message); }
   };
 
