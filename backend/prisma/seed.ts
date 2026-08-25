@@ -443,6 +443,29 @@ async function main() {
     }
   }
 
+  // 20) One-time: point every active SALES AGENT (SA) staff member's first
+  //     approver to the new SA head (pakorn@ — คุณภากร ลาภยิ่งยง), replacing the
+  //     old head who left. Guarded by an AuditLog marker so it runs once.
+  {
+    const marker = 'seed_sa_head:pakorn@loveandaman.com';
+    const done = await prisma.auditLog.findFirst({ where: { action: marker } });
+    if (!done) {
+      const head = await prisma.user.findUnique({ where: { email: 'pakorn@loveandaman.com' }, select: { id: true, active: true } });
+      if (head && head.active) {
+        const saDepts = await prisma.department.findMany({ where: { code: 'SA' }, select: { id: true } });
+        const saIds = saDepts.map((d) => d.id);
+        const res = await prisma.user.updateMany({
+          where: { departmentId: { in: saIds }, active: true, id: { not: head.id } },
+          data: { managerId: head.id },
+        });
+        await prisma.auditLog.create({ data: { action: marker, detail: `set ${res.count} SA staff first-approver to pakorn`, userId: head.id } });
+        if (res.count) console.log(`Set ${res.count} SA staff first-approver → pakorn (new SA head)`);
+      } else {
+        console.warn('seed_sa_head: pakorn@ not found or inactive — skipped');
+      }
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
