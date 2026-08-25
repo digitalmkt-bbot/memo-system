@@ -114,7 +114,7 @@ export function Users() {
                 <select className="input" {...register('managerId')}>
                   <option value="">{t('users.firstApproverAuto')}</option>
                   {users
-                    .filter((u) => u.id !== editId)
+                    .filter((u) => u.id !== editId && u.active !== false)
                     .map((u) => <option key={u.id} value={u.id}>{u.name}{u.deptCode ? ` (${u.deptCode})` : ''}</option>)}
                 </select></div>
             </div>

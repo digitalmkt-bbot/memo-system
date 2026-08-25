@@ -44,7 +44,20 @@ export class UsersService {
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.email !== undefined) data.email = dto.email.toLowerCase().trim();
     if (dto.role !== undefined) data.role = dto.role as any;
-    if (dto.managerId !== undefined) data.managerId = dto.managerId ?? null;
+    if (dto.managerId !== undefined) {
+      if (dto.managerId === null) {
+        data.managerId = null;
+      } else if (dto.managerId === id) {
+        throw new BadRequestException('เลือกตัวเองเป็นผู้อนุมัติไม่ได้');
+      } else {
+        // Validate the chosen approver EXISTS and is ACTIVE — otherwise the FK
+        // save fails silently and (if inactive) memos won't route to them.
+        const m = await this.prisma.user.findUnique({ where: { id: dto.managerId }, select: { active: true } });
+        if (!m) throw new BadRequestException('ไม่พบผู้อนุมัติที่เลือก (อาจถูกลบไปแล้ว) — กรุณาเลือกผู้อนุมัติใหม่');
+        if (!m.active) throw new BadRequestException('ผู้อนุมัติที่เลือกถูกปิดใช้งานอยู่ — เปิดใช้งานก่อน หรือเลือกผู้อนุมัติที่ยังใช้งาน');
+        data.managerId = dto.managerId;
+      }
+    }
     if (dto.active !== undefined) data.active = dto.active;
     if (dto.password) data.passwordHash = bcrypt.hashSync(dto.password, 10);
     try {
