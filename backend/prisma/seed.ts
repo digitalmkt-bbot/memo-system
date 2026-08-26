@@ -466,6 +466,28 @@ async function main() {
     }
   }
 
+  // 21) Keep the SALES AGENT approver chain healthy (idempotent — only fills
+  //     EMPTY first-approver slots, never overrides an intentional choice):
+  //       • SA head (pakorn@) → MD as his first approver
+  //       • every other active SA staff → the SA head
+  {
+    const head = await prisma.user.findUnique({ where: { email: 'pakorn@loveandaman.com' }, select: { id: true, active: true, managerId: true } });
+    if (head?.active) {
+      const md = (await prisma.user.findFirst({ where: { role: 'md' as any, active: true }, select: { id: true } }));
+      if (md && head.managerId == null) {
+        await prisma.user.update({ where: { id: head.id }, data: { managerId: md.id } });
+        console.log('SA head pakorn → MD (first approver set)');
+      }
+      const saDepts = await prisma.department.findMany({ where: { code: 'SA' }, select: { id: true } });
+      const saIds = saDepts.map((d) => d.id);
+      const filled = await prisma.user.updateMany({
+        where: { departmentId: { in: saIds }, active: true, id: { not: head.id }, managerId: null },
+        data: { managerId: head.id },
+      });
+      if (filled.count) console.log(`Filled ${filled.count} SA staff first-approver → pakorn`);
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
