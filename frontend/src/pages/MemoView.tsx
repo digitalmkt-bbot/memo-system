@@ -537,7 +537,7 @@ export function MemoView() {
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') && memo.forwardedAt &&
               <button className="btn btn-ghost" onClick={() => setFwd(true)}>{lang === 'th' ? 'ส่งปิดงานเพิ่ม / ส่งอัปเดต' : 'Close to more / resend'}</button>}
-            {isCreator && memo.status === 'approved' && !memo.forwardedAt &&
+            {isCreator && memo.status === 'approved' &&
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
           </div>
           {memo.forwardedAt && (

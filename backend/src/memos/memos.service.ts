@@ -244,10 +244,10 @@ export class MemosService {
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
     // Editable while a draft, before the first approval (pending_manager), and
-    // also after final approval — until the memo is closed (ส่งปิดงาน).
+    // after final approval — INCLUDING after it has been closed (ส่งปิดงาน), so the
+    // creator can correct it and re-send the close again.
     if (!['draft', 'pending_manager', 'approved'].includes(memo.status))
       throw new BadRequestException('แก้ไขไม่ได้ในสถานะนี้ (อยู่ระหว่างการอนุมัติ)');
-    if ((memo as any).forwardedAt) throw new BadRequestException('ส่งปิดงานแล้ว แก้ไขไม่ได้');
     const updated = await this.prisma.memo.update({
       where: { id },
       data: {
