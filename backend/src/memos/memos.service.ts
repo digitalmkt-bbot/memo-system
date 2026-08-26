@@ -413,7 +413,7 @@ export class MemosService {
         // head, route to HR who finalizes — NEVER to the MD, any amount.
         if (this.HR_APPROVAL_CATS.includes((memo as any).category)) {
           const hr = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
-          if (hr) { data = { status: 'pending_hrmd', currentApproverId: hr }; action = 'approved_manager_to_hr'; }
+          if (hr) { data = { status: 'pending_hrmd', currentApproverId: hr, reminderCount: 0, lastReminderAt: null, escalatedAt: null }; action = 'approved_manager_to_hr'; }
           else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final_no_hr'; }
         } else {
           // Any first approver: amounts ≤ 1,000 finalize here; > 1,000 reach the MD.
@@ -423,7 +423,7 @@ export class MemosService {
             action = 'approved_manager_final';
           } else {
             const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
-            if (md) { data = { status: 'pending_hrmd', currentApproverId: md }; action = 'approved_manager_to_md'; }
+            if (md) { data = { status: 'pending_hrmd', currentApproverId: md, reminderCount: 0, lastReminderAt: null, escalatedAt: null }; action = 'approved_manager_to_md'; }
             else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final'; }
           }
         }

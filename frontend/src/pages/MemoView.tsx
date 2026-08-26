@@ -377,7 +377,12 @@ export function MemoView() {
           {(() => {
             const pendingStatuses = ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'];
             if (!pendingStatuses.includes(memo.status) || !memo.submittedAt) return null;
-            const hrs = (Date.now() - new Date(memo.submittedAt).getTime()) / 36e5;
+            // Count from when the memo ARRIVED at the current approver (last approval),
+            // not the original submission — otherwise a memo that just reached the MD
+            // would wrongly show as overdue.
+            const approvedTimes = (approvals || []).filter((a: any) => a.status === 'approve' && a.approvedAt).map((a: any) => new Date(a.approvedAt).getTime());
+            const arrivedAt = approvedTimes.length ? Math.max(...approvedTimes) : new Date(memo.submittedAt).getTime();
+            const hrs = (Date.now() - arrivedAt) / 36e5;
             if (hrs < 48) return null;
             const days = Math.floor(hrs / 24);
             const esc = !!memo.escalatedAt;

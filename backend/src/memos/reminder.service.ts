@@ -75,16 +75,21 @@ export class ReminderService implements OnModuleInit, OnModuleDestroy {
         currentApproverId: { not: null },
         onHold: false,
       },
-      include: { currentApprover: { select: { id: true, name: true, email: true, role: true } } },
+      include: {
+        currentApprover: { select: { id: true, name: true, email: true, role: true } },
+        approvals: { where: { status: 'approve' }, orderBy: { approvedAt: 'desc' }, take: 1, select: { approvedAt: true } },
+      },
     });
     if (!pending.length) return;
 
     const escalate: { memo: any; approverName: string; days: number }[] = [];
 
     for (const m of pending) {
-      const submitted = m.submittedAt ? new Date(m.submittedAt) : null;
-      if (!submitted) continue;
-      const hours = (now.getTime() - submitted.getTime()) / 36e5;
+      // Count waiting time from when the memo ARRIVED at the CURRENT approver
+      // (the last approval that routed it here) — NOT the original submission.
+      const arrived = m.approvals?.[0]?.approvedAt ? new Date(m.approvals[0].approvedAt) : (m.submittedAt ? new Date(m.submittedAt) : null);
+      if (!arrived) continue;
+      const hours = (now.getTime() - arrived.getTime()) / 36e5;
 
       // ── 1) 48-hour reminder to the current approver ────────────────
       if (hours >= this.REMIND_AFTER_H && (m.reminderCount || 0) < this.MAX_REMINDERS) {
@@ -106,7 +111,7 @@ export class ReminderService implements OnModuleInit, OnModuleDestroy {
 
       // ── 2) 3-business-day escalation to higher-level executives ────
       if (!m.escalatedAt) {
-        const bd = this.businessDays(submitted, now);
+        const bd = this.businessDays(arrived, now);
         if (bd >= this.ESCALATE_AFTER_BD) {
           escalate.push({ memo: m, approverName: m.currentApprover?.name || '-', days: bd });
         }
