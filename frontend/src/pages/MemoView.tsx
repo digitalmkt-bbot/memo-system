@@ -113,7 +113,7 @@ export function MemoView() {
   const openSubstitute = () => {
     const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
     const logo = window.location.origin + '/love-logo.png';
-    const canSave = memo.status === 'approved' && (isCreator || user?.role === 'admin');
+    const canSave = isCreator || user?.role === 'admin'; // attach into the memo (any status); it also re-closes if already forwarded
     const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบรับรองแทนใบเสร็จรับเงิน ${esc(memo.memoNo || '')}</title>
     <style>
       @page{size:A4;margin:14mm}
@@ -151,7 +151,7 @@ export function MemoView() {
       td .del{border:none;background:transparent;color:#dc2626;cursor:pointer;font-size:14px}
       @media print{body{padding:0}.noprint{display:none}.act{display:none}}
     </style></head><body>
-      <div class="noprint"><button type="button" id="add" class="alt">+ เพิ่มแถว</button><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button>${canSave ? '<button type="button" id="saveBtn">บันทึกเข้า Memo + ส่งปิดงาน</button>' : ''}</div>
+      <div class="noprint"><button type="button" id="add" class="alt">+ เพิ่มแถว</button><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button>${canSave ? '<button type="button" id="saveBtn" title="แนบไฟล์ใบแทนเข้าเอกสารในระบบ (และส่งปิดงานซ้ำถ้าเคยปิดงานแล้ว)">💾 บันทึกเข้าระบบ (แนบใน Memo)</button>' : ''}</div>
       <div class="head">
         <div>
           <div class="co">Love Island Co., Ltd.</div>
