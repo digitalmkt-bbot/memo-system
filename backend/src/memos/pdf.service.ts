@@ -36,6 +36,94 @@ export class PdfService {
     }
   }
 
+  /** Render the "ใบรับรองแทนใบเสร็จรับเงิน" (receipt substitute) as an A4 PDF. */
+  async renderSubstitute(d: any): Promise<Buffer> {
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    try {
+      const page = await browser.newPage();
+      await page.setContent(this.htmlSubstitute(d), { waitUntil: 'networkidle0' });
+      try { await page.evaluate(() => (document as any).fonts.ready); } catch { /* noop */ }
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '14mm', bottom: '14mm', left: '14mm', right: '14mm' } });
+      return Buffer.from(pdf);
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private money2(n: any): string {
+    return (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  private bahtText(amount: number): string {
+    const num = Math.abs(Math.round((Number(amount) || 0) * 100) / 100);
+    const baht = Math.floor(num);
+    const satang = Math.round((num - baht) * 100);
+    const digits = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+    const places = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+    const readGroup = (s: string): string => {
+      let r = ''; const len = s.length;
+      for (let i = 0; i < len; i++) { const dd = parseInt(s[i], 10); const pl = len - i - 1; if (!dd) continue;
+        if (pl === 0 && dd === 1 && len > 1) r += 'เอ็ด'; else if (pl === 1 && dd === 1) r += 'สิบ'; else if (pl === 1 && dd === 2) r += 'ยี่สิบ'; else r += digits[dd] + places[pl]; }
+      return r;
+    };
+    const readNumber = (n: number): string => {
+      if (n === 0) return 'ศูนย์'; const parts: string[] = []; let str = String(n);
+      while (str.length > 6) { parts.unshift(str.slice(-6)); str = str.slice(0, -6); } parts.unshift(str);
+      let out = ''; for (let i = 0; i < parts.length; i++) { out += readGroup(parts[i]); if (i < parts.length - 1) out += 'ล้าน'; }
+      return out || 'ศูนย์';
+    };
+    return readNumber(baht) + 'บาท' + (satang > 0 ? readNumber(satang) + 'สตางค์' : 'ถ้วน');
+  }
+
+  private htmlSubstitute(d: any): string {
+    const memo = d.memo || {};
+    const items: any[] = Array.isArray(d.items) ? d.items : [];
+    const MIN = 6;
+    const total = items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+    const rows = items.map((it) => `<tr>
+      <td class="c">${this.esc(it.date || '')}</td>
+      <td>${this.esc(it.detail || '')}</td>
+      <td class="r">${it.amount != null && it.amount !== '' ? this.money2(it.amount) : ''}</td>
+      <td>${this.esc(it.note || '')}</td></tr>`).join('');
+    const pad = Array.from({ length: Math.max(0, MIN - items.length) }).map(() => '<tr><td>&nbsp;</td><td></td><td></td><td></td></tr>').join('');
+    return `<!doctype html><html lang="th"><head><meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      *{box-sizing:border-box} body{font-family:'Sarabun',sans-serif;color:#111;margin:0;font-size:13px}
+      .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+      .co{font-size:21px;font-weight:800;color:#17263f} .bar{height:6px;width:96px;background:linear-gradient(90deg,#17263f 55%,#23b4d8 55%);margin:6px 0 10px}
+      .addr{font-size:11px;color:#555;line-height:1.7} .head-right{text-align:right}
+      .logo{width:150px} .ref{font-size:13px;font-weight:700;color:#17263f;margin-top:16px}
+      .rule{border-top:2px solid #17263f;margin:10px 0} h1{text-align:center;font-size:20px;font-weight:800;color:#17263f;margin:8px 0}
+      .top{display:flex;align-items:flex-end;gap:8px;margin:16px 0 10px;font-size:14px} .fill{border-bottom:1px dotted #333;min-height:18px;padding:0 6px;font-weight:600;display:inline-block} .top .fill{flex:1}
+      table{width:100%;border-collapse:collapse;font-size:13px} th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;min-height:24px} th{background:#17263f;color:#fff;text-align:center} td.c{text-align:center} td.r{text-align:right}
+      .sum{display:flex} .sum .words{flex:1;border:1px solid #333;border-top:none;text-align:center;padding:8px;font-weight:600;background:#f3f4f6}
+      .sum .lbl{border:1px solid #333;border-top:none;padding:8px 12px;font-weight:600} .sum .val{border:1px solid #333;border-top:none;border-left:none;padding:8px 16px;text-align:right;font-weight:700;min-width:130px;background:#f3f4f6}
+      .body{font-size:14px;line-height:2.1;margin-top:20px} .sign{margin-top:40px;text-align:center;font-size:14px} .sign .fill{min-width:260px}
+    </style></head><body>
+      <div class="head">
+        <div><div class="co">Love Island Co., Ltd.</div><div class="bar"></div>
+          <div class="addr">9/239-240 Sakdidej Road<br>T.Talat Nuea A.Mueang Phuket 83000<br>T: +66 76 390 250<br>E-mail : info@loveandaman.com</div></div>
+        <div class="head-right"><img class="logo" src="${LOVE_LOGO}" alt="LOVE andaman" /><div class="ref">เลขที่อ้างอิง : ${this.esc(memo.memoNo || '-')}</div></div>
+      </div>
+      <div class="rule"></div><h1>ใบรับรองแทนใบเสร็จรับเงิน</h1><div class="rule"></div>
+      <div class="top"><span>บจ. / หจก.</span><span class="fill">${this.esc(d.buyer || '')}</span><span>(ผู้ซื้อ/ผู้รับบริการ)</span></div>
+      <table><thead><tr><th style="width:110px">วัน เดือน ปี</th><th>รายละเอียดรายจ่าย</th><th style="width:120px">จำนวนเงิน</th><th style="width:110px">หมายเหตุ</th></tr></thead>
+        <tbody>${rows}${pad}</tbody></table>
+      <div class="sum"><div class="words">( ${this.esc(this.bahtText(total))} )</div><div class="lbl">รวมทั้งสิ้น</div><div class="val">${this.money2(total)}</div></div>
+      <div class="body">ข้าพเจ้า <span class="fill">${this.esc(d.payerName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill">${this.esc(d.payerRole || '')}</span><br>
+        ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของทาง บจก.เลิฟไอแลนด์ โดยแท้ &nbsp;
+        ตั้งแต่วันที่ <span class="fill">${this.esc(d.dateFrom || '')}</span> ถึงวันที่ <span class="fill">${this.esc(d.dateTo || '')}</span></div>
+      <div class="sign">ลงชื่อ <span class="fill"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" style="min-width:240px">${this.esc(d.signName || d.payerName || '')}</span> )</div>
+    </body></html>`;
+  }
+
   private esc(s: any): string {
     return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   }

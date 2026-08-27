@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { api } from '../api';
+import { api, BASE, getToken } from '../api';
 import { StatusTag, fmtDate, fmtDay } from '../ui';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
@@ -113,6 +113,7 @@ export function MemoView() {
   const openSubstitute = () => {
     const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
     const logo = window.location.origin + '/love-logo.png';
+    const canSave = memo.status === 'approved' && (isCreator || user?.role === 'admin');
     const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบรับรองแทนใบเสร็จรับเงิน ${esc(memo.memoNo || '')}</title>
     <style>
       @page{size:A4;margin:14mm}
@@ -150,7 +151,7 @@ export function MemoView() {
       td .del{border:none;background:transparent;color:#dc2626;cursor:pointer;font-size:14px}
       @media print{body{padding:0}.noprint{display:none}.act{display:none}}
     </style></head><body>
-      <div class="noprint"><button type="button" id="add" class="alt">+ เพิ่มแถว</button><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>
+      <div class="noprint"><button type="button" id="add" class="alt">+ เพิ่มแถว</button><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button>${canSave ? '<button type="button" id="saveBtn">บันทึกเข้า Memo + ส่งปิดงาน</button>' : ''}</div>
       <div class="head">
         <div>
           <div class="co">Love Island Co., Ltd.</div>
@@ -165,18 +166,18 @@ export function MemoView() {
       <div class="rule"></div>
       <h1>ใบรับรองแทนใบเสร็จรับเงิน</h1>
       <div class="rule"></div>
-      <div class="top"><span>บจ. / หจก.</span><span class="fill" contenteditable="true"></span><span>(ผู้ซื้อ/ผู้รับบริการ)</span></div>
+      <div class="top"><span>บจ. / หจก.</span><span class="fill" id="f_buyer" contenteditable="true"></span><span>(ผู้ซื้อ/ผู้รับบริการ)</span></div>
       <table>
         <thead><tr><th style="width:120px">วัน เดือน ปี</th><th>รายละเอียดรายจ่าย</th><th style="width:130px">จำนวนเงิน</th><th style="width:120px">หมายเหตุ</th><th class="act" style="width:34px"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="sum"><div class="words">( <span id="words">ศูนย์บาทถ้วน</span> )</div><div class="lbl">รวมทั้งสิ้น</div><div class="val"><span id="total">0.00</span></div></div>
       <div class="body">
-        ข้าพเจ้า <span class="fill" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill" contenteditable="true">${esc(memo.creatorRole ? roleLabel(memo.creatorRole) : '')}</span><br>
+        ข้าพเจ้า <span class="fill" id="f_payer" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill" id="f_role" contenteditable="true">${esc(memo.creatorRole ? roleLabel(memo.creatorRole) : '')}</span><br>
         ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของทาง บจก.เลิฟไอแลนด์ โดยแท้ &nbsp;
-        ตั้งแต่วันที่ <span class="fill" contenteditable="true"></span> ถึงวันที่ <span class="fill" contenteditable="true"></span>
+        ตั้งแต่วันที่ <span class="fill" id="f_from" contenteditable="true"></span> ถึงวันที่ <span class="fill" id="f_to" contenteditable="true"></span>
       </div>
-      <div class="sign">ลงชื่อ <span class="fill" contenteditable="true"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" style="min-width:240px" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> )</div>
+      <div class="sign">ลงชื่อ <span class="fill" contenteditable="true"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" id="f_sign" style="min-width:240px" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> )</div>
       <script>
         var digits=['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
         var places=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
@@ -188,6 +189,11 @@ export function MemoView() {
         document.getElementById('rows').addEventListener('input',recompute);
         document.getElementById('add').onclick=addRow;
         for(var i=0;i<6;i++)addRow();
+        var API=${JSON.stringify(BASE)}, MID=${mid}, TOKEN=${JSON.stringify(getToken() || '')};
+        function txt(id){var e=document.getElementById(id);return e?(e.innerText||'').trim():'';}
+        function collect(){var items=[];document.querySelectorAll('#rows tr').forEach(function(tr){var td=tr.querySelectorAll('td');if(td.length<4)return;var date=(td[0].innerText||'').trim(),detail=(td[1].innerText||'').trim(),amount=parseFloat((td[2].innerText||'').replace(/[, ]/g,''))||0,note=(td[3].innerText||'').trim();if(date||detail||amount||note)items.push({date:date,detail:detail,amount:amount,note:note});});return {buyer:txt('f_buyer'),payerName:txt('f_payer'),payerRole:txt('f_role'),dateFrom:txt('f_from'),dateTo:txt('f_to'),signName:txt('f_sign'),items:items};}
+        var sb=document.getElementById('saveBtn');
+        if(sb){sb.onclick=function(){sb.disabled=true;var old=sb.textContent;sb.textContent='กำลังบันทึก…';fetch(API+'/memos/'+MID+'/substitute',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(collect())}).then(function(r){return r.ok?r.json():r.text().then(function(t){throw new Error(t||('HTTP '+r.status));});}).then(function(res){alert(res.forwarded?'บันทึกใบแทนเข้าเอกสาร และส่งปิดงานซ้ำ (reply เมลเดิม) แล้ว':'บันทึกใบแทนเข้าเอกสารแล้ว');try{if(window.opener&&!window.opener.closed)window.opener.location.reload();}catch(e){}}).catch(function(e){alert('บันทึกไม่สำเร็จ: '+e.message);}).finally(function(){sb.disabled=false;sb.textContent=old;});};}
       <\/script>
     </body></html>`;
     const w = window.open('', '_blank');

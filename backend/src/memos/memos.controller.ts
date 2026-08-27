@@ -7,7 +7,7 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MemosService } from './memos.service';
 import { PdfService } from './pdf.service';
-import { ActionDto, CreateMemoDto, ForwardDto, SettleDto, UpdateMemoDto } from './dto/memo.dto';
+import { ActionDto, CreateMemoDto, ForwardDto, SettleDto, SubstituteDto, UpdateMemoDto } from './dto/memo.dto';
 
 @Controller('memos')
 @UseGuards(JwtAuthGuard)
@@ -49,6 +49,9 @@ export class MemosController {
 
   @Post(':id/settle')
   settle(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SettleDto) { return this.svc.settle(req.user, id, dto.actualAmount, dto.actualItems); }
+
+  @Post(':id/substitute')
+  substitute(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SubstituteDto) { return this.svc.saveSubstitute(req.user, id, dto); }
 
   // ---- Attachments ----
   @Post(':id/attachments')

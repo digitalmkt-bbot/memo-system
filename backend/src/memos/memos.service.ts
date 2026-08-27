@@ -458,6 +458,40 @@ export class MemosService {
    * Final step: the creator forwards the approved memo (PDF + attachments)
    * to one or more archive mailboxes, which closes the job.
    */
+  /**
+   * Generate the "ใบรับรองแทนใบเสร็จรับเงิน" from the posted form, SAVE it as a
+   * PDF attachment on the memo, and (if the memo was already closed) re-send the
+   * close to the same recipients — threaded into the original e-mail.
+   */
+  async saveSubstitute(user: JwtUser, id: number, dto: any) {
+    const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้น');
+    const shaped = this.shape(memo);
+    const pdf = await this.pdf.renderSubstitute({ memo: shaped, ...dto });
+    const safe = String(shaped.memoNo || `memo-${id}`).replace(/[\\/:*?"<>|\r\n\t]+/g, '_');
+    await this.prisma.attachment.create({
+      data: {
+        memoId: id,
+        filename: `ใบรับรองแทนใบเสร็จรับเงิน-${safe}.pdf`,
+        mimeType: 'application/pdf',
+        size: pdf.length,
+        data: pdf,
+        uploadedBy: user.id,
+      },
+    });
+    await this.audit(id, user.id, 'substitute_saved', 'บันทึกใบรับรองแทนใบเสร็จเข้าเอกสาร');
+    // Re-send the close to whoever it was already forwarded to (threaded), so the
+    // recipients get the new attachment. Skip if it was never closed.
+    let forwarded = false;
+    const already = String((memo as any).forwardedTo || '').split(',').map((r) => r.trim().toLowerCase()).filter(Boolean);
+    if (dto.forward !== false && already.length && memo.status === 'approved') {
+      try { await this.forward(user, id, already); forwarded = true; } catch { /* noop */ }
+    }
+    const updated = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    return { ...this.shape(updated), substituteSaved: true, forwarded };
+  }
+
   async forward(user: JwtUser, id: number, recipients: string[]) {
     const ALLOWED = ['ac@loveandaman.com', 'hr@loveandaman.com', 'apm@loveandaman.com'];
     const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });

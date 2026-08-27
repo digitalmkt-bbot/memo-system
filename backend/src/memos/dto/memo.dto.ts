@@ -46,3 +46,14 @@ export class SettleDto {
   @IsOptional() @IsNumber() actualAmount?: number;
   @IsOptional() @IsArray() actualItems?: any[];
 }
+
+export class SubstituteDto {
+  @IsOptional() @IsString() buyer?: string;
+  @IsOptional() @IsString() payerName?: string;
+  @IsOptional() @IsString() payerRole?: string;
+  @IsOptional() @IsString() dateFrom?: string;
+  @IsOptional() @IsString() dateTo?: string;
+  @IsOptional() @IsString() signName?: string;
+  @IsOptional() @IsArray() items?: any[];
+  @IsOptional() @IsBoolean() forward?: boolean; // also re-send the close (ส่งปิดงาน)
+}
