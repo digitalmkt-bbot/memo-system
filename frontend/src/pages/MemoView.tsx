@@ -160,7 +160,7 @@ export function MemoView() {
         </div>
         <div class="head-right">
           <img class="logo" src="${logo}" alt="LOVE andaman" onerror="this.style.display='none'"/>
-          <div class="ref">เลขที่อ้างอิง : ${esc(memo.memoNo || '-')}</div>
+          <div class="ref">เลขที่อ้างอิง : ${esc(memo.memoNo || '(ฉบับร่าง — ออกเลขเมื่อส่งอนุมัติ)')}</div>
         </div>
       </div>
       <div class="rule"></div>
