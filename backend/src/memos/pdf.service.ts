@@ -106,6 +106,7 @@ export class PdfService {
       .sum{display:flex} .sum .words{flex:1;border:1px solid #333;border-top:none;text-align:center;padding:8px;font-weight:600;background:#f3f4f6}
       .sum .lbl{border:1px solid #333;border-top:none;padding:8px 12px;font-weight:600} .sum .val{border:1px solid #333;border-top:none;border-left:none;padding:8px 16px;text-align:right;font-weight:700;min-width:130px;background:#f3f4f6}
       .body{font-size:14px;line-height:2.1;margin-top:20px} .sign{margin-top:40px;text-align:center;font-size:14px} .sign .fill{min-width:260px}
+      .signline{font-style:italic;color:#22206a;font-size:16px;border-bottom:1px dotted #333;padding:0 18px;min-width:240px;display:inline-block;text-align:center}
     </style></head><body>
       <div class="head">
         <div><div class="co">Love Island Co., Ltd.</div><div class="bar"></div>
@@ -120,7 +121,7 @@ export class PdfService {
       <div class="body">ข้าพเจ้า <span class="fill">${this.esc(d.payerName || '')}</span> (ผู้เบิกจ่าย) &nbsp; ตำแหน่ง <span class="fill">${this.esc(d.payerRole || '')}</span><br>
         ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของทาง บจก.เลิฟไอแลนด์ โดยแท้ &nbsp;
         ตั้งแต่วันที่ <span class="fill">${this.esc(d.dateFrom || '')}</span> ถึงวันที่ <span class="fill">${this.esc(d.dateTo || '')}</span></div>
-      <div class="sign">ลงชื่อ <span class="fill"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" style="min-width:240px">${this.esc(d.signName || d.payerName || '')}</span> )</div>
+      <div class="sign">ลงชื่อ <span class="signline">${this.esc(d.signName || d.payerName || '')}</span> (ผู้เบิกจ่าย)<br>( <span class="fill" style="min-width:240px">${this.esc(d.signName || d.payerName || '')}</span> )</div>
     </body></html>`;
   }
 

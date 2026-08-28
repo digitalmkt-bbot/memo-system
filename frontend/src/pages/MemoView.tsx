@@ -142,6 +142,7 @@ export function MemoView() {
       .body{font-size:15px;line-height:2.1;margin-top:22px}
       .sign{margin-top:44px;text-align:center;font-size:15px}
       .sign .fill{min-width:280px}
+      .signline{font-style:italic;color:#22206a;font-size:16px;border-bottom:1px dotted #333;padding:0 18px;min-width:260px;display:inline-block;text-align:center}
       .noprint{text-align:center;margin-bottom:18px;display:flex;gap:8px;justify-content:center}
       .noprint button{font-family:inherit;font-size:14px;padding:8px 18px;border-radius:8px;border:1px solid #10b981;background:#10b981;color:#fff;cursor:pointer}
       .noprint button.alt{background:#fff;color:#0f766e;border-color:#0f766e}
@@ -177,7 +178,7 @@ export function MemoView() {
         ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของทาง บจก.เลิฟไอแลนด์ โดยแท้ &nbsp;
         ตั้งแต่วันที่ <span class="fill" id="f_from" contenteditable="true"></span> ถึงวันที่ <span class="fill" id="f_to" contenteditable="true"></span>
       </div>
-      <div class="sign">ลงชื่อ <span class="fill" contenteditable="true"></span> (ผู้เบิกจ่าย)<br>( <span class="fill" id="f_sign" style="min-width:240px" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> )</div>
+      <div class="sign">ลงชื่อ <span class="signline" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> (ผู้เบิกจ่าย)<br>( <span class="fill" id="f_sign" style="min-width:240px" contenteditable="true">${esc(memo.creatorName || memo.fromName || '')}</span> )</div>
       <script>
         var digits=['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
         var places=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
