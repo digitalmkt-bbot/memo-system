@@ -6,15 +6,17 @@ import { fmtDay } from '../ui';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth';
 
-export type MemoItemRow = { name: string; detail?: string; qty: any; unit?: string; unitPrice: any };
+export type MemoItemRow = { name: string; detail?: string; qty: any; unit?: string; unitPrice: any; discount?: any; taxRate?: any };
 export type MemoFormValues = {
   companyId: number; departmentId: number;
   fromName: string; subject: string; attachment?: string; detail: string;
 };
-type Extra = { items?: MemoItemRow[]; vat?: boolean; category?: string; categoryNote?: string; neededDate?: string };
+type Extra = { items?: MemoItemRow[]; vat?: boolean; discount?: any; category?: string; categoryNote?: string; neededDate?: string };
 
 const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const lineTotal = (r: MemoItemRow) => (Number(r.qty) || 0) * (Number(r.unitPrice) || 0);
+const lineNet = (r: MemoItemRow) => Math.max(0, (Number(r.qty) || 0) * (Number(r.unitPrice) || 0) - (Number(r.discount) || 0));
+const lineTax = (r: MemoItemRow) => lineNet(r) * ((Number(r.taxRate) || 0) / 100);
+const lineTotal = (r: MemoItemRow) => lineNet(r) + lineTax(r);
 const UNITS = ['ชิ้น', 'กล่อง', 'ชุด', 'แพ็ค', 'ม้วน', 'ลิตร', 'กิโลกรัม', 'เดือน', 'ครั้ง', 'รายการ'];
 const CATS: [string, string][] = [['general', 'catGeneral'], ['budget', 'catBudget'], ['procurement', 'catProcurement'], ['salary', 'catSalary'], ['allowance', 'catAllowance'], ['fuel', 'catFuel'], ['island', 'catIsland'], ['info', 'catInfo'], ['other', 'catOther']];
 const HR_CATS = ['salary', 'allowance', 'fuel', 'island'];
@@ -28,9 +30,10 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const [depts, setDepts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<MemoItemRow[]>(initial?.items?.length
-    ? initial.items.map((it) => ({ name: it.name || '', detail: it.detail || '', qty: it.qty ?? 1, unit: it.unit || '', unitPrice: it.unitPrice ?? '' }))
+    ? initial.items.map((it) => ({ name: it.name || '', detail: it.detail || '', qty: it.qty ?? 1, unit: it.unit || '', unitPrice: it.unitPrice ?? '', discount: (it as any).discount || '', taxRate: (it as any).taxRate || '' }))
     : []);
   const [vat, setVat] = useState<boolean>(!!initial?.vat);
+  const [discount, setDiscount] = useState<any>(initial?.discount ?? '');
   const [category, setCategory] = useState<string>(initial?.category || 'general');
   const [categoryNote, setCategoryNote] = useState<string>(initial?.categoryNote || '');
   const [neededDate, setNeededDate] = useState<string>(initial?.neededDate || '');
@@ -68,21 +71,25 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     if (did) setValue('departmentId', did);
   }, [depts, me]);
 
-  const addRow = () => setItems((xs) => [...xs, { name: '', detail: '', qty: 1, unit: '', unitPrice: '' }]);
+  const addRow = () => setItems((xs) => [...xs, { name: '', detail: '', qty: 1, unit: '', unitPrice: '', discount: '', taxRate: '' }]);
   const removeRow = (i: number) => setItems((xs) => xs.filter((_, idx) => idx !== i));
   const setCell = (i: number, k: keyof MemoItemRow, v: any) => setItems((xs) => xs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const subtotal = items.reduce((s, r) => s + lineTotal(r), 0);
-  const vatAmount = vat ? subtotal * 0.07 : 0;
-  const grandTotal = subtotal + vatAmount;
+  const subtotal = items.reduce((s, r) => s + lineNet(r), 0);           // net of per-line discounts
+  const memoDiscount = Number(discount) || 0;
+  const netTotal = Math.max(0, subtotal - memoDiscount);
+  const perLineTax = items.reduce((s, r) => s + lineTax(r), 0);
+  const vatAmount = perLineTax > 0 ? perLineTax : (vat ? netTotal * 0.07 : 0);
+  const totalLineDiscount = items.reduce((s, r) => s + (Number(r.discount) || 0), 0);
+  const grandTotal = netTotal + vatAmount;
 
   const cleanItems = () => items.filter((r) => String(r.name || '').trim())
-    .map((r) => ({ name: r.name.trim(), detail: r.detail?.trim() || undefined, qty: Number(r.qty) || 0, unit: r.unit?.trim() || undefined, unitPrice: Number(r.unitPrice) || 0 }));
+    .map((r) => ({ name: r.name.trim(), detail: r.detail?.trim() || undefined, qty: Number(r.qty) || 0, unit: r.unit?.trim() || undefined, unitPrice: Number(r.unitPrice) || 0, discount: Number(r.discount) || 0, taxRate: Number(r.taxRate) || 0 }));
 
   const build = (v: MemoFormValues) => ({
     companyId: Number(v.companyId), departmentId: Number(v.departmentId),
     fromName: v.fromName.trim(), subject: v.subject.trim(),
     attachment: v.attachment?.trim() || undefined, detail: v.detail.trim(),
-    vat, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined,
+    vat, discount: Number(discount) || 0, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined,
     expenseDate: expenseDate || undefined, backdateReason: backdateReason.trim() || undefined, items: cleanItems(),
   });
 
@@ -248,7 +255,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                   <th className="text-left font-semibold px-2 py-2">{t('items.colDetail')}</th>
                   <th className="text-right font-semibold px-2 py-2 w-20">{t('items.colQty')}</th>
                   <th className="text-left font-semibold px-2 py-2 w-28">{t('items.colUnit')}</th>
-                  <th className="text-right font-semibold px-2 py-2 w-28">{t('items.colUnitPrice')}</th>
+                  <th className="text-right font-semibold px-2 py-2 w-24">{t('items.colUnitPrice')}</th>
+                  <th className="text-right font-semibold px-2 py-2 w-20">{lang === 'th' ? 'ส่วนลด' : 'Disc.'}</th>
+                  <th className="text-right font-semibold px-2 py-2 w-16">{lang === 'th' ? 'ภาษี %' : 'Tax %'}</th>
                   <th className="text-right font-semibold px-2 py-2 w-28">{t('items.colAmount')}</th>
                   <th className="w-8"></th>
                 </tr>
@@ -264,11 +273,13 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                       <input className={cell} list="memo-units" value={r.unit} onChange={(e) => setCell(i, 'unit', e.target.value)} placeholder={t('form.unitSelect')} />
                     </td>
                     <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.unitPrice} onChange={(e) => setCell(i, 'unitPrice', e.target.value)} /></td>
+                    <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.discount} onChange={(e) => setCell(i, 'discount', e.target.value)} placeholder="0" /></td>
+                    <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.taxRate} onChange={(e) => setCell(i, 'taxRate', e.target.value)} placeholder="0" /></td>
                     <td className="px-2 py-1 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(lineTotal(r))}</td>
                     <td className="px-2 py-1 text-center"><button type="button" className="text-red-400 hover:text-red-600 text-lg leading-none" onClick={() => removeRow(i)} aria-label="remove">×</button></td>
                   </tr>
                 ))}
-                {items.length === 0 && <tr><td colSpan={8} className="text-center text-slate-400 py-4 text-[13px]">{t('items.none')}</td></tr>}
+                {items.length === 0 && <tr><td colSpan={10} className="text-center text-slate-400 py-4 text-[13px]">{t('items.none')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -280,11 +291,16 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                 {t('items.vatLabel')}
               </label>
             </div>
-            <div className="text-right min-w-[200px]">
+            <div className="text-right min-w-[260px]">
               <div className="flex justify-between gap-8 text-[13px]"><span className="text-slate-500">{t('items.subtotal')}</span><span className="font-semibold">฿{money(subtotal)}</span></div>
-              {vat && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{t('items.vatAmount')}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
+              {totalLineDiscount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ส่วนลดรายรายการ' : 'Line discounts'}</span><span className="font-semibold text-rose-600">-฿{money(totalLineDiscount)}</span></div>}
+              <div className="flex justify-between gap-8 items-center text-[13px] mt-1">
+                <span className="text-slate-500">{lang === 'th' ? 'ส่วนลดรวม' : 'Total discount'}</span>
+                <span className="inline-flex items-center gap-1"><span className="text-rose-600">-฿</span><input className="input !py-1 !w-24 text-right text-[13px]" type="number" min="0" step="any" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" /></span>
+              </div>
+              {vatAmount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ภาษีรวม' : 'Total tax'}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
               <div className="flex justify-between gap-8 items-baseline mt-2 pt-2 border-t border-slate-200">
-                <span className="text-slate-500 text-xs">{vat ? t('items.grandTotal') : t('items.total')}</span>
+                <span className="text-slate-500 text-xs">{t('items.grandTotal')}</span>
                 <span className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</span>
               </div>
             </div>

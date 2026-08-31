@@ -274,19 +274,30 @@ export class PdfService {
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
     const catLabel = memo.category ? ((catMap[memo.category] || memo.category) + (memo.category === 'other' && memo.categoryNote ? ` (${memo.categoryNote})` : '')) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
-    const total = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-    const vat = memo.vat ? total * 0.07 : 0;
-    const grand = total + vat;
+    const lineNetOf = (it: any) => Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0));
+    const lineTotOf = (it: any) => it.lineTotal != null ? Number(it.lineTotal) : lineNetOf(it) * (1 + (Number(it.taxRate) || 0) / 100);
+    const subTotal = memo.subTotal != null ? Number(memo.subTotal) : items.reduce((s: number, it: any) => s + lineNetOf(it), 0);
+    const memoDiscount = Number(memo.discount) || 0;
+    const lineDiscTotal = items.reduce((s: number, it: any) => s + (Number(it.discount) || 0), 0);
+    const total = memo.totalAmount != null ? Number(memo.totalAmount) : Math.max(0, subTotal - memoDiscount);
+    const vat = memo.vatAmount != null ? Number(memo.vatAmount) : (memo.vat ? total * 0.07 : 0);
+    const grand = memo.grandTotal != null ? Number(memo.grandTotal) : (total + vat);
     const rows = items.length
       ? items.map((it: any, i: number) => `<tr>
           <td class="c">${i + 1}</td><td>${this.esc(it.name)}</td><td>${this.esc(it.detail || '')}</td>
           <td class="num">${this.fmtMoney(it.qty)}</td><td class="c">${this.esc(it.unit || '')}</td>
           <td class="num">${this.fmtMoney(it.unitPrice)}</td>
-          <td class="num">${this.fmtMoney((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td></tr>`).join('')
-      : `<tr><td class="c">1</td><td colspan="6" style="color:#9aa5b1">—</td></tr>`;
+          <td class="num">${Number(it.discount) ? '-' + this.fmtMoney(it.discount) : '-'}</td>
+          <td class="num">${Number(it.taxRate) ? this.fmtMoney(it.taxRate) + '%' : '-'}</td>
+          <td class="num">${this.fmtMoney(lineTotOf(it))}</td></tr>`).join('')
+      : `<tr><td class="c">1</td><td colspan="8" style="color:#9aa5b1">—</td></tr>`;
     const totalsBlock = items.length ? `<div class="tot">
-        <div>ยอดรวม (ฐานอนุมัติ): ฿${this.fmtMoney(total)}</div>
-        ${memo.vat ? `<div>VAT 7%: ฿${this.fmtMoney(vat)}</div><div style="margin-top:2px">ยอดรวมสุทธิ: <span class="amt">฿${this.fmtMoney(grand)}</span></div>` : `<div style="margin-top:2px"><span class="amt">฿${this.fmtMoney(total)}</span></div>`}
+        <div>ยอดรวม: ฿${this.fmtMoney(subTotal)}</div>
+        ${lineDiscTotal > 0 ? `<div>ส่วนลดรายรายการ: -฿${this.fmtMoney(lineDiscTotal)}</div>` : ''}
+        ${memoDiscount > 0 ? `<div>ส่วนลดรวม: -฿${this.fmtMoney(memoDiscount)}</div>` : ''}
+        <div>ยอดหลังหักส่วนลด (ฐานอนุมัติ): ฿${this.fmtMoney(total)}</div>
+        ${vat > 0 ? `<div>ภาษีรวม: ฿${this.fmtMoney(vat)}</div>` : ''}
+        <div style="margin-top:2px">ยอดรวมสุทธิ: <span class="amt">฿${this.fmtMoney(grand)}</span></div>
       </div>` : '';
 
     return `<!doctype html><html lang="th"><head><meta charset="utf-8">
@@ -360,8 +371,9 @@ export class PdfService {
       <table class="it">
         <thead><tr>
           <th class="c" style="width:34px">No.</th><th>รายการ</th><th>รายละเอียด</th>
-          <th class="num" style="width:56px">จำนวน</th><th class="c" style="width:52px">หน่วย</th>
-          <th class="num" style="width:78px">ราคา/หน่วย</th><th class="num" style="width:88px">รวม</th>
+          <th class="num" style="width:50px">จำนวน</th><th class="c" style="width:46px">หน่วย</th>
+          <th class="num" style="width:70px">ราคา/หน่วย</th><th class="num" style="width:60px">ส่วนลด</th>
+          <th class="num" style="width:46px">ภาษี%</th><th class="num" style="width:80px">รวม</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>

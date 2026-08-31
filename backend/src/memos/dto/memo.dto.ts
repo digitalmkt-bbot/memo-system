@@ -8,6 +8,7 @@ export class CreateMemoDto {
   @IsOptional() @IsString() attachment?: string;
   @IsString() @MinLength(1) detail: string;
   @IsOptional() @IsBoolean() vat?: boolean;
+  @IsOptional() @IsNumber() discount?: number;
   @IsOptional() @IsString() category?: string;
   @IsOptional() @IsString() categoryNote?: string;
   @IsOptional() @IsString() neededDate?: string;
@@ -24,6 +25,7 @@ export class UpdateMemoDto {
   @IsOptional() @IsString() attachment?: string;
   @IsOptional() @IsString() detail?: string;
   @IsOptional() @IsBoolean() vat?: boolean;
+  @IsOptional() @IsNumber() discount?: number;
   @IsOptional() @IsString() category?: string;
   @IsOptional() @IsString() categoryNote?: string;
   @IsOptional() @IsString() neededDate?: string;

@@ -91,6 +91,7 @@ model Memo {
   detail            String
   status            MemoStatus @default(draft)
   vat               Boolean    @default(false)
+  discount          Float      @default(0)   // overall discount amount (ส่วนลดรวม)
   category          String?
   categoryNote      String?    @map("category_note")
   neededDate        DateTime?  @db.Date @map("needed_date")
@@ -195,6 +196,8 @@ model MemoItem {
   qty       Float   @default(0)
   unit      String?
   unitPrice Float   @default(0) @map("unit_price")
+  discount  Float   @default(0)                      // per-line discount amount (บาท)
+  taxRate   Float   @default(0) @map("tax_rate")      // per-line tax percentage (%)
 
   memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
 

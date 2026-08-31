@@ -102,10 +102,14 @@ export function MemoView() {
   // goes straight up — so the creator themselves fills the "ผจก.แผนก" box.
   const mgrFallback = !mgrAppr && memo.creatorRole === 'manager' ? memo.creatorName : null;
   const items = memo.items || [];
-  const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-  const vatAmount = memo.vat ? subtotal * 0.07 : 0;
-  const grandTotal = subtotal + vatAmount;
-  const isSmall = subtotal <= 1000; // ≤ 1,000: skip MD (manager finalizes or forwards to HRM)
+  const lineNetOf = (it: any) => Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0));
+  const subtotal = memo.subTotal ?? items.reduce((s: number, it: any) => s + lineNetOf(it), 0);
+  const memoDiscount = Number(memo.discount) || 0;
+  const totalLineDiscount = items.reduce((s: number, it: any) => s + (Number(it.discount) || 0), 0);
+  const netTotal = memo.totalAmount ?? Math.max(0, subtotal - memoDiscount);
+  const vatAmount = memo.vatAmount ?? (memo.vat ? netTotal * 0.07 : 0);
+  const grandTotal = memo.grandTotal ?? (netTotal + vatAmount);
+  const isSmall = netTotal <= 1000; // ≤ 1,000: skip MD (manager finalizes or forwards to HRM)
   const isCreator = memo.createdBy === user?.id;
 
   // "ใบรับรองแทนใบเสร็จรับเงิน" — Love Island letterhead, blank fillable table,
@@ -319,6 +323,8 @@ export function MemoView() {
                       <th className="text-right px-3 py-2">{t('items.colQty')}</th>
                       <th className="text-left px-3 py-2">{t('items.colUnit')}</th>
                       <th className="text-right px-3 py-2">{t('items.colUnitPrice')}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'ส่วนลด' : 'Disc.'}</th>
+                      <th className="text-right px-3 py-2">{lang === 'th' ? 'ภาษี %' : 'Tax %'}</th>
                       <th className="text-right px-3 py-2">{t('items.colAmount')}</th>
                     </tr>
                   </thead>
@@ -331,18 +337,22 @@ export function MemoView() {
                         <td className="px-3 py-2 text-right">{money(it.qty)}</td>
                         <td className="px-3 py-2">{it.unit || '—'}</td>
                         <td className="px-3 py-2 text-right">{money(it.unitPrice)}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td>
+                        <td className="px-3 py-2 text-right text-rose-600">{Number(it.discount) ? '-' + money(it.discount) : '—'}</td>
+                        <td className="px-3 py-2 text-right">{Number(it.taxRate) ? money(it.taxRate) + '%' : '—'}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(it.lineTotal ?? lineNetOf(it))}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               <div className="mt-3 flex justify-end">
-                <div className="min-w-[220px]">
+                <div className="min-w-[260px]">
                   <div className="flex justify-between gap-8 text-[13px]"><span className="text-slate-500">{t('items.subtotal')}</span><span className="font-semibold">฿{money(subtotal)}</span></div>
-                  {memo.vat && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{t('items.vatAmount')}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
+                  {totalLineDiscount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ส่วนลดรายรายการ' : 'Line discounts'}</span><span className="font-semibold text-rose-600">-฿{money(totalLineDiscount)}</span></div>}
+                  {memoDiscount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ส่วนลดรวม' : 'Total discount'}</span><span className="font-semibold text-rose-600">-฿{money(memoDiscount)}</span></div>}
+                  {vatAmount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ภาษีรวม' : 'Total tax'}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
                   <div className="flex justify-between gap-8 items-baseline mt-2 pt-2 border-t border-slate-200">
-                    <span className="text-slate-500 text-xs">{memo.vat ? t('items.grandTotal') : t('items.total')}</span>
+                    <span className="text-slate-500 text-xs">{t('items.grandTotal')}</span>
                     <span className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</span>
                   </div>
                 </div>

@@ -22,17 +22,29 @@ export class MemosService {
   private shape(m: any) {
     if (!m) return m;
     const { creator, department, company, currentApprover, items: rawItems, ...rest } = m;
-    const items = (rawItems ?? []).map((it: any) => ({
-      ...it,
-      lineTotal: (Number(it.qty) || 0) * (Number(it.unitPrice) || 0),
-    }));
-    const totalAmount = items.reduce((s: number, it: any) => s + it.lineTotal, 0);
-    const vatAmount = rest.vat ? totalAmount * 0.07 : 0;
+    const items = (rawItems ?? []).map((it: any) => {
+      const gross = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+      const lineDiscount = Number(it.discount) || 0;
+      const lineNet = Math.max(0, gross - lineDiscount);
+      const lineTax = lineNet * ((Number(it.taxRate) || 0) / 100);
+      return { ...it, gross, lineDiscount, lineNet, lineTax, lineTotal: lineNet + lineTax };
+    });
+    // subtotal = net of per-line discounts; then subtract the overall discount.
+    const subTotal = items.reduce((s: number, it: any) => s + it.lineNet, 0);
+    const memoDiscount = Number(rest.discount) || 0;
+    const totalAmount = Math.max(0, subTotal - memoDiscount);
+    // tax = sum of per-line taxes; fall back to a flat 7% VAT for legacy memos
+    // (vat=true but no per-line tax) so their historical totals stay correct.
+    const perLineTax = items.reduce((s: number, it: any) => s + it.lineTax, 0);
+    const vatAmount = perLineTax > 0 ? perLineTax : (rest.vat ? totalAmount * 0.07 : 0);
+    const totalDiscount = items.reduce((s: number, it: any) => s + it.lineDiscount, 0) + memoDiscount;
     const grandTotal = totalAmount + vatAmount;
     return {
       ...rest,
       items,
+      subTotal,
       totalAmount,
+      totalDiscount,
       vatAmount,
       grandTotal,
       creatorName: creator?.name ?? null,
@@ -58,6 +70,8 @@ export class MemosService {
         qty: Number(it.qty) || 0,
         unit: it.unit ? String(it.unit).trim() : null,
         unitPrice: Number(it.unitPrice) || 0,
+        discount: Number(it.discount) || 0,
+        taxRate: Number(it.taxRate) || 0,
       }));
   }
 
@@ -115,8 +129,11 @@ export class MemosService {
 
   // Approval base = sum of line items (before VAT). Memos with no items = 0.
   private async memoTotal(db: any, memoId: number): Promise<number> {
-    const items = await db.memoItem.findMany({ where: { memoId }, select: { qty: true, unitPrice: true } });
-    return items.reduce((s: number, it: any) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+    // Approval base = net of per-line discounts and the overall discount (pre-tax).
+    const items = await db.memoItem.findMany({ where: { memoId }, select: { qty: true, unitPrice: true, discount: true } });
+    const memo = await db.memo.findUnique({ where: { id: memoId }, select: { discount: true } });
+    const net = items.reduce((s: number, it: any) => s + Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0)), 0);
+    return Math.max(0, net - (Number(memo?.discount) || 0));
   }
   // Memos with total ≤ this amount skip the MD approver entirely.
   private readonly SMALL_MAX = 1000;
@@ -226,6 +243,7 @@ export class MemosService {
         attachment: dto.attachment?.trim() || null, detail: dto.detail.trim(),
         createdBy: user.id, status: 'draft',
         vat: !!dto.vat,
+        discount: Number(dto.discount) || 0,
         category: dto.category?.trim() || null,
         categoryNote: dto.categoryNote?.trim() || null,
         neededDate: dto.neededDate ? new Date(dto.neededDate) : null,
@@ -248,9 +266,17 @@ export class MemosService {
     // creator can correct it and re-send the close again.
     if (!['draft', 'pending_manager', 'approved'].includes(memo.status))
       throw new BadRequestException('แก้ไขไม่ได้ในสถานะนี้ (อยู่ระหว่างการอนุมัติ)');
+    // If a memo that was already submitted/approved is edited, it must be
+    // approved AGAIN: reset it to draft, clear the approval trail & close info,
+    // so the creator re-submits and it re-enters the approval flow.
+    const wasSubmitted = memo.status !== 'draft';
+    if (wasSubmitted) {
+      await this.prisma.approval.deleteMany({ where: { memoId: id } });
+    }
     const updated = await this.prisma.memo.update({
       where: { id },
       data: {
+        ...(wasSubmitted ? { status: 'draft' as any, currentApproverId: null, submittedAt: null, closedAt: null, forwardedAt: null, forwardedTo: null, reminderCount: 0, lastReminderAt: null, escalatedAt: null } : {}),
         companyId: dto.companyId ?? memo.companyId,
         departmentId: dto.departmentId ?? memo.departmentId,
         fromName: dto.fromName ?? memo.fromName,
@@ -258,6 +284,7 @@ export class MemosService {
         attachment: dto.attachment ?? memo.attachment,
         detail: dto.detail ?? memo.detail,
         vat: dto.vat ?? memo.vat,
+        discount: dto.discount !== undefined ? (Number(dto.discount) || 0) : (memo as any).discount,
         category: dto.category ?? memo.category,
         categoryNote: dto.categoryNote !== undefined ? (dto.categoryNote?.trim() || null) : memo.categoryNote,
         neededDate: dto.neededDate !== undefined ? (dto.neededDate ? new Date(dto.neededDate) : null) : memo.neededDate,
@@ -269,7 +296,7 @@ export class MemosService {
       },
       include: INCLUDE,
     });
-    await this.audit(id, user.id, 'edited', 'Draft updated');
+    await this.audit(id, user.id, 'edited', wasSubmitted ? 'แก้ไขหลังส่ง — รีเซ็ตเป็นฉบับร่าง ต้องส่งอนุมัติใหม่' : 'Draft updated');
     return this.shape(updated);
   }
 
