@@ -98,9 +98,12 @@ export function MemoView() {
   const pendMgr = isPending && memo.currentApproverRole === 'manager' ? memo.currentApproverName : null;
   const pendHrm = isPending && memo.currentApproverRole === 'hrm' ? memo.currentApproverName : null;
   const pendMd = isPending && memo.currentApproverRole === 'md' ? memo.currentApproverName : null;
-  // When the creator IS a department manager, the memo skips the manager step and
-  // goes straight up — so the creator themselves fills the "ผจก.แผนก" box.
-  const mgrFallback = !mgrAppr && memo.creatorRole === 'manager' ? memo.creatorName : null;
+  // When the creator IS a department manager AND the memo genuinely skips the
+  // manager step (no separate manager is approving), the creator fills the
+  // "ผจก.แผนก" box themselves. But if the memo is routed to a real manager
+  // (their configured first approver is a manager — pendMgr set), show THAT
+  // approver instead of the creator.
+  const mgrFallback = !mgrAppr && !pendMgr && memo.creatorRole === 'manager' ? memo.creatorName : null;
   const items = memo.items || [];
   const lineNetOf = (it: any) => Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0));
   const subtotal = memo.subTotal ?? items.reduce((s: number, it: any) => s + lineNetOf(it), 0);
