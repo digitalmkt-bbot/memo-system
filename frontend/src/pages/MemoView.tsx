@@ -234,6 +234,10 @@ export function MemoView() {
         setApproverList(list);
         setChosen(list[0]?.id ? String(list[0].id) : '');
         setPick(true);
+      } else if (msg === 'BACKDATE_REASON_REQUIRED') {
+        if (window.confirm('เอกสารนี้เป็นการเบิกย้อนหลัง (วันที่ในใบเสร็จเก่ากว่าวันที่ส่งเกิน 24 ชม.)\nต้องระบุ "เหตุผลความจำเป็น" ก่อนส่งอนุมัติ\n\nกด "ตกลง" เพื่อไปแก้ไขและกรอกเหตุผล')) {
+          nav(`/memos/edit/${mid}`);
+        }
       } else {
         alert(msg || e.message);
       }
