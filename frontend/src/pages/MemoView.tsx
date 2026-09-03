@@ -428,6 +428,13 @@ export function MemoView() {
             );
           })()}
 
+          {memo.editNote && (
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center gap-2 text-amber-700 font-bold text-[13.5px]">✏️ {lang === 'th' ? 'หมายเหตุการแก้ไขล่าสุด' : 'Latest edit note'}</div>
+              <p className="text-[12.5px] text-amber-800 mt-1">{memo.editNote}</p>
+            </div>
+          )}
+
           {memo.backdated && (
             <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4">
               <div className="flex items-center gap-2 text-rose-700 font-bold text-[13.5px]">

@@ -131,6 +131,7 @@ export class MailService {
   /** Final forward: send the approved memo PDF + attachments to archive mailboxes (CC the creator). */
   async sendMemoForward(recipients: string[], memo: any, attachments: { filename: string; mimeType: string; base64: string }[], cc?: string[], skipped?: string[]) {
     const attNames = attachments.map((a) => a.filename);
+    const editNote = (memo.editNote || '').toString().trim();
     const html = this.layout(
       'ส่งบันทึกข้อความที่อนุมัติแล้ว',
       [
@@ -138,6 +139,9 @@ export class MailService {
         `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
         `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
         `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+        ...(editNote
+          ? [`<div style="background:#fff4e5;border-left:4px solid #f59e0b;padding:8px 12px;border-radius:6px;margin:6px 0"><b>หมายเหตุการแก้ไข:</b> ${this.esc(editNote)}</div>`]
+          : []),
         `<b>ไฟล์แนบในอีเมล:</b> ${attNames.map((n) => this.esc(n)).join(', ') || '-'}`,
         ...(skipped && skipped.length
           ? [`<b>ไฟล์ขนาดใหญ่ (ดาวน์โหลดในระบบ):</b> ${skipped.map((n) => this.esc(n)).join(', ')}`]

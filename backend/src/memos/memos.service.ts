@@ -266,17 +266,44 @@ export class MemosService {
     // creator can correct it and re-send the close again.
     if (!['draft', 'pending_manager', 'approved'].includes(memo.status))
       throw new BadRequestException('แก้ไขไม่ได้ในสถานะนี้ (อยู่ระหว่างการอนุมัติ)');
-    // If a memo that was already submitted/approved is edited, it must be
-    // approved AGAIN: reset it to draft, clear the approval trail & close info,
-    // so the creator re-submits and it re-enters the approval flow.
-    const wasSubmitted = memo.status !== 'draft';
-    if (wasSubmitted) {
+
+    // Compare the approval base BEFORE vs AFTER this edit.
+    const oldNet = await this.memoTotal(this.prisma, id);
+    const newItems = dto.items !== undefined ? this.cleanItems(dto.items) : null;
+    const newDiscount = dto.discount !== undefined ? (Number(dto.discount) || 0) : (Number((memo as any).discount) || 0);
+    let newNet: number;
+    if (newItems) {
+      newNet = Math.max(0, newItems.reduce((s: number, it: any) => s + Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0)), 0) - newDiscount);
+    } else {
+      const cur = await this.prisma.memoItem.findMany({ where: { memoId: id }, select: { qty: true, unitPrice: true, discount: true } });
+      newNet = Math.max(0, cur.reduce((s: number, it: any) => s + Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0)), 0) - newDiscount);
+    }
+    const increased = newNet > oldNet + 0.005;
+    const editNote = dto.editNote?.trim() || '';
+
+    // Decide whether this edit forces a NEW approval round:
+    //  - approved memo + total INCREASED → must re-approve, note REQUIRED.
+    //  - approved memo + total same/decreased → keep the existing approval; the
+    //    creator can just re-send the close. No note required.
+    //  - a memo still in the approval flow (pending) → editing sends it back to
+    //    draft so it re-enters approval.
+    let resetToDraft = false;
+    if (memo.status === 'approved') {
+      if (increased) {
+        if (!editNote) throw new BadRequestException('EDIT_NOTE_REQUIRED_INCREASE');
+        resetToDraft = true;
+      }
+    } else if (memo.status !== 'draft') {
+      resetToDraft = true;
+    }
+    if (resetToDraft) {
       await this.prisma.approval.deleteMany({ where: { memoId: id } });
     }
     const updated = await this.prisma.memo.update({
       where: { id },
       data: {
-        ...(wasSubmitted ? { status: 'draft' as any, currentApproverId: null, submittedAt: null, closedAt: null, forwardedAt: null, forwardedTo: null, reminderCount: 0, lastReminderAt: null, escalatedAt: null } : {}),
+        ...(resetToDraft ? { status: 'draft' as any, currentApproverId: null, submittedAt: null, closedAt: null, forwardedAt: null, forwardedTo: null, reminderCount: 0, lastReminderAt: null, escalatedAt: null } : {}),
+        editNote: dto.editNote !== undefined ? (editNote || null) : (memo as any).editNote,
         companyId: dto.companyId ?? memo.companyId,
         departmentId: dto.departmentId ?? memo.departmentId,
         fromName: dto.fromName ?? memo.fromName,
@@ -296,7 +323,7 @@ export class MemosService {
       },
       include: INCLUDE,
     });
-    await this.audit(id, user.id, 'edited', wasSubmitted ? 'แก้ไขหลังส่ง — รีเซ็ตเป็นฉบับร่าง ต้องส่งอนุมัติใหม่' : 'Draft updated');
+    await this.audit(id, user.id, 'edited', resetToDraft ? `แก้ไข (ยอดเพิ่ม) — ต้องส่งอนุมัติใหม่${editNote ? ' · ' + editNote : ''}` : (editNote ? `แก้ไข (ยอดเท่าเดิม/ลด) · ${editNote}` : 'Draft updated'));
     return this.shape(updated);
   }
 

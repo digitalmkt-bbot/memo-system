@@ -92,6 +92,7 @@ model Memo {
   status            MemoStatus @default(draft)
   vat               Boolean    @default(false)
   discount          Float      @default(0)   // overall discount amount (ส่วนลดรวม)
+  editNote          String?    @map("edit_note") // reason for the latest post-approval edit
   category          String?
   categoryNote      String?    @map("category_note")
   neededDate        DateTime?  @db.Date @map("needed_date")

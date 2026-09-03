@@ -11,7 +11,7 @@ export type MemoFormValues = {
   companyId: number; departmentId: number;
   fromName: string; subject: string; attachment?: string; detail: string;
 };
-type Extra = { items?: MemoItemRow[]; vat?: boolean; discount?: any; category?: string; categoryNote?: string; neededDate?: string };
+type Extra = { items?: MemoItemRow[]; vat?: boolean; discount?: any; category?: string; categoryNote?: string; neededDate?: string; expenseDate?: string; backdateReason?: string };
 
 const money = (n: number) => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const lineNet = (r: MemoItemRow) => Math.max(0, (Number(r.qty) || 0) * (Number(r.unitPrice) || 0) - (Number(r.discount) || 0));
@@ -34,6 +34,10 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     : []);
   const [vat, setVat] = useState<boolean>(!!initial?.vat);
   const [discount, setDiscount] = useState<any>(initial?.discount ?? '');
+  const [editNote, setEditNote] = useState<string>('');
+  // net total of the memo BEFORE this edit (for comparing increase/decrease)
+  const oldNet = Math.max(0, (initial?.items || []).reduce((s: number, it: any) => s + Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0)), 0) - (Number(initial?.discount) || 0));
+  const isEditingApproved = !!memoId && status === 'approved';
   const [category, setCategory] = useState<string>(initial?.category || 'general');
   const [categoryNote, setCategoryNote] = useState<string>(initial?.categoryNote || '');
   const [neededDate, setNeededDate] = useState<string>(initial?.neededDate || '');
@@ -81,6 +85,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const vatAmount = perLineTax > 0 ? perLineTax : (vat ? netTotal * 0.07 : 0);
   const totalLineDiscount = items.reduce((s, r) => s + (Number(r.discount) || 0), 0);
   const grandTotal = netTotal + vatAmount;
+  // editing an approved memo: increased total => note required + re-approval.
+  const totalIncreased = isEditingApproved && netTotal > oldNet + 0.005;
+  const noteRequired = totalIncreased;
 
   const cleanItems = () => items.filter((r) => String(r.name || '').trim())
     .map((r) => ({ name: r.name.trim(), detail: r.detail?.trim() || undefined, qty: Number(r.qty) || 0, unit: r.unit?.trim() || undefined, unitPrice: Number(r.unitPrice) || 0, discount: Number(r.discount) || 0, taxRate: Number(r.taxRate) || 0 }));
@@ -89,7 +96,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     companyId: Number(v.companyId), departmentId: Number(v.departmentId),
     fromName: v.fromName.trim(), subject: v.subject.trim(),
     attachment: v.attachment?.trim() || undefined, detail: v.detail.trim(),
-    vat, discount: Number(discount) || 0, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined,
+    vat, discount: Number(discount) || 0, editNote: editNote.trim() || undefined, category, categoryNote: category === 'other' ? categoryNote.trim() : '', neededDate: neededDate || undefined,
     expenseDate: expenseDate || undefined, backdateReason: backdateReason.trim() || undefined, items: cleanItems(),
   });
 
@@ -100,10 +107,18 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     try { await api.uploadAttachment(id, f); } catch (e: any) { alert(t('form.attachFailed') + e.message); }
   };
   const saveDraft = handleSubmit(async (v) => {
+    if (noteRequired && !editNote.trim()) {
+      alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — กรุณากรอก "หมายเหตุการแก้ไข" (เอกสารจะถูกส่งขออนุมัติใหม่)' : 'Total increased — an edit note is required.');
+      return;
+    }
     setBusy(true);
     try {
       const id = memoId ? (await api.updateMemo(memoId, build(v)), memoId) : (await api.createMemo(build(v))).id;
-      await uploadIfAny(id); nav('/memos');
+      await uploadIfAny(id);
+      nav(memoId ? `/memos/view/${memoId}` : '/memos');
+    } catch (e: any) {
+      if (e?.response?.data?.message === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
+      else alert(e?.response?.data?.message || e.message);
     } finally { setBusy(false); }
   });
   const submit = handleSubmit(async (v) => {
@@ -134,9 +149,16 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   // Editing an already-submitted memo (before the first approval): just save the
   // changes and go back to the memo — it stays with the same approver.
   const saveEdit = handleSubmit(async (v) => {
+    if (noteRequired && !editNote.trim()) {
+      alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — กรุณากรอก "หมายเหตุการแก้ไข" (เอกสารจะถูกส่งขออนุมัติใหม่)' : 'Total increased — an edit note is required.');
+      return;
+    }
     setBusy(true);
     try { await api.updateMemo(memoId!, build(v)); await uploadIfAny(memoId!); nav(`/memos/view/${memoId}`); }
-    finally { setBusy(false); }
+    catch (e: any) {
+      if (e?.response?.data?.message === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
+      else alert(e?.response?.data?.message || e.message);
+    } finally { setBusy(false); }
   });
 
   const cell = 'rounded-lg bg-surface shadow-neu-inset px-2.5 py-1.5 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-ocean/40 w-full';
@@ -306,6 +328,20 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
             </div>
           </div>
         </div>
+
+        {isEditingApproved && (
+          <div className={`mt-4 rounded-xl border p-4 ${noteRequired ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+            <label className="label flex items-center gap-2">
+              {lang === 'th' ? 'หมายเหตุการแก้ไข' : 'Edit note'}{noteRequired && <span className="text-rose-600">*</span>}
+            </label>
+            <textarea className="input min-h-[64px]" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder={lang === 'th' ? 'ระบุเหตุผล/สิ่งที่แก้ไข…' : 'What changed and why…'} />
+            <p className="mt-1 text-[12px] text-slate-600">
+              {totalIncreased
+                ? (lang === 'th' ? '⚠️ ยอดรวมเพิ่มขึ้นจากเดิม — เอกสารจะถูกส่งขออนุมัติใหม่ (ต้องกรอกหมายเหตุ)' : '⚠️ Total increased — will be re-submitted for approval (note required).')
+                : (lang === 'th' ? 'ยอดรวมเท่าเดิมหรือลดลง — ใช้การอนุมัติเดิม กดบันทึกแล้วส่งปิดงานซ้ำได้เลย (หมายเหตุไม่บังคับ)' : 'Total same/decreased — keeps existing approval; you can re-send the close (note optional).')}
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-2.5 mt-4">
           {status === 'pending_manager' || status === 'approved' ? (
