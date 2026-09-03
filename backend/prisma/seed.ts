@@ -488,6 +488,47 @@ async function main() {
     }
   }
 
+  // 22) One-time: restore memo No.LOVE-SEC-2026-09-007 to a FULLY-APPROVED +
+  //     already-closed-once state, so the creator can re-send the close (round 2)
+  //     without re-running the whole approval flow. Its approval/close trail was
+  //     wiped when it was edited under the old "any edit → draft" behaviour.
+  {
+    const marker = 'fix:reapprove-LOVE-SEC-2026-09-007';
+    const done = await prisma.auditLog.findFirst({ where: { action: marker } });
+    if (!done) {
+      const m = await prisma.memo.findUnique({ where: { memoNo: 'LOVE-SEC-2026-09-007' }, select: { id: true, companyId: true, createdBy: true, submittedAt: true } });
+      if (m) {
+        const md = (await prisma.user.findFirst({ where: { role: 'md' as any, active: true, companyId: m.companyId }, select: { id: true } }))
+          ?? (await prisma.user.findFirst({ where: { role: 'md' as any, active: true }, select: { id: true } }));
+        const when = m.submittedAt ?? new Date();
+        // approval trail so the timeline + MD signature box reflect full approval
+        const hasApproval = await prisma.approval.findFirst({ where: { memoId: m.id, status: 'approve' } });
+        if (!hasApproval && md) {
+          await prisma.approval.create({ data: { memoId: m.id, step: 'md', approvedBy: md.id, status: 'approve', comment: 'ปรับสถานะโดยแอดมิน — คืนสถานะอนุมัติสมบูรณ์', approvedAt: when } });
+        }
+        await prisma.memo.update({
+          where: { id: m.id },
+          data: {
+            status: 'approved' as any,
+            currentApproverId: null,
+            submittedAt: m.submittedAt ?? when,
+            closedAt: new Date(),
+            forwardedAt: new Date(),
+            forwardedTo: 'ac@loveandaman.com, hr@loveandaman.com, apm@loveandaman.com',
+            onHold: false,
+            reminderCount: 0,
+            lastReminderAt: null,
+            escalatedAt: null,
+          },
+        });
+        await prisma.auditLog.create({ data: { action: marker, memoId: m.id, userId: m.createdBy, detail: 'restored to approved + closed-once (ready to re-close round 2)' } });
+        console.log('Restored memo LOVE-SEC-2026-09-007 → approved + closed-once');
+      } else {
+        console.warn(`${marker}: memo LOVE-SEC-2026-09-007 not found — skipped`);
+      }
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
