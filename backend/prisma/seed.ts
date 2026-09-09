@@ -493,10 +493,12 @@ async function main() {
   //     without re-running the whole approval flow. Its approval/close trail was
   //     wiped when it was edited under the old "any edit → draft" behaviour.
   {
-    const marker = 'fix:reapprove-LOVE-SEC-2026-09-007';
+    const marker = 'fix:reapprove-LOVE-SEC-2026-09-007-v2';
     const done = await prisma.auditLog.findFirst({ where: { action: marker } });
     if (!done) {
-      const m = await prisma.memo.findUnique({ where: { memoNo: 'LOVE-SEC-2026-09-007' }, select: { id: true, companyId: true, createdBy: true, submittedAt: true } });
+      // memoNo is stored WITH the "No." prefix (e.g. "No.LOVE-SEC-2026-09-007"),
+      // so match by the tail to be robust to the prefix / format.
+      const m = await prisma.memo.findFirst({ where: { memoNo: { endsWith: 'LOVE-SEC-2026-09-007' } }, select: { id: true, companyId: true, createdBy: true, submittedAt: true } });
       if (m) {
         const md = (await prisma.user.findFirst({ where: { role: 'md' as any, active: true, companyId: m.companyId }, select: { id: true } }))
           ?? (await prisma.user.findFirst({ where: { role: 'md' as any, active: true }, select: { id: true } }));
