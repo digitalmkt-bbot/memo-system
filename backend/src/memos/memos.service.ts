@@ -482,10 +482,22 @@ export class MemosService {
           }
         }
       } else if (memo.status === 'pending_hrmd') {
-        // HRM or MD approval finalizes the memo. FC no longer approves —
-        // they receive an acknowledgement email automatically (see below).
-        data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-        action = `approved_${user.role}_final`;
+        // New rule: EVERY memo over the small cap (> 1,000) must ALSO be approved
+        // by the MD — including HR-category memos (salary/allowance/fuel/island).
+        // So after HR (hrm) signs, route onward to the MD when total > 1,000;
+        // only small amounts finalize at HR. (An MD approval is handled above and
+        // is always final.)
+        if (user.role === 'hrm') {
+          const total = await this.memoTotal(tx, id);
+          const md = total > this.SMALL_MAX
+            ? ((await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id)))
+            : null;
+          if (md) { data = { status: 'pending_hrmd', currentApproverId: md, reminderCount: 0, lastReminderAt: null, escalatedAt: null }; action = 'approved_hr_to_md'; }
+          else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_hrm_final'; }
+        } else {
+          data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
+          action = `approved_${user.role}_final`;
+        }
       } else {
         // legacy pending_fc / pending_executive -> final approval
         data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
