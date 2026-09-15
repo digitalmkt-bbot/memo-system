@@ -54,7 +54,15 @@ export function MemoView() {
       .map((r) => ({ name: String(r.name).trim(), detail: r.detail || '', qty: Number(r.qty) || 0, unit: r.unit || '', unitPrice: Number(String(r.unitPrice).replace(/,/g, '')) || 0 }));
     if (!items.length) { alert(lang === 'th' ? 'กรุณาใส่รายการใช้จริงอย่างน้อย 1 รายการ' : 'Add at least one item'); return; }
     setSettleBusy(true);
-    try { await api.settleMemo(mid, { actualItems: items }); setActRows([]); load(); }
+    try {
+      const r = await api.settleMemo(mid, { actualItems: items });
+      setActRows([]);
+      await load();
+      const act = Number(r?.actualAmount ?? actTotal);
+      alert(lang === 'th'
+        ? `บันทึกยอดใช้จริงแล้ว: ฿${act.toLocaleString()} — กด "ส่งปิดงานเพิ่ม / ส่งอัปเดต" เพื่อส่งยอดล่าสุด`
+        : `Saved actual usage: ฿${act.toLocaleString()}`);
+    }
     catch (e: any) { alert(e?.response?.data?.message || e.message); } finally { setSettleBusy(false); }
   };
 
@@ -387,9 +395,21 @@ export function MemoView() {
                   {memoDiscount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ส่วนลดรวม' : 'Total discount'}</span><span className="font-semibold text-rose-600">-฿{money(memoDiscount)}</span></div>}
                   {vatAmount > 0 && <div className="flex justify-between gap-8 text-[13px] mt-1"><span className="text-slate-500">{lang === 'th' ? 'ภาษีรวม' : 'Total tax'}</span><span className="font-semibold">฿{money(vatAmount)}</span></div>}
                   <div className="flex justify-between gap-8 items-baseline mt-2 pt-2 border-t border-slate-200">
-                    <span className="text-slate-500 text-xs">{t('items.grandTotal')}</span>
-                    <span className="text-xl font-extrabold text-ocean-dark">฿{money(grandTotal)}</span>
+                    <span className="text-slate-500 text-xs">{memo.actualAmount != null ? (lang === 'th' ? 'ยอดอนุมัติ (งบประมาณการ)' : 'Approved estimate') : t('items.grandTotal')}</span>
+                    <span className={'font-extrabold ' + (memo.actualAmount != null ? 'text-base text-slate-500' : 'text-xl text-ocean-dark')}>฿{money(grandTotal)}</span>
                   </div>
+                  {memo.actualAmount != null && (
+                    <>
+                      <div className="flex justify-between gap-8 items-baseline mt-1">
+                        <span className="text-slate-500 text-xs">{lang === 'th' ? 'ยอดใช้จริง' : 'Actual used'}</span>
+                        <span className="text-xl font-extrabold text-ocean-dark">฿{money(memo.actualAmount)}</span>
+                      </div>
+                      <div className="flex justify-between gap-8 text-[12.5px] mt-1">
+                        <span className="text-slate-400">{memo.actualAmount <= grandTotal ? (lang === 'th' ? 'คืนเงิน' : 'Refund') : (lang === 'th' ? 'เบิกเพิ่ม' : 'Over budget')}</span>
+                        <span className={memo.actualAmount <= grandTotal ? 'font-semibold text-emerald-600' : 'font-semibold text-amber-600'}>฿{money(Math.abs(grandTotal - memo.actualAmount))}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -512,12 +532,6 @@ export function MemoView() {
                   <span className="text-slate-500">{lang === 'th' ? 'งบประมาณการ (ที่อนุมัติ)' : 'Approved estimate'}</span>
                   <span className="font-bold">฿{money(estimate)}</span>
                 </div>
-                {settled && (memo.actualItems?.length > 0) && (
-                  <div className="text-[12px] text-slate-500 py-2 border-b border-dashed border-indigo-200/70">
-                    {lang === 'th' ? 'รายการใช้จริงที่บันทึกไว้:' : 'Saved actual items:'}{' '}
-                    {(memo.actualItems as any[]).map((it: any, i: number) => `${it.name} (${money((Number(it.qty)||0)*(Number(it.unitPrice)||0))})`).join(', ')} = <b>฿{money(actual)}</b>
-                  </div>
-                )}
                 {overPending ? (
                   <div className="flex justify-between text-[13.5px] py-2.5">
                     <span className="text-slate-500">{lang === 'th' ? 'ยอดใช้จริง' : 'Actual used'}</span>
