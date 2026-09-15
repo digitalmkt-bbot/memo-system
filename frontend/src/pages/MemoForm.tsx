@@ -18,7 +18,7 @@ const lineNet = (r: MemoItemRow) => Math.max(0, (Number(r.qty) || 0) * (Number(r
 const lineTax = (r: MemoItemRow) => lineNet(r) * ((Number(r.taxRate) || 0) / 100);
 const lineTotal = (r: MemoItemRow) => lineNet(r) + lineTax(r);
 const UNITS = ['ชิ้น', 'กล่อง', 'ชุด', 'แพ็ค', 'ม้วน', 'ลิตร', 'กิโลกรัม', 'เดือน', 'ครั้ง', 'รายการ'];
-const CATS: [string, string][] = [['general', 'catGeneral'], ['budget', 'catBudget'], ['procurement', 'catProcurement'], ['salary', 'catSalary'], ['allowance', 'catAllowance'], ['fuel', 'catFuel'], ['island', 'catIsland'], ['info', 'catInfo'], ['other', 'catOther']];
+const CATS: [string, string][] = [['general', 'catGeneral'], ['budget', 'catBudget'], ['advance', 'catAdvance'], ['procurement', 'catProcurement'], ['salary', 'catSalary'], ['allowance', 'catAllowance'], ['fuel', 'catFuel'], ['island', 'catIsland'], ['info', 'catInfo'], ['other', 'catOther']];
 const HR_CATS = ['salary', 'allowance', 'fuel', 'island'];
 const STEPS: [string, string][] = [['create', 'steps.create'], ['pending_manager', 'steps.manager'], ['pending_hrmd', 'steps.hrmd'], ['pending_fc', 'steps.fc'], ['approved', 'steps.done']];
 

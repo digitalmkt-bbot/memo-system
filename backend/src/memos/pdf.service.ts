@@ -157,7 +157,7 @@ export class PdfService {
     const ownerApproval = approvals.find((a) => a.approverRole === 'owner' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
-    const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
+    const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', advance: 'เบิกเงินสำรองจ่าย', procurement: 'ขอจัดซื้อ/จัดจ้าง', salary: 'เงินเดือน/ค่าจ้าง', allowance: 'เบี้ยเลี้ยง', fuel: 'ค่าน้ำมัน', island: 'ค่าลงเกาะ', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
     const catLabel = memo.category ? ((catMap[memo.category] || memo.category) + (memo.category === 'other' && memo.categoryNote ? ` (${memo.categoryNote})` : '')) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
     const totalAmount = items.reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
@@ -279,7 +279,7 @@ export class PdfService {
     const hrm = approvals.find((a) => a.approverRole === 'hrm' && a.status === 'approve');
     const md = approvals.find((a) => a.approverRole === 'md' && a.status === 'approve');
     const owner = approvals.find((a) => a.approverRole === 'owner' && a.status === 'approve');
-    const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
+    const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', advance: 'เบิกเงินสำรองจ่าย', procurement: 'ขอจัดซื้อ/จัดจ้าง', salary: 'เงินเดือน/ค่าจ้าง', allowance: 'เบี้ยเลี้ยง', fuel: 'ค่าน้ำมัน', island: 'ค่าลงเกาะ', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
     const catLabel = memo.category ? ((catMap[memo.category] || memo.category) + (memo.category === 'other' && memo.categoryNote ? ` (${memo.categoryNote})` : '')) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
     const lineNetOf = (it: any) => Math.max(0, (Number(it.qty) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0));

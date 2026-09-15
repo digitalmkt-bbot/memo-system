@@ -701,7 +701,7 @@ export class MemosService {
     const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่กรอกยอดใช้จริงได้');
-    if (memo.category !== 'budget') throw new BadRequestException('กรอกยอดใช้จริงได้เฉพาะประเภทงบประมาณการ');
+    if (!['budget', 'advance'].includes(memo.category)) throw new BadRequestException('กรอกยอดใช้จริงได้เฉพาะประเภทงบประมาณการ / เบิกเงินสำรองจ่าย');
     // Allowed after approval AND after close (reconcile the actual amount later).
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติก่อนจึงจะกรอกยอดใช้จริงได้');
 
