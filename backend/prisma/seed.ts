@@ -531,26 +531,16 @@ async function main() {
     }
   }
 
-  // 23) Owner (ผู้บริหาร/Owner) — the final post-MD signer. Idempotent: create the
-  //     account once if it doesn't exist; never overwrite an existing one.
+  // 23) Owner (ผู้บริหาร/Owner) — the final post-MD signer. The account already
+  //     exists (นายต่อพงษ์ วงศ์เสถียรชัย / thaitornado@gmail.com); just promote it to
+  //     the 'owner' role. Idempotent: only updates when not already owner.
   {
-    const email = 'owner@loveandaman.com';
-    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-    if (!existing) {
-      const sec = await prisma.department.findFirst({ where: { companyId: love.id, code: 'SEC' }, select: { id: true } });
-      await prisma.user.create({
-        data: {
-          companyId: love.id,
-          departmentId: sec?.id ?? null,
-          employeeCode: 'OWNER01',
-          name: 'ต่อพงษ์ วงศ์เสถียรชัย',
-          email,
-          passwordHash: demoPw,
-          role: 'owner' as any,
-          active: true,
-        },
-      });
-      console.log('Created Owner user owner@loveandaman.com (ต่อพงษ์ วงศ์เสถียรชัย) / Password123!');
+    const owner = await prisma.user.findUnique({ where: { email: 'thaitornado@gmail.com' }, select: { id: true, role: true } });
+    if (owner && (owner.role as any) !== 'owner') {
+      await prisma.user.update({ where: { id: owner.id }, data: { role: 'owner' as any, active: true } });
+      console.log('Promoted thaitornado@gmail.com (ต่อพงษ์ วงศ์เสถียรชัย) → role owner');
+    } else if (!owner) {
+      console.warn('seed owner: thaitornado@gmail.com not found — skipped');
     }
   }
 

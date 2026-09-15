@@ -399,7 +399,7 @@ export function MemoView() {
                 ...(memo.ownerRequired ? [{
                   role: t('sign.owner'),
                   a: ownerAppr,
-                  pend: (memo.ownerPending ? (memo.ownerApprovedName || 'ต่อพงษ์ วงศ์เสถียรชัย') : null),
+                  pend: (memo.ownerPending ? (memo.ownerApprovedName || 'นายต่อพงษ์ วงศ์เสถียรชัย') : null),
                   fallback: (memo.ownerApprovedName || null),
                   sig: '/owner-signature.png' as string | null,
                 }] : []),
