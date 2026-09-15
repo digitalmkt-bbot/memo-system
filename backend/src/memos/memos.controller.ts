@@ -50,6 +50,9 @@ export class MemosController {
   @Post(':id/settle')
   settle(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SettleDto) { return this.svc.settle(req.user, id, dto.actualAmount, dto.actualItems); }
 
+  @Post(':id/cancel')
+  cancel(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.cancel(req.user, id, dto?.comment); }
+
   @Post(':id/substitute')
   substitute(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SubstituteDto) { return this.svc.saveSubstitute(req.user, id, dto); }
 

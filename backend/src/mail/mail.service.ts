@@ -162,6 +162,32 @@ export class MailService {
     await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, attachments, cc, headers);
   }
 
+  /** Cancellation: reply into the SAME e-mail thread telling recipients the memo is void. */
+  async sendMemoCancelled(recipients: string[], memo: any, reason: string, cc?: string[]) {
+    const rsn = (reason || '').trim();
+    const html = this.layout(
+      '❌ ยกเลิกบันทึกข้อความ',
+      [
+        `บันทึกข้อความฉบับนี้ถูก <b style="color:#dc2626">ยกเลิก</b> แล้ว กรุณาไม่ดำเนินการตามเอกสารฉบับนี้`,
+        `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+        `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+        `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+        ...(rsn
+          ? [`<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:8px 12px;border-radius:6px;margin:6px 0"><b>เหตุผลการยกเลิก:</b> ${this.esc(rsn)}</div>`]
+          : []),
+      ],
+      memo.id,
+      'เปิดดูบันทึก',
+    );
+    // Same thread token + identical subject → replies under the original e-mail.
+    const threadRoot = `<memo-${memo.memoNo || memo.id}.thread@loveandaman.com>`;
+    const headers = [
+      { header: 'References', value: threadRoot },
+      { header: 'In-Reply-To', value: threadRoot },
+    ];
+    await this.sendWithAttachments(recipients, `[MEMO] ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html, [], cc, headers);
+  }
+
   /** Notify the user who must approve next that a memo is waiting. */
   async notifyPendingApprover(memo: any) {
     if (!memo?.currentApproverId) return;

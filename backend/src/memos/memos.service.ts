@@ -615,6 +615,40 @@ export class MemosService {
   }
 
   /**
+   * Cancel an already-APPROVED memo. Only the creator or an admin may cancel.
+   * Sends a cancellation notice REPLIED into the original e-mail thread so the
+   * recipients who received the closed memo know it is void.
+   */
+  async cancel(user: JwtUser, id: number, reason?: string) {
+    const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.createdBy !== user.id && user.role !== 'admin')
+      throw new ForbiddenException('เฉพาะผู้สร้างหรือแอดมินเท่านั้นที่ยกเลิกได้');
+    if (memo.status !== 'approved')
+      throw new BadRequestException('ยกเลิกได้เฉพาะเอกสารที่อนุมัติแล้วเท่านั้น');
+    const rsn = (reason || '').trim();
+    const updated = await this.prisma.memo.update({
+      where: { id },
+      data: { status: 'cancelled' as any, currentApproverId: null, onHold: false, editNote: rsn || (memo as any).editNote },
+      include: INCLUDE,
+    });
+    await this.audit(id, user.id, 'cancelled', rsn || 'ยกเลิกเอกสารที่อนุมัติแล้ว');
+    // Reply into the original thread: recipients it was closed to (if any),
+    // otherwise the creator. Always CC the creator.
+    try {
+      const shaped = this.shape(updated);
+      const closedTo = String((memo as any).forwardedTo || '').split(',').map((r) => r.trim().toLowerCase()).filter(Boolean);
+      const creator = await this.prisma.user.findUnique({ where: { id: memo.createdBy }, select: { email: true } });
+      if (closedTo.length) {
+        await this.mail.sendMemoCancelled(closedTo, shaped, rsn, creator?.email ? [creator.email] : []);
+      } else if (creator?.email) {
+        await this.mail.sendMemoCancelled([creator.email], shaped, rsn);
+      }
+    } catch { /* noop */ }
+    return this.shape(updated);
+  }
+
+  /**
    * Record the ACTUAL amount used for a budget-estimate memo (ประเภทงบประมาณการ)
    * after it has been approved. The system reconciles against the approved
    * estimate automatically:

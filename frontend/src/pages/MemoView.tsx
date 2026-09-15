@@ -39,6 +39,7 @@ export function MemoView() {
   const [approverList, setApproverList] = useState<any[]>([]);
   const [chosen, setChosen] = useState('');
   const [submitBusy, setSubmitBusy] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [pdfView, setPdfView] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [actRows, setActRows] = useState<any[]>([]);
@@ -222,6 +223,16 @@ export function MemoView() {
       else if (modal === 'hold') await api.holdMemo(mid, comment);
       setModal(null); setComment(''); load();
     } catch (e: any) { alert(e.message); }
+  };
+  const doCancel = async () => {
+    const reason = window.prompt(lang === 'th'
+      ? 'ยกเลิกบันทึกข้อความนี้? ระบบจะส่งอีเมลแจ้งยกเลิก (Reply กลับอีเมลเดิม)\n\nระบุเหตุผลการยกเลิก:'
+      : 'Cancel this memo? A cancellation email will be sent (reply to the original thread).\n\nReason:');
+    if (reason === null) return; // user pressed Cancel in the prompt
+    setCancelBusy(true);
+    try { await api.cancelMemo(mid, reason.trim()); load(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    finally { setCancelBusy(false); }
   };
   const submit = async (approverId?: number) => {
     setSubmitBusy(true);
@@ -570,6 +581,8 @@ export function MemoView() {
               <button className="btn btn-ghost" onClick={() => setFwd(true)}>{lang === 'th' ? 'ส่งปิดงานเพิ่ม / ส่งอัปเดต' : 'Close to more / resend'}</button>}
             {isCreator && memo.status === 'approved' &&
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
+            {memo.status === 'approved' && (isCreator || user?.role === 'admin') &&
+              <button className="btn btn-red" onClick={doCancel} disabled={cancelBusy}>{cancelBusy ? (lang === 'th' ? 'กำลังยกเลิก…' : 'Cancelling…') : (lang === 'th' ? 'ยกเลิก Memo' : 'Cancel memo')}</button>}
           </div>
           {memo.forwardedAt && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-[12.5px] px-3 py-2">
