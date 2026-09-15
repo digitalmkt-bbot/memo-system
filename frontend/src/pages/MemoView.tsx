@@ -87,6 +87,12 @@ export function MemoView() {
     api.approvers().then((list) => { setApproverList(list); setChosen(list[0]?.id ? String(list[0].id) : ''); setPick(true); }).catch(() => {});
     window.history.replaceState({}, '');
   }, [data]);
+  // Pre-fill the actual-usage editor with the previously saved items so the
+  // recorded amount can be reviewed and EDITED (not re-typed from scratch).
+  useEffect(() => {
+    const its = (data?.memo?.actualItems as any[]) || [];
+    if (its.length) setActRows(its.map((it: any) => ({ name: it.name || '', qty: it.qty ?? 1, unitPrice: it.unitPrice ?? '' })));
+  }, [data]);
   if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
