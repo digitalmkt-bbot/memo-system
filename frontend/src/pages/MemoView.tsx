@@ -40,6 +40,7 @@ export function MemoView() {
   const [chosen, setChosen] = useState('');
   const [submitBusy, setSubmitBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [ownerBusy, setOwnerBusy] = useState(false);
   const [pdfView, setPdfView] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [actRows, setActRows] = useState<any[]>([]);
@@ -94,6 +95,7 @@ export function MemoView() {
   const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
   const hrmAppr = approvals.find((a: any) => a.approverRole === 'hrm' && a.status === 'approve');
   const mdAppr = approvals.find((a: any) => a.approverRole === 'md' && a.status === 'approve');
+  const ownerAppr = approvals.find((a: any) => a.approverRole === 'owner' && a.status === 'approve');
   // Person currently expected to sign — shown greyed in the box for their role.
   const isPending = ['pending_manager', 'pending_hrmd', 'pending_fc'].includes(memo.status);
   const pendMgr = isPending && memo.currentApproverRole === 'manager' ? memo.currentApproverName : null;
@@ -223,6 +225,15 @@ export function MemoView() {
       else if (modal === 'hold') await api.holdMemo(mid, comment);
       setModal(null); setComment(''); load();
     } catch (e: any) { alert(e.message); }
+  };
+  const doOwnerApprove = async () => {
+    if (!window.confirm(lang === 'th'
+      ? 'ลงนามอนุมัติในฐานะผู้บริหาร/Owner ?\nลายเซ็นของท่านจะปรากฏบนเอกสารและ PDF'
+      : 'Sign as Owner? Your signature will appear on the memo and PDF.')) return;
+    setOwnerBusy(true);
+    try { await api.ownerApproveMemo(mid); load(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    finally { setOwnerBusy(false); }
   };
   const doCancel = async () => {
     const reason = window.prompt(lang === 'th'
@@ -380,18 +391,25 @@ export function MemoView() {
 
           <div className="mt-6">
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('sign.title')}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${memo.ownerRequired ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
               {[
-                { role: t('sign.manager'), a: mgrAppr, pend: pendMgr, fallback: mgrFallback },
-                { role: t('sign.hrm'), a: hrmAppr, pend: pendHrm, fallback: null },
-                { role: t('sign.md'), a: mdAppr, pend: pendMd, fallback: null },
-              ].map((c, i) => {
+                { role: t('sign.manager'), a: mgrAppr, pend: pendMgr, fallback: mgrFallback, sig: null as string | null },
+                { role: t('sign.hrm'), a: hrmAppr, pend: pendHrm, fallback: null, sig: null as string | null },
+                { role: t('sign.md'), a: mdAppr, pend: pendMd, fallback: null, sig: '/md-signature.png' },
+                ...(memo.ownerRequired ? [{
+                  role: t('sign.owner'),
+                  a: ownerAppr,
+                  pend: (memo.ownerPending ? (memo.ownerApprovedName || 'ต่อพงษ์ วงศ์เสถียรชัย') : null),
+                  fallback: (memo.ownerApprovedName || null),
+                  sig: '/owner-signature.png' as string | null,
+                }] : []),
+              ].map((c: any, i: number) => {
                 const signedName = c.a?.approverName || c.fallback; // name that sits on the line
                 return (
                 <div key={i} className="bg-surface rounded-xl shadow-neu-sm p-4 text-center">
                   <div className="h-11 flex items-end justify-center">
-                    {c.a?.approverRole === 'md'
-                      ? <img src="/md-signature.png" alt="" className="max-h-11 max-w-[80%] object-contain" />
+                    {c.sig && (c.a || (c.role === t('sign.owner') && memo.ownerApprovedName))
+                      ? <img src={c.sig} alt="" className="max-h-11 max-w-[80%] object-contain" />
                       : signedName
                         ? <span className="text-[15px] text-[#22206a] italic pb-1">{signedName}</span>
                         : null}
@@ -583,6 +601,8 @@ export function MemoView() {
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
             {memo.status === 'approved' && (isCreator || user?.role === 'admin') &&
               <button className="btn btn-red" onClick={doCancel} disabled={cancelBusy}>{cancelBusy ? (lang === 'th' ? 'กำลังยกเลิก…' : 'Cancelling…') : (lang === 'th' ? 'ยกเลิก Memo' : 'Cancel memo')}</button>}
+            {memo.ownerPending && (user?.role === 'owner' || user?.role === 'admin') &&
+              <button className="btn btn-primary" onClick={doOwnerApprove} disabled={ownerBusy}>{ownerBusy ? (lang === 'th' ? 'กำลังลงนาม…' : 'Signing…') : (lang === 'th' ? 'อนุมัติ / ลงนาม (Owner)' : 'Approve / sign (Owner)')}</button>}
           </div>
           {memo.forwardedAt && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-[12.5px] px-3 py-2">

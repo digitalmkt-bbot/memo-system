@@ -55,6 +55,9 @@ export class MemosService {
       companyName: company?.name ?? null,
       currentApproverName: currentApprover?.name ?? null,
       currentApproverRole: currentApprover?.role ?? null,
+      // Owner (final post-MD sign-off) is pending when required, already fully
+      // approved, and not yet signed by the Owner. Never blocks closing.
+      ownerPending: !!rest.ownerRequired && rest.status === 'approved' && !rest.ownerApprovedAt,
     };
   }
 
@@ -157,7 +160,7 @@ export class MemosService {
    *    other people's drafts are hidden (only own drafts are visible).
    */
   private visibilityScope(user: JwtUser): any {
-    if (['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role)) return {};
+    if (['admin', 'executive', 'hrm', 'md', 'fc', 'owner'].includes(user.role)) return {};
     return {
       companyId: user.companyId,
       departmentId: user.departmentId ?? -1,
@@ -168,8 +171,15 @@ export class MemosService {
   async list(user: JwtUser, f: { box?: string; status?: string; companyId?: string; departmentId?: string; deptCode?: string; q?: string }) {
     const where: any = {};
     if (f.box === 'inbox') {
-      where.currentApproverId = user.id;
-      where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
+      if (user.role === 'owner') {
+        // The Owner's queue = fully-approved memos awaiting the final Owner sign-off.
+        where.status = 'approved';
+        where.ownerRequired = true;
+        where.ownerApprovedAt = null;
+      } else {
+        where.currentApproverId = user.id;
+        where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
+      }
     } else if (f.box === 'sent') {
       where.createdBy = user.id;
     } else if (f.box === 'received') {
@@ -205,7 +215,7 @@ export class MemosService {
 
     let participant =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
-      ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role) ||
+      ['admin', 'executive', 'hrm', 'md', 'fc', 'owner'].includes(user.role) ||
       (['manager', 'staff'].includes(user.role) &&
         memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
         (memo.status !== 'draft' || memo.createdBy === user.id));
@@ -242,6 +252,7 @@ export class MemosService {
         fromName: dto.fromName.trim(), subject: dto.subject.trim(),
         attachment: dto.attachment?.trim() || null, detail: dto.detail.trim(),
         createdBy: user.id, status: 'draft',
+        ownerRequired: true, // new memos get the final Owner sign-off step (post-MD)
         vat: !!dto.vat,
         discount: Number(dto.discount) || 0,
         category: dto.category?.trim() || null,
@@ -649,6 +660,35 @@ export class MemosService {
   }
 
   /**
+   * Owner (ผู้บริหาร/Owner) — the FINAL sign-off after the MD. This does NOT block
+   * closing: a memo is already approved & closeable once the MD signs; the Owner
+   * simply adds the final signature afterward. Applies to new memos only
+   * (ownerRequired is set at creation).
+   */
+  async ownerApprove(user: JwtUser, id: number, comment?: string) {
+    const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (user.role !== 'owner' && user.role !== 'admin')
+      throw new ForbiddenException('เฉพาะผู้บริหาร/Owner เท่านั้นที่อนุมัติขั้นนี้ได้');
+    if (memo.status !== 'approved')
+      throw new BadRequestException('ต้องอนุมัติครบ (ถึง MD) ก่อน จึงจะให้ Owner ลงนามได้');
+    if (!(memo as any).ownerRequired)
+      throw new BadRequestException('เอกสารนี้ไม่ต้องผ่านการลงนามของ Owner');
+    if ((memo as any).ownerApprovedAt)
+      throw new BadRequestException('Owner ลงนามแล้ว');
+    const signer = await this.prisma.user.findUnique({ where: { id: user.id }, select: { name: true } });
+    await this.prisma.approval.create({ data: { memoId: id, step: 'owner', approvedBy: user.id, status: 'approve', comment: comment?.trim() || null } });
+    const updated = await this.prisma.memo.update({
+      where: { id },
+      data: { ownerApprovedAt: new Date(), ownerApprovedById: user.id, ownerApprovedName: signer?.name ?? null },
+      include: INCLUDE,
+    });
+    await this.audit(id, user.id, 'owner_approved', comment?.trim() || 'ลงนามโดยผู้บริหาร/Owner');
+    try { await this.mail.notifyCreator(this.shape(updated), 'approved'); } catch { /* noop */ }
+    return this.shape(updated);
+  }
+
+  /**
    * Record the ACTUAL amount used for a budget-estimate memo (ประเภทงบประมาณการ)
    * after it has been approved. The system reconciles against the approved
    * estimate automatically:
@@ -744,7 +784,7 @@ export class MemosService {
   private async assertCanView(user: JwtUser, memo: any) {
     const ok =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
-      ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user.role) ||
+      ['admin', 'executive', 'hrm', 'md', 'fc', 'owner'].includes(user.role) ||
       (['manager', 'staff'].includes(user.role) && memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
         (memo.status !== 'draft' || memo.createdBy === user.id));
     if (ok) return;

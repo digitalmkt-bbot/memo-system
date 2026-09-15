@@ -253,7 +253,7 @@ const TH: Dict = {
   sign: {
     title: 'ลายมือชื่ออนุมัติ',
     requester: 'ผู้ขอ', manager: 'ผจก.แผนก', executive: 'ผู้บริหาร',
-    hrmd: 'บุคคล / กรรมการฯ', hrm: 'ผจก.ฝ่ายบุคคล', md: 'กรรมการผู้จัดการ', fc: 'ฝ่ายบัญชี',
+    hrmd: 'บุคคล / กรรมการฯ', hrm: 'ผจก.ฝ่ายบุคคล', md: 'กรรมการผู้จัดการ', fc: 'ฝ่ายบัญชี', owner: 'ผู้บริหาร / Owner',
     signed: 'ลงชื่อ', date: 'วันที่',
   },
   steps: { create: 'สร้าง', manager: 'ผจก.แผนก', hrmd: 'บุคคล / กรรมการฯ', fc: 'ฝ่ายบัญชี', executive: 'ผู้บริหาร', done: 'อนุมัติ' },
@@ -264,7 +264,7 @@ const TH: Dict = {
   },
   role: {
     staff: 'พนักงาน', manager: 'หัวหน้างาน', executive: 'ผู้บริหาร', admin: 'ผู้ดูแลระบบ',
-    hrm: 'ผจก.ฝ่ายบุคคล', md: 'กรรมการผู้จัดการ', fc: 'ผจก.ฝ่ายบัญชี',
+    hrm: 'ผจก.ฝ่ายบุคคล', md: 'กรรมการผู้จัดการ', fc: 'ผจก.ฝ่ายบัญชี', owner: 'ผู้บริหาร / Owner',
   },
 };
 
@@ -506,7 +506,7 @@ const EN: Dict = {
   sign: {
     title: 'Approval signatures',
     requester: 'Requester', manager: 'Dept Manager', executive: 'Executive',
-    hrmd: 'HRM / MD', hrm: 'HRM', md: 'Managing Director / MD', fc: 'Finance / FC',
+    hrmd: 'HRM / MD', hrm: 'HRM', md: 'Managing Director / MD', fc: 'Finance / FC', owner: 'Executive / Owner',
     signed: 'Signed', date: 'Date',
   },
   steps: { create: 'Create', manager: 'Dept manager', hrmd: 'HRM / MD', fc: 'Finance', executive: 'Executive', done: 'Approved' },
@@ -517,7 +517,7 @@ const EN: Dict = {
   },
   role: {
     staff: 'Staff', manager: 'Manager', executive: 'Executive', admin: 'Administrator',
-    hrm: 'HR Manager', md: 'Managing Director', fc: 'Finance Controller',
+    hrm: 'HR Manager', md: 'Managing Director', fc: 'Finance Controller', owner: 'Executive / Owner',
   },
 };
 

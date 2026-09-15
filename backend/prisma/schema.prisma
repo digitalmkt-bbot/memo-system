@@ -15,6 +15,7 @@ enum Role {
   hrm
   md
   fc
+  owner
 }
 
 enum MemoStatus {
@@ -93,6 +94,10 @@ model Memo {
   vat               Boolean    @default(false)
   discount          Float      @default(0)   // overall discount amount (ส่วนลดรวม)
   editNote          String?    @map("edit_note") // reason for the latest post-approval edit
+  ownerRequired     Boolean    @default(false) @map("owner_required")   // needs a post-MD Owner sign-off (new memos)
+  ownerApprovedAt   DateTime?  @map("owner_approved_at")
+  ownerApprovedById Int?       @map("owner_approved_by")
+  ownerApprovedName String?    @map("owner_approved_name")
   category          String?
   categoryNote      String?    @map("category_note")
   neededDate        DateTime?  @db.Date @map("needed_date")

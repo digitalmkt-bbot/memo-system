@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { LOVE_LOGO } from './love-logo';
 import { MD_SIGNATURE } from './md-signature';
+import { OWNER_SIGNATURE } from './owner-signature';
 
 @Injectable()
 export class PdfService {
@@ -9,6 +10,7 @@ export class PdfService {
   private sigImg(a: any): string {
     if (!a) return '';
     if (a.approverRole === 'md') return `<img class="sig" src="${MD_SIGNATURE}" alt="" />`;
+    if (a.approverRole === 'owner') return `<img class="sig" src="${OWNER_SIGNATURE}" alt="" />`;
     const name = this.esc(a.approverName || '');
     return name ? `<span class="signame">${name}</span>` : '';
   }
@@ -152,6 +154,7 @@ export class PdfService {
     const managerApproval = approvals.find((a) => a.approverRole === 'manager' && a.status === 'approve');
     const hrmApproval = approvals.find((a) => a.approverRole === 'hrm' && a.status === 'approve');
     const mdApproval = approvals.find((a) => a.approverRole === 'md' && a.status === 'approve');
+    const ownerApproval = approvals.find((a) => a.approverRole === 'owner' && a.status === 'approve');
     const initials = (memo.companyCode || 'M').slice(0, 2).toUpperCase();
     const detailRows = Math.max(9, String(memo.detail || '').split('\n').length);
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
@@ -262,6 +265,10 @@ export class PdfService {
           <div class="who">${this.esc((mdApproval && mdApproval.approverName) || '')}</div>
           <div class="role">กรรมการผู้จัดการ / MD</div>
           <div class="date">${mdApproval ? this.fmtDate(mdApproval.approvedAt) : ''}</div></div>
+        ${memo.ownerRequired ? `<div class="col"><div class="sigbox">${this.sigImg(ownerApproval)}</div><div class="line"></div>
+          <div class="who">${this.esc((ownerApproval && ownerApproval.approverName) || memo.ownerApprovedName || '')}</div>
+          <div class="role">ผู้บริหาร / Owner</div>
+          <div class="date">${ownerApproval ? this.fmtDate(ownerApproval.approvedAt) : ''}</div></div>` : ''}
       </div>
     </body></html>`;
   }
@@ -271,6 +278,7 @@ export class PdfService {
     const mgr = approvals.find((a) => a.approverRole === 'manager' && a.status === 'approve');
     const hrm = approvals.find((a) => a.approverRole === 'hrm' && a.status === 'approve');
     const md = approvals.find((a) => a.approverRole === 'md' && a.status === 'approve');
+    const owner = approvals.find((a) => a.approverRole === 'owner' && a.status === 'approve');
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', procurement: 'ขอจัดซื้อ/จัดจ้าง', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
     const catLabel = memo.category ? ((catMap[memo.category] || memo.category) + (memo.category === 'other' && memo.categoryNote ? ` (${memo.categoryNote})` : '')) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
@@ -384,6 +392,7 @@ export class PdfService {
         <div class="col"><div class="sigbox">${this.mgrCell(mgr, memo).sig}</div><div class="line"></div><div class="who">${this.mgrCell(mgr, memo).name}</div><div class="role">ผู้จัดการแผนก / Manager</div><div class="dt">${this.mgrCell(mgr, memo).date}</div></div>
         <div class="col"><div class="sigbox">${this.sigImg(hrm)}</div><div class="line"></div><div class="who">${this.esc((hrm && hrm.approverName) || '')}</div><div class="role">ผจก.ฝ่ายบุคคล / HRM</div><div class="dt">${hrm ? this.fmtDate(hrm.approvedAt) : ''}</div></div>
         <div class="col"><div class="sigbox">${this.sigImg(md)}</div><div class="line"></div><div class="who">${this.esc((md && md.approverName) || '')}</div><div class="role">กรรมการผู้จัดการ / MD</div><div class="dt">${md ? this.fmtDate(md.approvedAt) : ''}</div></div>
+        ${memo.ownerRequired ? `<div class="col"><div class="sigbox">${this.sigImg(owner)}</div><div class="line"></div><div class="who">${this.esc((owner && owner.approverName) || memo.ownerApprovedName || '')}</div><div class="role">ผู้บริหาร / Owner</div><div class="dt">${owner ? this.fmtDate(owner.approvedAt) : ''}</div></div>` : ''}
       </div>
     </body></html>`;
   }

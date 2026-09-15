@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useI18n } from '../i18n';
 import { PasswordInput } from '../components/PasswordInput';
 
-const ROLES = ['staff', 'manager', 'executive', 'hrm', 'md', 'fc', 'admin'];
+const ROLES = ['staff', 'manager', 'executive', 'hrm', 'md', 'owner', 'fc', 'admin'];
 
 export function Users() {
   const { t, roleLabel } = useI18n();

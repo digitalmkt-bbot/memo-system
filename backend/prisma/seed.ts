@@ -531,6 +531,29 @@ async function main() {
     }
   }
 
+  // 23) Owner (ผู้บริหาร/Owner) — the final post-MD signer. Idempotent: create the
+  //     account once if it doesn't exist; never overwrite an existing one.
+  {
+    const email = 'owner@loveandaman.com';
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (!existing) {
+      const sec = await prisma.department.findFirst({ where: { companyId: love.id, code: 'SEC' }, select: { id: true } });
+      await prisma.user.create({
+        data: {
+          companyId: love.id,
+          departmentId: sec?.id ?? null,
+          employeeCode: 'OWNER01',
+          name: 'ต่อพงษ์ วงศ์เสถียรชัย',
+          email,
+          passwordHash: demoPw,
+          role: 'owner' as any,
+          active: true,
+        },
+      });
+      console.log('Created Owner user owner@loveandaman.com (ต่อพงษ์ วงศ์เสถียรชัย) / Password123!');
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
