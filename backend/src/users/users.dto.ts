@@ -1,6 +1,6 @@
 import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
 
-const ROLES = ['staff', 'manager', 'executive', 'admin', 'hrm', 'md', 'fc'];
+const ROLES = ['staff', 'manager', 'executive', 'admin', 'hrm', 'md', 'fc', 'owner'];
 
 export class UpdateUserDto {
   @IsOptional() @IsInt() companyId?: number;

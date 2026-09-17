@@ -18,6 +18,6 @@ export class RegisterDto {
   @IsString() name: string;
   @IsEmail() email: string;
   @IsString() @MinLength(6) password: string;
-  @IsIn(['staff', 'manager', 'executive', 'admin']) role: string;
+  @IsIn(['staff', 'manager', 'executive', 'admin', 'hrm', 'md', 'fc', 'owner']) role: string;
   @IsOptional() @IsInt() managerId?: number;
 }
