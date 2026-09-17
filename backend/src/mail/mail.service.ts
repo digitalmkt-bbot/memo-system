@@ -209,6 +209,28 @@ export class MailService {
     await this.send(approver.email, `[MEMO] รออนุมัติ: ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
   }
 
+  /** Notify the Owner (ผู้บริหาร/Owner) that an approved memo awaits their final sign-off. */
+  async notifyOwnerPending(memo: any) {
+    const owners = await this.prisma.user.findMany({ where: { role: 'owner' as any, active: true }, select: { name: true, email: true } });
+    const list = owners.filter((o) => o.email);
+    if (!list.length) return;
+    for (const o of list) {
+      const html = this.layout(
+        'มีบันทึกข้อความรอลงนาม (ผู้บริหาร/Owner)',
+        [
+          `เรียน คุณ${this.esc(o.name)}`,
+          `บันทึกข้อความนี้ผ่านการอนุมัติครบแล้ว รอการลงนามขั้นสุดท้ายจากท่าน (ไม่บล็อกการปิดงาน)`,
+          `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+          `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+          `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+        ],
+        memo.id,
+        'เปิดเพื่อลงนาม',
+      );
+      await this.send(o.email, `[MEMO] รอลงนาม (Owner): ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
+    }
+  }
+
   /** Notify the creator that their memo was approved, rejected, or put on hold. */
   async notifyCreator(memo: any, kind: 'approved' | 'rejected' | 'held', comment?: string) {
     if (!memo?.createdBy) return;

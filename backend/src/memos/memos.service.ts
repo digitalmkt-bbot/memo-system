@@ -525,6 +525,7 @@ export class MemosService {
       if (result.status === 'approved') {
         await this.mail.notifyCreator(result, 'approved');
         await this.mail.notifyFcAcknowledge(result); // FC receives it for acknowledgement only
+        if ((result as any).ownerPending) await this.mail.notifyOwnerPending(result); // Owner: awaits final sign-off
       } else {
         await this.mail.notifyPendingApprover(result);
       }
