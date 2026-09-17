@@ -607,7 +607,7 @@ export function MemoView() {
               <button className="btn btn-primary" onClick={() => submit()} disabled={submitBusy}>{t('view.submit')}</button>
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             </>}
-            {isCreator && memo.status === 'pending_manager' && (
+            {isCreator && ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(memo.status) && (
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>
             )}
             {memo.memoNo && <button className="btn btn-ghost" onClick={openPdfPreview} disabled={pdfBusy}>{pdfBusy ? (lang === 'th' ? 'กำลังเปิด…' : 'Opening…') : (lang === 'th' ? 'ดูตัวอย่าง PDF' : 'Preview PDF')}</button>}

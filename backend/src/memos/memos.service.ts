@@ -272,11 +272,12 @@ export class MemosService {
     const memo = await this.prisma.memo.findUnique({ where: { id } });
     if (!memo) throw new NotFoundException('Memo not found');
     if (memo.createdBy !== user.id) throw new ForbiddenException('Not owner');
-    // Editable while a draft, before the first approval (pending_manager), and
-    // after final approval — INCLUDING after it has been closed (ส่งปิดงาน), so the
-    // creator can correct it and re-send the close again.
-    if (!['draft', 'pending_manager', 'approved'].includes(memo.status))
-      throw new BadRequestException('แก้ไขไม่ได้ในสถานะนี้ (อยู่ระหว่างการอนุมัติ)');
+    // Editable while a draft, at ANY pending approval step (incl. after the dept
+    // head has approved and it is waiting for HR/MD), and after final approval —
+    // INCLUDING after it has been closed (ส่งปิดงาน). Editing a memo that is still
+    // in the approval flow sends it back to draft to re-enter approval (below).
+    if (!['draft', 'pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive', 'approved'].includes(memo.status))
+      throw new BadRequestException('แก้ไขไม่ได้ในสถานะนี้');
 
     // Compare the approval base BEFORE vs AFTER this edit.
     const oldNet = await this.memoTotal(this.prisma, id);
