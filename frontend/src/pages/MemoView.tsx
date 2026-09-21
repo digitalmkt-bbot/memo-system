@@ -7,8 +7,10 @@ import { useI18n } from '../i18n';
 
 function money(n: number) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 const CAT_KEY: Record<string, string> = { general: 'catGeneral', budget: 'catBudget', advance: 'catAdvance', procurement: 'catProcurement', salary: 'catSalary', allowance: 'catAllowance', fuel: 'catFuel', island: 'catIsland', info: 'catInfo', other: 'catOther' };
-const FWD_OPTS = [
-  { email: 'ac@loveandaman.com', label: 'ฝ่ายบัญชี · ac@loveandaman.com' },
+// Accounting mailbox depends on the company: ANDAMAN SUNDAY uses its own domain.
+const acEmailFor = (companyCode?: string) => companyCode === 'ANDAMAN' ? 'ac@andamansunday.com' : 'ac@loveandaman.com';
+const fwdOpts = (companyCode?: string) => [
+  { email: acEmailFor(companyCode), label: `ฝ่ายบัญชี · ${acEmailFor(companyCode)}` },
   { email: 'hr@loveandaman.com', label: 'ฝ่ายบุคคล · hr@loveandaman.com' },
   { email: 'apm@loveandaman.com', label: 'ฝ่ายจัดซื้อ · apm@loveandaman.com' },
 ];
@@ -706,7 +708,7 @@ export function MemoView() {
               </p>
             )}
             <div className="mt-3 space-y-2">
-              {FWD_OPTS.map((o) => {
+              {fwdOpts(memo.companyCode).map((o) => {
                 const alreadySent = sentRecips.includes(o.email);
                 return (
                   <label key={o.email} className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-[13.5px] cursor-pointer hover:bg-slate-50">

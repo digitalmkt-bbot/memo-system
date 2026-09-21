@@ -572,9 +572,12 @@ export class MemosService {
   }
 
   async forward(user: JwtUser, id: number, recipients: string[]) {
-    const ALLOWED = ['ac@loveandaman.com', 'hr@loveandaman.com', 'apm@loveandaman.com'];
     const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
     if (!memo) throw new NotFoundException('Memo not found');
+    // Accounting mailbox depends on the company: ANDAMAN SUNDAY closes to its own
+    // domain; HR / purchasing stay on loveandaman.com for every company.
+    const acEmail = (memo as any).company?.code === 'ANDAMAN' ? 'ac@andamansunday.com' : 'ac@loveandaman.com';
+    const ALLOWED = [acEmail, 'hr@loveandaman.com', 'apm@loveandaman.com'];
     if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
     // Budget memos may be closed on the FIRST round without the actual amount —
@@ -591,7 +594,14 @@ export class MemosService {
     // the ACTUAL usage the creator must be able to send the finalized/updated
     // document to the same mailboxes. It threads into the original e-mail (see
     // mail.service), so it's a follow-up, not a new e-mail.
-    const to = Array.from(new Set((recipients || []).map((r) => String(r).trim().toLowerCase()))).filter((r) => ALLOWED.includes(r));
+    // Normalise any "ac@…" the client sent to THIS company's accounting mailbox,
+    // so an old/generic ac@loveandaman.com still routes to ac@andamansunday.com.
+    const to = Array.from(new Set(
+      (recipients || []).map((r) => {
+        const e = String(r).trim().toLowerCase();
+        return e.startsWith('ac@') ? acEmail : e;
+      }),
+    )).filter((r) => ALLOWED.includes(r));
     if (!to.length) throw new BadRequestException('กรุณาเลือกปลายทางอย่างน้อย 1 ที่');
 
     const shaped = this.shape(memo);
