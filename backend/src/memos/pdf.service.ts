@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LOVE_LOGO } from './love-logo';
+import { ANDAMAN_LOGO } from './andaman-logo';
 import { MD_SIGNATURE } from './md-signature';
 import { OWNER_SIGNATURE } from './owner-signature';
 
@@ -84,6 +85,13 @@ export class PdfService {
 
   private htmlSubstitute(d: any): string {
     const memo = d.memo || {};
+    // Letterhead switches to Andaman Sunday when the memo is issued in its name.
+    const isAS = memo.companyCode === 'ANDAMAN';
+    const brand = isAS
+      ? { logo: ANDAMAN_LOGO, name: 'Andaman Sunday Co., Ltd.', pri: '#492B13', accent: 'linear-gradient(90deg,#C24105 55%,#E6B233 55%)',
+          addr: '9/240 Sakdidej Rd.,<br>T.Talad Nuea, A.Muang, Phuket 83000<br>Email : info@andamansunday.com' }
+      : { logo: LOVE_LOGO, name: 'Love Island Co., Ltd.', pri: '#17263f', accent: 'linear-gradient(90deg,#17263f 55%,#23b4d8 55%)',
+          addr: '9/239-240 Sakdidej Road<br>T.Talat Nuea A.Mueang Phuket 83000<br>T: +66 76 390 250<br>E-mail : info@loveandaman.com' };
     const items: any[] = Array.isArray(d.items) ? d.items : [];
     const MIN = 6;
     const total = items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
@@ -99,21 +107,21 @@ export class PdfService {
     <style>
       *{box-sizing:border-box} body{font-family:'Sarabun',sans-serif;color:#111;margin:0;font-size:13px}
       .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-      .co{font-size:21px;font-weight:800;color:#17263f} .bar{height:6px;width:96px;background:linear-gradient(90deg,#17263f 55%,#23b4d8 55%);margin:6px 0 10px}
+      .co{font-size:21px;font-weight:800;color:${brand.pri}} .bar{height:6px;width:96px;background:${brand.accent};margin:6px 0 10px}
       .addr{font-size:11px;color:#555;line-height:1.7} .head-right{text-align:right}
-      .logo{width:150px} .ref{font-size:13px;font-weight:700;color:#17263f;margin-top:16px}
-      .rule{border-top:2px solid #17263f;margin:10px 0} h1{text-align:center;font-size:20px;font-weight:800;color:#17263f;margin:8px 0}
+      .logo{width:150px} .ref{font-size:13px;font-weight:700;color:${brand.pri};margin-top:16px}
+      .rule{border-top:2px solid ${brand.pri};margin:10px 0} h1{text-align:center;font-size:20px;font-weight:800;color:${brand.pri};margin:8px 0}
       .top{display:flex;align-items:flex-end;gap:8px;margin:16px 0 10px;font-size:14px} .fill{border-bottom:1px dotted #333;min-height:18px;padding:0 6px;font-weight:600;display:inline-block} .top .fill{flex:1}
-      table{width:100%;border-collapse:collapse;font-size:13px} th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;min-height:24px} th{background:#17263f;color:#fff;text-align:center} td.c{text-align:center} td.r{text-align:right}
+      table{width:100%;border-collapse:collapse;font-size:13px} th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;min-height:24px} th{background:${brand.pri};color:#fff;text-align:center} td.c{text-align:center} td.r{text-align:right}
       .sum{display:flex} .sum .words{flex:1;border:1px solid #333;border-top:none;text-align:center;padding:8px;font-weight:600;background:#f3f4f6}
       .sum .lbl{border:1px solid #333;border-top:none;padding:8px 12px;font-weight:600} .sum .val{border:1px solid #333;border-top:none;border-left:none;padding:8px 16px;text-align:right;font-weight:700;min-width:130px;background:#f3f4f6}
       .body{font-size:14px;line-height:2.1;margin-top:20px} .sign{margin-top:40px;text-align:center;font-size:14px} .sign .fill{min-width:260px}
       .signline{font-style:italic;color:#22206a;font-size:16px;border-bottom:1px dotted #333;padding:0 18px;min-width:240px;display:inline-block;text-align:center}
     </style></head><body>
       <div class="head">
-        <div><div class="co">Love Island Co., Ltd.</div><div class="bar"></div>
-          <div class="addr">9/239-240 Sakdidej Road<br>T.Talat Nuea A.Mueang Phuket 83000<br>T: +66 76 390 250<br>E-mail : info@loveandaman.com</div></div>
-        <div class="head-right"><img class="logo" src="${LOVE_LOGO}" alt="LOVE andaman" /><div class="ref">เลขที่อ้างอิง : ${this.esc(memo.memoNo || '-')}</div></div>
+        <div><div class="co">${brand.name}</div><div class="bar"></div>
+          <div class="addr">${brand.addr}</div></div>
+        <div class="head-right"><img class="logo" src="${brand.logo}" alt="${this.esc(brand.name)}" /><div class="ref">เลขที่อ้างอิง : ${this.esc(memo.memoNo || '-')}</div></div>
       </div>
       <div class="rule"></div><h1>ใบรับรองแทนใบเสร็จรับเงิน</h1><div class="rule"></div>
       <div class="top"><span>บจ. / หจก.</span><span class="fill">${this.esc(d.buyer || '')}</span><span>(ผู้ซื้อ/ผู้รับบริการ)</span></div>

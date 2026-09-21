@@ -138,27 +138,32 @@ export function MemoView() {
   // reference number auto-pulled from this memo. User types the rows themselves.
   const openSubstitute = () => {
     const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
-    const logo = window.location.origin + '/love-logo.png';
+    // Letterhead switches to Andaman Sunday when the memo is issued in its name.
+    const isAS = memo.companyCode === 'ANDAMAN';
+    const logo = window.location.origin + (isAS ? '/andaman-logo.png' : '/love-logo.png');
+    const B = isAS
+      ? { name: 'Andaman Sunday Co., Ltd.', pri: '#492B13', accent: 'linear-gradient(90deg,#C24105 55%,#E6B233 55%)', addr: '9/240 Sakdidej Rd.,<br>T.Talad Nuea, A.Muang, Phuket 83000<br>Email : info@andamansunday.com' }
+      : { name: 'Love Island Co., Ltd.', pri: '#17263f', accent: 'linear-gradient(90deg,#17263f 55%,#23b4d8 55%)', addr: '9/239-240 Sakdidej Road<br>T.Talat Nuea A.Mueang Phuket 83000<br>T: +66 76 390 250<br>E-mail : info@loveandaman.com' };
     const canSave = isCreator || user?.role === 'admin'; // attach into the memo (any status); it also re-closes if already forwarded
     const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบรับรองแทนใบเสร็จรับเงิน ${esc(memo.memoNo || '')}</title>
     <style>
       @page{size:A4;margin:14mm}
       *{box-sizing:border-box} body{font-family:'Sarabun','TH Sarabun New',Tahoma,sans-serif;color:#111;padding:24px;width:210mm;max-width:100%;margin:auto}
       .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-      .co{font-size:22px;font-weight:800;color:#17263f;margin:0}
-      .bar{height:6px;width:96px;background:linear-gradient(90deg,#17263f 55%,#23b4d8 55%);margin:6px 0 10px}
+      .co{font-size:22px;font-weight:800;color:${B.pri};margin:0}
+      .bar{height:6px;width:96px;background:${B.accent};margin:6px 0 10px}
       .addr{font-size:11.5px;color:#555;line-height:1.7}
       .head-right{text-align:right}
       .logo{width:150px;height:auto}
-      .ref{font-size:14px;font-weight:700;color:#17263f;margin-top:18px}
-      .rule{border-top:2px solid #17263f;margin:10px 0}
-      h1{text-align:center;font-size:21px;margin:8px 0;font-weight:800;color:#17263f}
+      .ref{font-size:14px;font-weight:700;color:${B.pri};margin-top:18px}
+      .rule{border-top:2px solid ${B.pri};margin:10px 0}
+      h1{text-align:center;font-size:21px;margin:8px 0;font-weight:800;color:${B.pri}}
       .top{display:flex;align-items:flex-end;gap:8px;margin:16px 0 10px;font-size:15px}
       .fill{border-bottom:1px dotted #333;min-height:20px;padding:0 6px;font-weight:600;display:inline-block}
       .top .fill{flex:1}
       table{width:100%;border-collapse:collapse;font-size:14px}
       th,td{border:1px solid #333;padding:6px 8px;vertical-align:top}
-      th{background:#17263f;color:#fff;text-align:center;font-weight:600}
+      th{background:${B.pri};color:#fff;text-align:center;font-weight:600}
       td.c{text-align:center} td.r{text-align:right} td.amt:empty:before{content:'';}
       td[contenteditable]{min-height:26px;outline:none}
       .sum{display:flex}
@@ -181,12 +186,12 @@ export function MemoView() {
       <div class="noprint"><button type="button" id="add" class="alt">+ เพิ่มแถว</button><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button>${canSave ? '<button type="button" id="saveBtn" title="แนบไฟล์ใบแทนเข้าเอกสารในระบบ (และส่งปิดงานซ้ำถ้าเคยปิดงานแล้ว)">💾 บันทึกเข้าระบบ (แนบใน Memo)</button>' : ''}</div>
       <div class="head">
         <div>
-          <div class="co">Love Island Co., Ltd.</div>
+          <div class="co">${B.name}</div>
           <div class="bar"></div>
-          <div class="addr">9/239-240 Sakdidej Road<br>T.Talat Nuea A.Mueang Phuket 83000<br>T: +66 76 390 250<br>E-mail : info@loveandaman.com</div>
+          <div class="addr">${B.addr}</div>
         </div>
         <div class="head-right">
-          <img class="logo" src="${logo}" alt="LOVE andaman" onerror="this.style.display='none'"/>
+          <img class="logo" src="${logo}" alt="${esc(B.name)}" onerror="this.style.display='none'"/>
           <div class="ref">เลขที่อ้างอิง : ${esc(memo.memoNo || '(ฉบับร่าง — ออกเลขเมื่อส่งอนุมัติ)')}</div>
         </div>
       </div>
