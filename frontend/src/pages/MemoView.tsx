@@ -273,7 +273,9 @@ export function MemoView() {
       setPick(false);
       load();
     } catch (e: any) {
-      const msg = e?.response?.data?.message;
+      // The API interceptor rethrows a plain Error(message), so the code lands in
+      // e.message — read both so the friendly branches below actually fire.
+      const msg = e?.response?.data?.message || e?.message;
       if (msg === 'CHOOSE_APPROVER') {
         // No first approver configured for this creator — let them choose one.
         const list = await api.approvers().catch(() => []);

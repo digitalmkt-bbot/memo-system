@@ -117,8 +117,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       await uploadIfAny(id);
       nav(memoId ? `/memos/view/${memoId}` : '/memos');
     } catch (e: any) {
-      if (e?.response?.data?.message === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
-      else alert(e?.response?.data?.message || e.message);
+      const m = e?.response?.data?.message || e?.message;
+      if (m === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
+      else alert(m);
     } finally { setBusy(false); }
   });
   const submit = handleSubmit(async (v) => {
@@ -138,12 +139,14 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       } catch (e: any) {
         // No default first approver configured — finish on the view page, where
         // the creator is prompted to choose who to send the memo to.
-        if (e?.response?.data?.message === 'CHOOSE_APPROVER') {
+        if ((e?.response?.data?.message || e?.message) === 'CHOOSE_APPROVER') {
           nav(`/memos/view/${id}`, { state: { pickApprover: true } });
         } else { throw e; }
       }
     } catch (e: any) {
-      alert(e?.response?.data?.message || e.message);
+      const m = e?.response?.data?.message || e?.message;
+      if (m === 'BACKDATE_REASON_REQUIRED') alert(lang === 'th' ? '🚩 เอกสารเบิกย้อนหลัง — กรุณากรอก "เหตุผลความจำเป็น" ในกล่องสีแดง (Red Flag) ก่อนส่งอนุมัติ' : 'Backdated: a reason is required.');
+      else alert(m);
     } finally { setBusy(false); }
   });
   // Editing an already-submitted memo (before the first approval): just save the
@@ -156,8 +159,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     setBusy(true);
     try { await api.updateMemo(memoId!, build(v)); await uploadIfAny(memoId!); nav(`/memos/view/${memoId}`); }
     catch (e: any) {
-      if (e?.response?.data?.message === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
-      else alert(e?.response?.data?.message || e.message);
+      const m = e?.response?.data?.message || e?.message;
+      if (m === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
+      else alert(m);
     } finally { setBusy(false); }
   });
 
