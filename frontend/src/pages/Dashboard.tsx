@@ -29,6 +29,7 @@ export function Dashboard() {
   const [companyId, setCompanyId] = useState('');
   const canFilterCompany = user?.role === 'admin' || user?.role === 'executive' || user?.role === 'md';
   const isAdmin = user?.role === 'admin';
+  const canNews = user?.role === 'admin' || user?.role === 'hrm'; // HR manager may post news too
 
   // announcements (news feed)
   const [anns, setAnns] = useState<any[]>([]);
@@ -119,7 +120,7 @@ export function Dashboard() {
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
           <h3 className="text-[16px] font-bold text-ocean-dark">📢 ข่าวประชาสัมพันธ์องค์กร</h3>
-          {isAdmin && <button className="btn btn-primary !py-1.5 text-[13px]" onClick={() => setAnnForm({ title: '', message: '', image: '', active: true, publishedAt: '' })}>+ เพิ่มข่าว</button>}
+          {canNews && <button className="btn btn-primary !py-1.5 text-[13px]" onClick={() => setAnnForm({ title: '', message: '', image: '', active: true, publishedAt: '' })}>+ เพิ่มข่าว</button>}
         </div>
         {anns.length === 0 ? (
           <p className="text-slate-400 text-[13px]">ยังไม่มีข่าวประกาศ</p>
@@ -132,7 +133,7 @@ export function Dashboard() {
                   <div><span className="text-slate-500">วันที่ประกาศข่าว</span> {fmtD(a.publishedAt)}</div>
                   <div><span className="text-slate-500">วันที่แก้ไขล่าสุด</span> {fmtD(a.updatedAt)}</div>
                 </div>
-                {isAdmin && (
+                {canNews && (
                   <div className="mt-2.5 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                     <button className="text-[12px] text-slate-500 hover:underline" onClick={() => setAnnForm({ id: a.id, title: a.title, message: a.message, image: a.image || '', active: a.active, publishedAt: a.publishedAt ? String(a.publishedAt).slice(0, 10) : '' })}>แก้ไข</button>
                     <button className="text-[12px] text-rose-500 hover:underline" onClick={() => delAnn(a.id)}>ลบ</button>
@@ -180,7 +181,7 @@ export function Dashboard() {
       )}
 
       {/* admin add/edit popup */}
-      {isAdmin && annForm && (
+      {canNews && annForm && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-5" onClick={() => setAnnForm(null)}>
           <div className="w-full max-w-lg rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-3 text-lg font-bold">{annForm.id ? 'แก้ไขข่าว' : 'เพิ่มข่าว'}</h3>

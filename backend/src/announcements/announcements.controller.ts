@@ -13,26 +13,26 @@ export class AnnouncementsController {
   // any authenticated user reads the news feed (admins also see hidden ones)
   @Get()
   list(@Req() req: any) {
-    return this.svc.list(req.user?.role === 'admin');
+    return this.svc.list(['admin', 'hrm'].includes(req.user?.role));
   }
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'hrm')
   create(@Req() req: any, @Body() dto: AnnouncementDto) {
     return this.svc.create(req.user.id, dto);
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'hrm')
   update(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: AnnouncementDto) {
     return this.svc.update(id, req.user.id, dto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'hrm')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.svc.remove(id);
   }
