@@ -10,8 +10,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.enableCors({ origin: true, credentials: true });
   // Allow base64 image payloads (e.g. announcement images).
-  app.use(json({ limit: '25mb' }));
-  app.use(urlencoded({ extended: true, limit: '25mb' }));
+  app.use(json({ limit: '40mb' }));
+  app.use(urlencoded({ extended: true, limit: '40mb' }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   const port = process.env.PORT || 3000;
   await app.listen(port);

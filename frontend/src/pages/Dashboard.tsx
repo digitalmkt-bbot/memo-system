@@ -78,7 +78,7 @@ export function Dashboard() {
     if (!file) return;
     const ok = file.type === 'application/pdf' || file.type === 'image/png' || /\.(pdf|png)$/i.test(file.name);
     if (!ok) { alert('รองรับเฉพาะไฟล์ PDF หรือ PNG'); return; }
-    if (file.size > 10 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 10MB'); return; }
+    if (file.size > 25 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 25MB'); return; }
     const reader = new FileReader();
     reader.onload = () => setAnnForm((f: any) => ({ ...f, fileData: String(reader.result), fileName: file.name, fileType: file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/png') }));
     reader.readAsDataURL(file);
