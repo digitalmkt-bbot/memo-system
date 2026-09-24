@@ -43,7 +43,7 @@ export function Dashboard() {
     if (!annForm) return;
     setAnnSaving(true);
     try {
-      const dto = { title: annForm.title, message: annForm.message, image: annForm.image ?? '', active: annForm.active, publishedAt: annForm.publishedAt || undefined };
+      const dto = { title: annForm.title, message: annForm.message, image: annForm.image ?? '', fileData: annForm.fileData ?? '', fileName: annForm.fileName ?? '', fileType: annForm.fileType ?? '', active: annForm.active, publishedAt: annForm.publishedAt || undefined };
       if (annForm.id) await api.updateAnnouncement(annForm.id, dto); else await api.createAnnouncement(dto);
       setAnnForm(null); loadAnns();
     } catch (e: any) { alert(e?.response?.data?.message || e.message); }
@@ -71,6 +71,16 @@ export function Dashboard() {
       };
       img.src = String(reader.result);
     };
+    reader.readAsDataURL(file);
+  };
+  // Attach a PDF or PNG file (kept as-is, stored as a data URL for download).
+  const pickAnnFile = (file?: File) => {
+    if (!file) return;
+    const ok = file.type === 'application/pdf' || file.type === 'image/png' || /\.(pdf|png)$/i.test(file.name);
+    if (!ok) { alert('รองรับเฉพาะไฟล์ PDF หรือ PNG'); return; }
+    if (file.size > 10 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 10MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setAnnForm((f: any) => ({ ...f, fileData: String(reader.result), fileName: file.name, fileType: file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/png') }));
     reader.readAsDataURL(file);
   };
   const delAnn = async (id: number) => {
@@ -135,7 +145,7 @@ export function Dashboard() {
                 </div>
                 {canNews && (
                   <div className="mt-2.5 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                    <button className="text-[12px] text-slate-500 hover:underline" onClick={() => setAnnForm({ id: a.id, title: a.title, message: a.message, image: a.image || '', active: a.active, publishedAt: a.publishedAt ? String(a.publishedAt).slice(0, 10) : '' })}>แก้ไข</button>
+                    <button className="text-[12px] text-slate-500 hover:underline" onClick={() => setAnnForm({ id: a.id, title: a.title, message: a.message, image: a.image || '', fileData: a.fileData || '', fileName: a.fileName || '', fileType: a.fileType || '', active: a.active, publishedAt: a.publishedAt ? String(a.publishedAt).slice(0, 10) : '' })}>แก้ไข</button>
                     <button className="text-[12px] text-rose-500 hover:underline" onClick={() => delAnn(a.id)}>ลบ</button>
                     {!a.active && <span className="text-[11px] text-amber-600">(ซ่อนอยู่)</span>}
                   </div>
@@ -169,6 +179,9 @@ export function Dashboard() {
               {viewAnn.image && (
                 <img src={viewAnn.image} alt="รูปประกอบประกาศ" className="mt-4 w-full rounded-lg border border-slate-200 object-contain" />
               )}
+              {viewAnn.fileData && (
+                <a href={viewAnn.fileData} download={viewAnn.fileName || 'attachment'} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-100">📎 {viewAnn.fileName || 'ไฟล์แนบ'} <span className="text-slate-400">(เปิด/ดาวน์โหลด)</span></a>
+              )}
               <div className="mt-10 text-right">
                 <img src="/md-signature.png" alt="ลายเซ็นกรรมการผู้จัดการ" className="ml-auto -mb-2 h-[64px] w-auto object-contain" />
                 <div className="mx-auto mr-0 w-[240px] border-t border-slate-400" />
@@ -197,6 +210,15 @@ export function Dashboard() {
               </div>
             ) : (
               <input type="file" accept="image/*" className="mt-1 block w-full text-[13px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-[13px]" onChange={(e) => pickAnnImage(e.target.files?.[0])} />
+            )}
+            <label className="label mt-3">ไฟล์แนบ (PDF / PNG)</label>
+            {annForm.fileData ? (
+              <div className="mt-1 flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-[13px]">
+                <span className="truncate">📎 {annForm.fileName || 'ไฟล์แนบ'}</span>
+                <button type="button" className="ml-3 text-[12px] text-rose-600 hover:underline shrink-0" onClick={() => setAnnForm({ ...annForm, fileData: '', fileName: '', fileType: '' })}>ลบไฟล์</button>
+              </div>
+            ) : (
+              <input type="file" accept=".pdf,.png,application/pdf,image/png" className="mt-1 block w-full text-[13px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-[13px]" onChange={(e) => pickAnnFile(e.target.files?.[0])} />
             )}
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div><label className="label">วันที่ประกาศ</label><input type="date" className="input" value={annForm.publishedAt} onChange={(e) => setAnnForm({ ...annForm, publishedAt: e.target.value })} /></div>

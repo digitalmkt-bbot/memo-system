@@ -216,6 +216,9 @@ model Announcement {
   title       String   @default("")
   message     String
   image       String?  @db.Text
+  fileData    String?  @db.Text @map("file_data")   // attached file (PDF/PNG) as a data URL
+  fileName    String?  @map("file_name")
+  fileType    String?  @map("file_type")
   active      Boolean  @default(true)
   publishedAt DateTime @default(now()) @map("published_at")
   updatedBy   Int?     @map("updated_by")
