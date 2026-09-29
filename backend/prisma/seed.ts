@@ -544,6 +544,23 @@ async function main() {
     }
   }
 
+  // 24) Retrofit for the new "MD & Owner are equal" rule: memos still waiting at
+  //     the MD step under the OLD flow are at status 'pending_hrmd' with an MD as
+  //     the current approver. Move them to 'pending_executive' so the Owner can
+  //     also approve. (Idempotent: new memos never sit at pending_hrmd+MD, and HR
+  //     steps keep an HR current approver, so they are left untouched.)
+  {
+    const waiting = await prisma.memo.findMany({
+      where: { status: 'pending_hrmd' as any },
+      select: { id: true, currentApprover: { select: { role: true } } },
+    });
+    const ids = waiting.filter((m) => (m.currentApprover?.role as any) === 'md').map((m) => m.id);
+    if (ids.length) {
+      await prisma.memo.updateMany({ where: { id: { in: ids } }, data: { status: 'pending_executive' as any } });
+      console.log(`Opened ${ids.length} MD-pending memo(s) to the Owner too (pending_hrmd → pending_executive)`);
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
