@@ -113,10 +113,11 @@ export function MemoView() {
   const mdAppr = approvals.find((a: any) => a.approverRole === 'md' && a.status === 'approve');
   const ownerAppr = approvals.find((a: any) => a.approverRole === 'owner' && a.status === 'approve');
   // Person currently expected to sign — shown greyed in the box for their role.
-  const isPending = ['pending_manager', 'pending_hrmd', 'pending_fc'].includes(memo.status);
+  const isPending = ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(memo.status);
+  const isExecStep = memo.status === 'pending_executive'; // MD & Owner equal — both pending
   const pendMgr = isPending && memo.currentApproverRole === 'manager' ? memo.currentApproverName : null;
   const pendHrm = isPending && memo.currentApproverRole === 'hrm' ? memo.currentApproverName : null;
-  const pendMd = isPending && memo.currentApproverRole === 'md' ? memo.currentApproverName : null;
+  const pendMd = (isExecStep || (isPending && memo.currentApproverRole === 'md')) ? (memo.currentApproverName || 'กรรมการผู้จัดการ') : null;
   // When the creator IS a department manager AND the memo genuinely skips the
   // manager step (no separate manager is approving), the creator fills the
   // "ผจก.แผนก" box themselves. But if the memo is routed to a real manager
@@ -434,7 +435,7 @@ export function MemoView() {
                 ...(memo.ownerRequired ? [{
                   role: t('sign.owner'),
                   a: ownerAppr,
-                  pend: (memo.ownerPending ? (memo.ownerApprovedName || 'นายต่อพงษ์ วงศ์เสถียรชัย') : null),
+                  pend: (isExecStep ? 'นายต่อพงษ์ วงศ์เสถียรชัย' : null),
                   fallback: (memo.ownerApprovedName || null),
                   sig: '/owner-signature.png' as string | null,
                 }] : []),

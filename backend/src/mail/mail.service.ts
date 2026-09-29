@@ -209,6 +209,28 @@ export class MailService {
     await this.send(approver.email, `[MEMO] รออนุมัติ: ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
   }
 
+  /** Notify BOTH the MD and the Owner (equal authority) that a memo awaits their approval — either may approve. */
+  async notifyExecApprovers(memo: any) {
+    const users = await this.prisma.user.findMany({ where: { role: { in: ['md', 'owner'] as any }, active: true }, select: { name: true, email: true } });
+    const list = users.filter((u) => u.email);
+    if (!list.length) return;
+    for (const u of list) {
+      const html = this.layout(
+        'มีบันทึกข้อความรออนุมัติ (ผู้บริหาร)',
+        [
+          `เรียน คุณ${this.esc(u.name)}`,
+          `มีบันทึกข้อความรอการอนุมัติขั้นสุดท้าย — กรรมการผู้จัดการ (MD) หรือ ผู้บริหาร (Owner) ท่านใดอนุมัติก่อนก็ถือว่าสมบูรณ์`,
+          `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+          `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+          `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+        ],
+        memo.id,
+        'เปิดเพื่ออนุมัติ',
+      );
+      await this.send(u.email, `[MEMO] รออนุมัติ (ผู้บริหาร): ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
+    }
+  }
+
   /** Notify the Owner (ผู้บริหาร/Owner) that an approved memo awaits their final sign-off. */
   async notifyOwnerPending(memo: any) {
     const owners = await this.prisma.user.findMany({ where: { role: 'owner' as any, active: true }, select: { name: true, email: true } });

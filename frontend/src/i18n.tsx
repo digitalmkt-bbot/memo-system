@@ -180,7 +180,7 @@ const TH: Dict = {
     confirmHold: 'ยืนยัน: รอพิจารณา',
     holdBtn: 'รอพิจารณา',
     waitManager: 'รอผจก.แผนกอนุมัติ',
-    waitExecutive: 'รอผู้บริหารอนุมัติ',
+    waitExecutive: 'รอ MD / ผู้บริหาร อนุมัติ (ท่านใดก็ได้)',
     waitHrmd: 'รอบุคคล/กรรมการฯ อนุมัติ', waitFc: 'รอฝ่ายบัญชีอนุมัติ',
     chooseNext: 'ส่งต่อไปยัง', toHrm: 'ผจก.ฝ่ายบุคคล', toMd: 'กรรมการผู้จัดการ', finalizeNow: 'อนุมัติเลย (จบงาน)',
     pendingAction: 'รอดำเนินการ',

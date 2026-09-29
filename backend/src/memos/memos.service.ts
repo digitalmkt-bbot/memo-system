@@ -55,9 +55,10 @@ export class MemosService {
       companyName: company?.name ?? null,
       currentApproverName: currentApprover?.name ?? null,
       currentApproverRole: currentApprover?.role ?? null,
-      // Owner (final post-MD sign-off) is pending when required, already fully
-      // approved, and not yet signed by the Owner. Never blocks closing.
-      ownerPending: !!rest.ownerRequired && rest.status === 'approved' && !rest.ownerApprovedAt,
+      // Owner is now an EQUAL co-approver with the MD (approves via the normal flow
+      // at the executive step), not a separate post-approval signer — so the old
+      // owner-sign-off button is disabled.
+      ownerPending: false,
     };
   }
 
@@ -145,11 +146,13 @@ export class MemosService {
   private readonly HR_APPROVAL_CATS = ['salary', 'allowance', 'fuel', 'island'];
 
   private canApprove(user: JwtUser, memo: any) {
+    // Final executive step: MD and Owner are EQUAL — either one may approve,
+    // regardless of who the memo was primarily routed to (not gated by currentApproverId).
+    if (memo.status === 'pending_executive') return user.role === 'md' || user.role === 'owner';
     if (memo.currentApproverId !== user.id) return false;
     if (memo.status === 'pending_manager') return true; // assigned first approver (any role); currentApproverId already gates
     if (memo.status === 'pending_hrmd') return user.role === 'hrm' || user.role === 'md';
     if (memo.status === 'pending_fc') return user.role === 'fc';
-    if (memo.status === 'pending_executive') return user.role === 'executive'; // legacy
     return false;
   }
 
@@ -171,11 +174,13 @@ export class MemosService {
   async list(user: JwtUser, f: { box?: string; status?: string; companyId?: string; departmentId?: string; deptCode?: string; q?: string }) {
     const where: any = {};
     if (f.box === 'inbox') {
-      if (user.role === 'owner') {
-        // The Owner's queue = fully-approved memos awaiting the final Owner sign-off.
-        where.status = 'approved';
-        where.ownerRequired = true;
-        where.ownerApprovedAt = null;
+      if (user.role === 'owner' || user.role === 'md') {
+        // MD and Owner are equal at the final executive step — BOTH see every memo
+        // waiting there, plus anything routed specifically to them at earlier steps.
+        where.OR = [
+          { status: 'pending_executive' },
+          { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc'] } },
+        ];
       } else {
         where.currentApproverId = user.id;
         where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
@@ -465,55 +470,53 @@ export class MemosService {
 
       const step = memo.status === 'pending_manager' ? 'manager'
         : memo.status === 'pending_hrmd' ? user.role
+        : memo.status === 'pending_executive' ? user.role
         : memo.status === 'pending_fc' ? 'fc' : 'executive';
       await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'approve', comment: comment ?? null } });
 
+      const finalize = () => ({ status: 'approved' as any, currentApproverId: null, closedAt: new Date() });
+      // Route to the FINAL executive step where MD and Owner are equal: either can
+      // approve. currentApproverId is just the primary; both are notified & can act.
+      const routeExec = async () => {
+        const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
+        const owner = (await this.pickByRole('owner', memo.companyId, user.id)) ?? (await this.pickByRole('owner', undefined, user.id));
+        const primary = md ?? owner;
+        return primary
+          ? { status: 'pending_executive' as any, currentApproverId: primary, reminderCount: 0, lastReminderAt: null, escalatedAt: null }
+          : finalize();
+      };
+
       let data: any; let action = 'approved';
-      if (user.role === 'md') {
-        // The Managing Director is the highest authority — their approval is
-        // ALWAYS final, at any step. Never route onward to HR after the MD signs.
-        data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-        action = 'approved_md_final';
+      if (memo.status === 'pending_executive') {
+        // MD or Owner (equal authority) — whoever approves finalizes.
+        data = finalize(); action = `approved_${user.role}_final`;
+      } else if (user.role === 'md') {
+        // MD approving at an earlier step is always final.
+        data = finalize(); action = 'approved_md_final';
       } else if (memo.status === 'pending_manager') {
         // HR-approval categories (salary/allowance/fuel/island): after the dept
-        // head, route to HR who finalizes — NEVER to the MD, any amount.
+        // head, route to HR; else amount-based.
         if (this.HR_APPROVAL_CATS.includes((memo as any).category)) {
           const hr = (await this.pickByRole('hrm', memo.companyId, user.id)) ?? (await this.pickByRole('hrm', undefined, user.id));
           if (hr) { data = { status: 'pending_hrmd', currentApproverId: hr, reminderCount: 0, lastReminderAt: null, escalatedAt: null }; action = 'approved_manager_to_hr'; }
-          else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final_no_hr'; }
+          else { data = finalize(); action = 'approved_manager_final_no_hr'; }
         } else {
-          // Any first approver: amounts ≤ 1,000 finalize here; > 1,000 reach the MD.
+          // ≤ 1,000 finalize here; > 1,000 reach the executive step (MD/Owner).
           const total = await this.memoTotal(tx, id);
-          if (total <= this.SMALL_MAX) {
-            data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-            action = 'approved_manager_final';
-          } else {
-            const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
-            if (md) { data = { status: 'pending_hrmd', currentApproverId: md, reminderCount: 0, lastReminderAt: null, escalatedAt: null }; action = 'approved_manager_to_md'; }
-            else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_manager_final'; }
-          }
+          if (total <= this.SMALL_MAX) { data = finalize(); action = 'approved_manager_final'; }
+          else { data = await routeExec(); action = data.status === 'pending_executive' ? 'approved_manager_to_exec' : 'approved_manager_final'; }
         }
       } else if (memo.status === 'pending_hrmd') {
-        // New rule: EVERY memo over the small cap (> 1,000) must ALSO be approved
-        // by the MD — including HR-category memos (salary/allowance/fuel/island).
-        // So after HR (hrm) signs, route onward to the MD when total > 1,000;
-        // only small amounts finalize at HR. (An MD approval is handled above and
-        // is always final.)
+        // HR approved. > 1,000 must also pass the executive step; ≤ 1,000 finalizes.
         if (user.role === 'hrm') {
           const total = await this.memoTotal(tx, id);
-          const md = total > this.SMALL_MAX
-            ? ((await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id)))
-            : null;
-          if (md) { data = { status: 'pending_hrmd', currentApproverId: md, reminderCount: 0, lastReminderAt: null, escalatedAt: null }; action = 'approved_hr_to_md'; }
-          else { data = { status: 'approved', currentApproverId: null, closedAt: new Date() }; action = 'approved_hrm_final'; }
+          if (total > this.SMALL_MAX) { data = await routeExec(); action = data.status === 'pending_executive' ? 'approved_hr_to_exec' : 'approved_hrm_final'; }
+          else { data = finalize(); action = 'approved_hrm_final'; }
         } else {
-          data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-          action = `approved_${user.role}_final`;
+          data = finalize(); action = `approved_${user.role}_final`;
         }
       } else {
-        // legacy pending_fc / pending_executive -> final approval
-        data = { status: 'approved', currentApproverId: null, closedAt: new Date() };
-        action = 'approved_final';
+        data = finalize(); action = 'approved_final';
       }
       data.onHold = false; // any decision clears a prior "on hold" mark
       const updated = await tx.memo.update({ where: { id }, data, include: INCLUDE });
@@ -525,7 +528,8 @@ export class MemosService {
       if (result.status === 'approved') {
         await this.mail.notifyCreator(result, 'approved');
         await this.mail.notifyFcAcknowledge(result); // FC receives it for acknowledgement only
-        if ((result as any).ownerPending) await this.mail.notifyOwnerPending(result); // Owner: awaits final sign-off
+      } else if (result.status === 'pending_executive') {
+        await this.mail.notifyExecApprovers(result); // MD + Owner notified together
       } else {
         await this.mail.notifyPendingApprover(result);
       }
