@@ -18,6 +18,11 @@
   body { @apply bg-sand text-ink font-sans antialiased; }
   /* page titles: solid dark (Optivue style) */
   main h2 { @apply font-extrabold tracking-tight text-ink; }
+  /* Mobile safety: never let a page scroll horizontally as a whole — wide tables
+     use their own overflow-x-auto container, and media / long words are capped. */
+  html, body { overflow-x: hidden; }
+  img, video, canvas, svg { max-width: 100%; }
+  main { overflow-x: hidden; }
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

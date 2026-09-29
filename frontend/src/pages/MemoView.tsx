@@ -349,8 +349,8 @@ export function MemoView() {
         <button className="btn btn-ghost !py-1.5 shrink-0" onClick={() => nav(-1)}>{t('common.back')}</button>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-5">
-        <div className="card p-6">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5">
+        <div className="card p-4 sm:p-6 min-w-0">
           <div className="flex items-center gap-2 flex-wrap"><StatusTag s={memo.status} />
             {memo.onHold && isOpen && <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 text-[12px] font-semibold px-2.5 py-1">{t('view.onHoldBadge')}</span>}
             <span className="text-gray-400 text-xs">{t('view.dateLabel')} {fmtDay(memo.date, lang)}</span></div>
@@ -361,7 +361,7 @@ export function MemoView() {
             <div><span className="text-gray-500">{t('form.neededDate')}:</span> {memo.neededDate ? fmtDay(memo.neededDate, lang) : '—'}</div>
             <div className="sm:col-span-2"><span className="text-gray-500">{t('view.attachmentNote')}:</span> {memo.attachment || '—'}</div>
           </div>
-          <div className="whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-sm leading-7 min-h-[200px]">{memo.detail}</div>
+          <div className="whitespace-pre-wrap [overflow-wrap:anywhere] bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-sm leading-7 min-h-[200px]">{memo.detail}</div>
 
           {items.length > 0 && (
             <div className="mt-5">
@@ -641,8 +641,8 @@ export function MemoView() {
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="card p-5">
+        <div className="flex flex-col gap-4 min-w-0">
+          <div className="card p-5 min-w-0">
             <div className="font-bold text-ocean-dark text-sm mb-3">{t('view.attachments')} ({atts.length})</div>
             {atts.length === 0 && <p className="text-gray-400 text-[13px] mb-2">{t('view.noAttachments')}</p>}
             {atts.map((a) => (
