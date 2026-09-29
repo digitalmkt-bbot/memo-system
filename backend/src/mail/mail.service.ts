@@ -39,6 +39,7 @@ export class MailService {
       const res = await fetch('https://api.smtp2go.com/v3/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: (AbortSignal as any).timeout ? (AbortSignal as any).timeout(10000) : undefined,
         body: JSON.stringify({
           api_key: process.env.SMTP2GO_API_KEY,
           to: [to],

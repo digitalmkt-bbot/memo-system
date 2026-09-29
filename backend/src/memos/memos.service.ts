@@ -146,12 +146,13 @@ export class MemosService {
   private readonly HR_APPROVAL_CATS = ['salary', 'allowance', 'fuel', 'island'];
 
   private canApprove(user: JwtUser, memo: any) {
-    // Final executive step: MD and Owner are EQUAL — either one may approve,
-    // regardless of who the memo was primarily routed to (not gated by currentApproverId).
-    if (memo.status === 'pending_executive') return user.role === 'md' || user.role === 'owner';
+    if (!['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(memo.status)) return false;
+    // MD and Owner are the top authority (equal): they can approve ANY pending memo
+    // at ANY step — including the dept-head step — and their approval finalizes it.
+    if (user.role === 'md' || user.role === 'owner') return true;
     if (memo.currentApproverId !== user.id) return false;
-    if (memo.status === 'pending_manager') return true; // assigned first approver (any role); currentApproverId already gates
-    if (memo.status === 'pending_hrmd') return user.role === 'hrm' || user.role === 'md';
+    if (memo.status === 'pending_manager') return true; // assigned first approver (any role)
+    if (memo.status === 'pending_hrmd') return user.role === 'hrm';
     if (memo.status === 'pending_fc') return user.role === 'fc';
     return false;
   }
@@ -175,12 +176,9 @@ export class MemosService {
     const where: any = {};
     if (f.box === 'inbox') {
       if (user.role === 'owner' || user.role === 'md') {
-        // MD and Owner are equal at the final executive step — BOTH see every memo
-        // waiting there, plus anything routed specifically to them at earlier steps.
-        where.OR = [
-          { status: 'pending_executive' },
-          { currentApproverId: user.id, status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc'] } },
-        ];
+        // MD and Owner are top authority — they see EVERY pending memo at any step
+        // and can approve it directly.
+        where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
       } else {
         where.currentApproverId = user.id;
         where.status = { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] };
@@ -487,12 +485,9 @@ export class MemosService {
       };
 
       let data: any; let action = 'approved';
-      if (memo.status === 'pending_executive') {
-        // MD or Owner (equal authority) — whoever approves finalizes.
+      if (user.role === 'md' || user.role === 'owner') {
+        // MD and Owner are top authority (equal) — approving at ANY step finalizes.
         data = finalize(); action = `approved_${user.role}_final`;
-      } else if (user.role === 'md') {
-        // MD approving at an earlier step is always final.
-        data = finalize(); action = 'approved_md_final';
       } else if (memo.status === 'pending_manager') {
         // HR-approval categories (salary/allowance/fuel/island): after the dept
         // head, route to HR; else amount-based.
@@ -523,17 +518,20 @@ export class MemosService {
       await tx.auditLog.create({ data: { memoId: id, userId: user.id, action, detail: comment ?? null } });
       return this.shape(updated);
     });
-    // notify: creator on final approval, otherwise the next approver
-    try {
-      if (result.status === 'approved') {
-        await this.mail.notifyCreator(result, 'approved');
-        await this.mail.notifyFcAcknowledge(result); // FC receives it for acknowledgement only
-      } else if (result.status === 'pending_executive') {
-        await this.mail.notifyExecApprovers(result); // MD + Owner notified together
-      } else {
-        await this.mail.notifyPendingApprover(result);
-      }
-    } catch { /* noop */ }
+    // notify — FIRE-AND-FORGET so a slow / over-quota mail provider can never
+    // block or fail the approval response (the request returns immediately).
+    void (async () => {
+      try {
+        if (result.status === 'approved') {
+          await this.mail.notifyCreator(result, 'approved');
+          await this.mail.notifyFcAcknowledge(result); // FC receives it for acknowledgement only
+        } else if (result.status === 'pending_executive') {
+          await this.mail.notifyExecApprovers(result); // MD + Owner notified together
+        } else {
+          await this.mail.notifyPendingApprover(result);
+        }
+      } catch { /* noop */ }
+    })();
     return result;
   }
 
