@@ -168,7 +168,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const cell = 'rounded-lg bg-surface shadow-neu-inset px-2.5 py-1.5 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-ocean/40 w-full';
 
   return (
-    <div className="card p-6 lg:p-8">
+    <div className="card p-4 sm:p-6 lg:p-8">
       {/* step indicator */}
       <div className="overflow-x-auto pb-1 mb-7">
         <div className="flex items-center min-w-[600px]">
@@ -272,8 +272,8 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
         <div className="mt-7">
           <div className="font-bold text-ocean-dark text-sm mb-3">{t('items.title')}</div>
           <datalist id="memo-units">{UNITS.map((u) => <option key={u} value={u} />)}</datalist>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+          <div className="overflow-x-auto -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+            <table className="w-full text-[13px] min-w-[860px]">
               <thead>
                 <tr className="text-slate-500 text-[11px] uppercase tracking-wide">
                   <th className="text-left font-semibold px-2 py-2 w-8">#</th>

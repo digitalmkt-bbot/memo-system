@@ -351,7 +351,7 @@ export function Reports() {
               <div className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold ${status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                 <span>{status === 'approved' ? '✓' : '⧉'}</span>{lang === 'th' ? 'กำลังแสดง: ' : 'Showing: '}{statusLabelTH(status, lang)}
               </div>
-              <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 <div className="rounded-xl bg-sand p-3">
                   <div className="text-[11.5px] text-slate-500">{lang === 'th' ? 'จำนวนเอกสาร' : 'Documents'}{deptCode ? ` · ${deptCode}` : ''}</div>
                   <div className="text-[22px] font-extrabold text-ink leading-tight mt-0.5">{num(histTotals.count)}</div>

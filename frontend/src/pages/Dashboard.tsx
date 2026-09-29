@@ -161,14 +161,14 @@ export function Dashboard() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-5" onClick={() => setViewAnn(null)}>
           <div className="relative w-full max-w-2xl max-h-[88vh] overflow-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()} style={{ fontFamily: 'Sarabun, sans-serif' }}>
             <button className="absolute right-4 top-4 z-10 text-xl leading-none text-slate-400 hover:text-ink" onClick={() => setViewAnn(null)}>✕</button>
-            <div className="px-9 py-8 sm:px-11">
+            <div className="px-5 py-7 sm:px-11 sm:py-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[19px] font-extrabold text-[#17263f]">Love Island Co., Ltd.</div>
                   <div className="mt-1.5 h-[6px] w-[92px]" style={{ background: 'linear-gradient(90deg,#17263f 55%,#23b4d8 55%)' }} />
                   <div className="mt-2 text-[10.5px] leading-relaxed text-slate-500">9/239-240 Sakdidej Road<br />T.Talat Nuea A.Mueang Phuket 83000<br />T: +66 76 390 250<br />E-mail : info@loveandaman.com</div>
                 </div>
-                <img src="/love-logo.png" alt="LOVE andaman" className="w-[150px]" />
+                <img src="/love-logo.png" alt="LOVE andaman" className="w-[104px] sm:w-[150px] shrink-0" />
               </div>
               <div className="my-3 border-t-2 border-[#17263f]" />
               <div className="text-center text-[20px] font-extrabold text-[#17263f]">ประกาศจากบริษัท</div>
@@ -234,7 +234,7 @@ export function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr_1.25fr] lg:auto-rows-min lg:grid-flow-row-dense">
         {/* Total value */}
-        <div className="card p-6">
+        <div className="card p-5 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="text-ink font-semibold text-[16px]">{t('dashboard.kpiTotalValue')}</div>
@@ -243,14 +243,14 @@ export function Dashboard() {
             <span className="text-slate-300">•••</span>
           </div>
           <div className="flex items-center gap-2.5 mt-4 flex-wrap">
-            <div className="text-[40px] leading-none font-extrabold text-ink">{money(ov.totalAmount)}</div>
+            <div className="text-[30px] sm:text-[40px] leading-none font-extrabold text-ink [overflow-wrap:anywhere]">{money(ov.totalAmount)}</div>
             <Chip up>{approvalRate}%</Chip>
             <span className="rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-semibold px-2.5 py-1">{num(approved)} {t('dashboard.barApproved')}</span>
           </div>
         </div>
 
         {/* In progress */}
-        <div className="card p-6">
+        <div className="card p-5 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="text-ink font-semibold text-[16px]">{t('dashboard.kpiPending')}</div>
@@ -259,14 +259,14 @@ export function Dashboard() {
             <span className="text-slate-300">•••</span>
           </div>
           <div className="flex items-center gap-2.5 mt-4 flex-wrap">
-            <div className="text-[40px] leading-none font-extrabold text-ink">{num(pending)}</div>
+            <div className="text-[30px] sm:text-[40px] leading-none font-extrabold text-ink">{num(pending)}</div>
             <Chip up={false}>{pendingRate}%</Chip>
             <span className="rounded-full bg-rose-100 text-rose-600 text-[12px] font-semibold px-2.5 py-1">{num(rejected)} {t('dashboard.barRejected')}</span>
           </div>
         </div>
 
         {/* Satisfaction (diverging) */}
-        <div className="card p-6 lg:row-span-2 flex flex-col">
+        <div className="card p-5 sm:p-6 lg:row-span-2 flex flex-col">
           <div className="flex items-center justify-between mb-1">
             <div className="font-bold text-ink text-[18px]">{t('dashboard.satisfTitle')}</div>
             <span className="text-[12px] text-slate-500 bg-slate-100 rounded-full px-3 py-1">Monthly</span>
@@ -307,7 +307,7 @@ export function Dashboard() {
         </div>
 
         {/* Status overview (period style) */}
-        <div className="card p-6 lg:col-span-2">
+        <div className="card p-5 sm:p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 grid place-items-center text-slate-500">
@@ -324,19 +324,19 @@ export function Dashboard() {
           </div>
           {/* numbers row */}
           <div className="flex items-end">
-            <div className="flex-[4]">
+            <div className="flex-[4] min-w-0">
               <div className="text-slate-500 text-[12px]">{t('dashboard.barTotal')}</div>
-              <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(total)}</div>
+              <div className="text-[22px] sm:text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(total)}</div>
             </div>
-            <div className="w-px mx-3" />
-            <div className="flex-1">
+            <div className="w-px mx-2 sm:mx-3" />
+            <div className="flex-1 min-w-0">
               <div className="text-slate-500 text-[12px]">{t('dashboard.barApproved')}</div>
-              <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(approved)}</div>
+              <div className="text-[22px] sm:text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(approved)}</div>
             </div>
-            <div className="w-px mx-3" />
-            <div className="flex-1">
+            <div className="w-px mx-2 sm:mx-3" />
+            <div className="flex-1 min-w-0">
               <div className="text-slate-500 text-[12px]">{t('dashboard.barRejected')}</div>
-              <div className="text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(rejected)}</div>
+              <div className="text-[22px] sm:text-[28px] leading-tight font-extrabold text-ink mt-0.5">{num(rejected)}</div>
             </div>
           </div>
           {/* bar row with thin vertical dividers (like Ref) */}
@@ -350,7 +350,7 @@ export function Dashboard() {
         </div>
 
         {/* Sales analytics (bar) */}
-        <div className="card p-6 lg:col-span-2">
+        <div className="card p-5 sm:p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
             <div>
               <div className="font-bold text-ink text-[18px]">{t('dashboard.monthlyTitle')}</div>
