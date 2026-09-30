@@ -392,12 +392,11 @@ export function MemoView() {
               </div>
 
               <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-[13px] min-w-[720px]">
+                <table className="w-full text-[13px] min-w-[620px]">
                   <thead>
                     <tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                       <th className="text-left px-3 py-2 w-8">#</th>
                       <th className="text-left px-3 py-2">{t('items.colItem')}</th>
-                      <th className="text-left px-3 py-2">{t('items.colDetail')}</th>
                       <th className="text-right px-3 py-2">{t('items.colQty')}</th>
                       <th className="text-left px-3 py-2">{t('items.colUnit')}</th>
                       <th className="text-right px-3 py-2">{t('items.colUnitPrice')}</th>
@@ -409,15 +408,17 @@ export function MemoView() {
                   <tbody>
                     {items.map((it: any, i: number) => (
                       <tr key={i} className="border-t border-slate-200/70">
-                        <td className="px-3 py-2 text-slate-400">{i + 1}</td>
-                        <td className="px-3 py-2">{it.name}</td>
-                        <td className="px-3 py-2 text-slate-500">{it.detail || '—'}</td>
-                        <td className="px-3 py-2 text-right">{money(it.qty)}</td>
-                        <td className="px-3 py-2">{it.unit || '—'}</td>
-                        <td className="px-3 py-2 text-right">{money(it.unitPrice)}</td>
-                        <td className="px-3 py-2 text-right text-rose-600">{Number(it.discount) ? '-' + money(it.discount) : '—'}</td>
-                        <td className="px-3 py-2 text-right">{Number(it.taxRate) ? money(it.taxRate) + '%' : '—'}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(it.lineTotal ?? lineNetOf(it))}</td>
+                        <td className="px-3 py-2 text-slate-400 align-top">{i + 1}</td>
+                        <td className="px-3 py-2">
+                          <div className="font-medium text-ink">{it.name}</div>
+                          {it.detail && <div className="text-[12px] text-slate-500 mt-0.5">{it.detail}</div>}
+                        </td>
+                        <td className="px-3 py-2 text-right align-top">{money(it.qty)}</td>
+                        <td className="px-3 py-2 align-top">{it.unit || '—'}</td>
+                        <td className="px-3 py-2 text-right align-top">{money(it.unitPrice)}</td>
+                        <td className="px-3 py-2 text-right text-rose-600 align-top">{Number(it.discount) ? '-' + money(it.discount) : '—'}</td>
+                        <td className="px-3 py-2 text-right align-top">{Number(it.taxRate) ? money(it.taxRate) + '%' : '—'}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap align-top">{money(it.lineTotal ?? lineNetOf(it))}</td>
                       </tr>
                     ))}
                   </tbody>
