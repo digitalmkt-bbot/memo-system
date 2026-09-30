@@ -366,8 +366,33 @@ export function MemoView() {
           {items.length > 0 && (
             <div className="mt-5">
               <div className="font-bold text-ocean-dark text-sm mb-2">{t('items.title')}</div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+
+              {/* Mobile: stacked cards so price + total are always visible without scrolling */}
+              <div className="sm:hidden flex flex-col gap-2.5">
+                {items.map((it: any, i: number) => (
+                  <div key={i} className="rounded-xl border border-slate-200 bg-surface p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-ink text-[13.5px] [overflow-wrap:anywhere]"><span className="text-slate-400 mr-1">{i + 1}.</span>{it.name}</div>
+                        {it.detail && <div className="text-[12px] text-slate-500 mt-0.5 [overflow-wrap:anywhere]">{it.detail}</div>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[10.5px] text-slate-400">{t('items.colAmount')}</div>
+                        <div className="font-extrabold text-ocean-dark text-[14px] whitespace-nowrap">฿{money(it.lineTotal ?? lineNetOf(it))}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-slate-600">
+                      <span><span className="text-slate-400">{t('items.colQty')}:</span> {money(it.qty)} {it.unit || ''}</span>
+                      <span><span className="text-slate-400">{t('items.colUnitPrice')}:</span> ฿{money(it.unitPrice)}</span>
+                      {Number(it.discount) ? <span className="text-rose-600"><span className="text-slate-400">{lang === 'th' ? 'ส่วนลด' : 'Disc.'}:</span> -฿{money(it.discount)}</span> : null}
+                      {Number(it.taxRate) ? <span><span className="text-slate-400">{lang === 'th' ? 'ภาษี' : 'Tax'}:</span> {money(it.taxRate)}%</span> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-[13px] min-w-[720px]">
                   <thead>
                     <tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
                       <th className="text-left px-3 py-2 w-8">#</th>
