@@ -399,9 +399,17 @@ export class MemosService {
       // categories (salary/allowance/fuel/island) are then routed to HR — not the
       // MD — at the approve() step (see HR_APPROVAL_CATS).
       let approver: number | null = null;
-      const firstStatus: 'pending_manager' | 'pending_hrmd' = 'pending_manager';
-      const creator = await tx.user.findUnique({ where: { id: user.id }, select: { managerId: true } });
-      if (creator?.managerId && creator.managerId !== user.id) {
+      let firstStatus: 'pending_manager' | 'pending_hrmd' | 'pending_executive' = 'pending_manager';
+      const creator = await tx.user.findUnique({ where: { id: user.id }, select: { email: true, managerId: true } });
+      // Special routing: these creators' memos skip the department head / HR / MD
+      // chain and go STRAIGHT to the Owner for final sign-off.
+      const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com'];
+      const directToOwner = DIRECT_OWNER_EMAILS.includes((creator?.email || '').toLowerCase());
+      if (directToOwner) {
+        const owner = await tx.user.findFirst({ where: { role: 'owner', active: true }, orderBy: { id: 'asc' }, select: { id: true } });
+        if (owner && owner.id !== user.id) { approver = owner.id; firstStatus = 'pending_executive'; }
+      }
+      if (!approver && creator?.managerId && creator.managerId !== user.id) {
         const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
         if (m) approver = m.id;
       }

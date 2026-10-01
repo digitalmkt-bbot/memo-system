@@ -561,6 +561,34 @@ async function main() {
     }
   }
 
+  // 25) Direct-to-Owner routing retrofit: memos created by contentcreator@loveandaman.com
+  //     now go straight to the Owner. Re-route that creator's still-pending memos
+  //     (not yet approved/rejected) to 'pending_executive' with the Owner as the
+  //     current approver, so the latest unapproved document is sent to the Owner.
+  {
+    const creator = await prisma.user.findUnique({ where: { email: 'contentcreator@loveandaman.com' }, select: { id: true } });
+    const owner = await prisma.user.findFirst({ where: { role: 'owner' as any, active: true }, orderBy: { id: 'asc' }, select: { id: true } });
+    if (creator && owner) {
+      const pending = await prisma.memo.findMany({
+        where: {
+          createdBy: creator.id,
+          status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc'] as any },
+        },
+        select: { id: true },
+      });
+      const ids = pending.map((m) => m.id);
+      if (ids.length) {
+        await prisma.memo.updateMany({
+          where: { id: { in: ids } },
+          data: { status: 'pending_executive' as any, currentApproverId: owner.id, reminderCount: 0, lastReminderAt: null, escalatedAt: null },
+        });
+        console.log(`Re-routed ${ids.length} pending memo(s) from contentcreator@loveandaman.com straight to the Owner`);
+      }
+    } else if (!creator) {
+      console.warn('seed 25: contentcreator@loveandaman.com not found — skipped');
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
