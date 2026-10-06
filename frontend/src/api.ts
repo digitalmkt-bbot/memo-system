@@ -10,6 +10,21 @@ export const setToken = (t: string | null) => {
 };
 export const getToken = () => localStorage.getItem('token');
 
+// Mobile browsers (iOS Safari especially) ignore the <a download> attribute on
+// blob: URLs, so a normal "download" silently does nothing. Detect mobile and,
+// instead of forcing a download, show the file in a browser tab where the user
+// can save/share it.
+export const isMobile = () =>
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+
+// `win` is a tab opened synchronously during the click (so it isn't popup-blocked).
+// Point it at the blob; fall back to navigating the current tab if it was blocked.
+const openBlobOnMobile = (win: Window | null, url: string) => {
+  if (win && !win.closed) { try { win.location.href = url; return; } catch { /* fallthrough */ } }
+  window.location.href = url;
+};
+
 http.interceptors.request.use((cfg) => {
   const t = getToken();
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
@@ -72,8 +87,12 @@ export const api = {
   deleteAttachment: (memoId: number, attId: number) =>
     http.delete(`/memos/${memoId}/attachments/${attId}`).then((r) => r.data),
   downloadAttachment: async (memoId: number, attId: number, filename: string) => {
+    // Open a tab synchronously (within the click gesture) so mobile Safari/Chrome
+    // don't block it after the network await.
+    const win = isMobile() ? window.open('', '_blank') : null;
     const res = await http.get(`/memos/${memoId}/attachments/${attId}`, { responseType: 'blob' });
     const url = URL.createObjectURL(res.data as Blob);
+    if (win || isMobile()) { openBlobOnMobile(win, url); setTimeout(() => URL.revokeObjectURL(url), 60000); return; }
     const a = document.createElement('a');
     a.href = url; a.download = filename; document.body.appendChild(a); a.click();
     a.remove(); URL.revokeObjectURL(url);
@@ -88,9 +107,15 @@ export const api = {
     return URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }));
   },
   openPdf: async (id: number, memoNo?: string) => {
+    // Open a tab synchronously (within the click gesture) BEFORE the network
+    // await, so mobile browsers don't treat the later open as a blocked popup.
+    const win = isMobile() ? window.open('', '_blank') : null;
     const res = await http.get(`/memos/${id}/pdf`, { responseType: 'blob' });
     const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
+    // Mobile Safari/Chrome ignore <a download> on blob: URLs — show the PDF in a
+    // tab instead, where the user can save/share it via the browser viewer.
+    if (win || isMobile()) { openBlobOnMobile(win, url); setTimeout(() => URL.revokeObjectURL(url), 60000); return; }
     const a = document.createElement('a');
     a.href = url;
     a.download = `${(memoNo || 'memo-' + id).replace(/[^\w.-]+/g, '_')}.pdf`;
