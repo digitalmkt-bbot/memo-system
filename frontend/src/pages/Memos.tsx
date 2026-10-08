@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { StatusTag } from '../ui';
 import { useI18n } from '../i18n';
@@ -9,7 +9,11 @@ export function Memos() {
   const nav = useNavigate();
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const [box, setBox] = useState('sent');
+  // Keep the active mailbox (sent / inbox / received / all) in the URL so pressing
+  // "Back" from a memo returns to the SAME list (e.g. รออนุมัติ), not the default.
+  const [sp, setSp] = useSearchParams();
+  const box = sp.get('box') || 'sent';
+  const setBox = (k: string) => setSp(k === 'sent' ? {} : { box: k }, { replace: true });
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +83,7 @@ export function Memos() {
               </thead>
               <tbody>
                 {rows.map((m) => (
-                  <tr key={m.id} onClick={() => nav(`/memos/view/${m.id}`)}
+                  <tr key={m.id} onClick={() => nav(`/memos/view/${m.id}`, { state: { queue: rows.map((r) => r.id), box } })}
                     className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
                     <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{m.memoNo || '—'}</td>
                     <td className="px-4 py-3 text-[13.5px]">{m.subject}</td>

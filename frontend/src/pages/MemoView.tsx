@@ -106,6 +106,16 @@ export function MemoView() {
   if (!data) return <div className="card p-6">{t('common.loading')}</div>;
 
   const { memo, approvals, canApprove } = data;
+  // Browsing queue passed from the list: lets the approver jump to the next/prev
+  // memo without going back, and lets "Back" return to the SAME mailbox.
+  const navState = (location.state as any) || {};
+  const queue: number[] = Array.isArray(navState.queue) ? navState.queue : [];
+  const fromBox: string = navState.box || '';
+  const backTo = fromBox ? `/memos?box=${fromBox}` : null;
+  const qIdx = queue.indexOf(mid);
+  const nextId = qIdx >= 0 && qIdx < queue.length - 1 ? queue[qIdx + 1] : null;
+  const prevId = qIdx > 0 ? queue[qIdx - 1] : null;
+  const goMemo = (tid: number) => nav(`/memos/view/${tid}`, { state: { queue, box: fromBox } });
   // Signature boxes are ROLE-based: each approver appears in the box for THEIR
   // OWN role. So the MD always shows in "กรรมการผู้จัดการ" — never in "ผจก.แผนก".
   const mgrAppr = approvals.find((a: any) => a.approverRole === 'manager' && a.status === 'approve');
@@ -346,8 +356,15 @@ export function MemoView() {
           <h2 className="text-xl font-bold break-words">{memo.subject}</h2>
           <p className="text-gray-500 text-[12.5px]">{memo.memoNo || t('view.draft')} · {memo.companyCode}/{memo.deptCode} · {t('view.from')} {memo.fromName}</p>
         </div>
-        <button className="btn btn-ghost !py-1.5 shrink-0" onClick={() => nav(-1)}>{t('common.back')}</button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button className="btn btn-ghost !py-1.5" onClick={() => (backTo ? nav(backTo) : nav(-1))}>{t('common.back')}</button>
+          {prevId != null && <button className="btn btn-ghost !py-1.5" onClick={() => goMemo(prevId)} title={lang === 'th' ? 'ฉบับก่อนหน้า' : 'Previous'}>← {lang === 'th' ? 'ก่อนหน้า' : 'Prev'}</button>}
+          {nextId != null && <button className="btn btn-primary !py-1.5" onClick={() => goMemo(nextId)} title={lang === 'th' ? 'ดูฉบับถัดไป' : 'Next'}>{lang === 'th' ? 'ถัดไป' : 'Next'} →</button>}
+        </div>
       </div>
+      {queue.length > 1 && qIdx >= 0 && (
+        <div className="-mt-3 mb-4 text-[12.5px] text-slate-400">{lang === 'th' ? `ฉบับที่ ${qIdx + 1} จาก ${queue.length} ในรายการ` : `${qIdx + 1} of ${queue.length} in list`}</div>
+      )}
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5">
         <div className="card p-4 sm:p-6 min-w-0">
