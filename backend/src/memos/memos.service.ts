@@ -682,6 +682,84 @@ export class MemosService {
   }
 
   /**
+   * Executive status override: MD / Owner may change the status of an
+   * already-APPROVED memo — undo the approval (back to the executive step),
+   * reject it, or send it back to the creator as a draft for editing.
+   */
+  async overrideStatus(user: JwtUser, id: number, to: 'pending' | 'rejected' | 'draft', reason?: string) {
+    if (user.role !== 'md' && user.role !== 'owner')
+      throw new ForbiddenException('เฉพาะผู้บริหาร (MD / Owner) เท่านั้นที่แก้สถานะเอกสารที่อนุมัติแล้วได้');
+    if (!['pending', 'rejected', 'draft'].includes(to))
+      throw new BadRequestException('สถานะปลายทางไม่ถูกต้อง');
+    const rsn = (reason || '').trim();
+    if (to === 'rejected' && !rsn)
+      throw new BadRequestException('กรุณาระบุเหตุผลในการเปลี่ยนเป็น "ไม่อนุมัติ"');
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const memo = await tx.memo.findUnique({ where: { id } });
+      if (!memo) throw new NotFoundException('Memo not found');
+      if (memo.status !== 'approved')
+        throw new BadRequestException('แก้สถานะได้เฉพาะเอกสารที่อนุมัติแล้วเท่านั้น');
+
+      if (to === 'pending') {
+        // Undo the approval → back to the executive step. Remove the final
+        // exec-level signatures so MD/Owner can decide again.
+        await tx.approval.deleteMany({ where: { memoId: id, step: { in: ['md', 'owner', 'executive'] as any } } });
+        const md = (await this.pickByRole('md', memo.companyId)) ?? (await this.pickByRole('md'));
+        const owner = (await this.pickByRole('owner', memo.companyId)) ?? (await this.pickByRole('owner'));
+        const primary = md ?? owner ?? user.id;
+        const updated = await tx.memo.update({
+          where: { id },
+          data: {
+            status: 'pending_executive' as any, currentApproverId: primary,
+            closedAt: null, forwardedAt: null, forwardedTo: null, onHold: false,
+            ownerApprovedAt: null, ownerApprovedById: null, ownerApprovedName: null,
+            reminderCount: 0, lastReminderAt: null, escalatedAt: null,
+          } as any,
+          include: INCLUDE,
+        });
+        await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: `status_override_pending_${user.role}`, detail: rsn || 'ยกเลิกการอนุมัติ → กลับไปรออนุมัติ' } });
+        return this.shape(updated);
+      }
+
+      if (to === 'rejected') {
+        await tx.approval.create({ data: { memoId: id, step: 'executive', approvedBy: user.id, status: 'reject', comment: rsn } });
+        const updated = await tx.memo.update({
+          where: { id }, data: { status: 'rejected' as any, currentApproverId: null, closedAt: new Date(), onHold: false, editNote: rsn } as any, include: INCLUDE,
+        });
+        await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: `status_override_rejected_${user.role}`, detail: rsn } });
+        return this.shape(updated);
+      }
+
+      // to === 'draft' — send back to the creator to edit and resubmit. Clear all
+      // approvals and signatures so the document starts the flow fresh.
+      await tx.approval.deleteMany({ where: { memoId: id } });
+      const updated = await tx.memo.update({
+        where: { id },
+        data: {
+          status: 'draft' as any, currentApproverId: null, submittedAt: null,
+          closedAt: null, forwardedAt: null, forwardedTo: null, onHold: false,
+          ownerApprovedAt: null, ownerApprovedById: null, ownerApprovedName: null,
+          reminderCount: 0, lastReminderAt: null, escalatedAt: null,
+          editNote: rsn || (memo as any).editNote,
+        } as any,
+        include: INCLUDE,
+      });
+      await tx.auditLog.create({ data: { memoId: id, userId: user.id, action: `status_override_draft_${user.role}`, detail: rsn || 'ส่งกลับเป็นฉบับร่าง' } });
+      return this.shape(updated);
+    });
+
+    // notify (fire-and-forget)
+    void (async () => {
+      try {
+        if (to === 'rejected') await this.mail.notifyCreator(result, 'rejected', rsn);
+        else if (to === 'pending') await this.mail.notifyExecApprovers(result);
+      } catch { /* noop */ }
+    })();
+    return result;
+  }
+
+  /**
    * Owner (ผู้บริหาร/Owner) — the FINAL sign-off after the MD. This does NOT block
    * closing: a memo is already approved & closeable once the MD signs; the Owner
    * simply adds the final signature afterward. Applies to new memos only

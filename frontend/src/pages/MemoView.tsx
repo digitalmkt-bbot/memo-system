@@ -43,6 +43,7 @@ export function MemoView() {
   const [submitBusy, setSubmitBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
+  const [ovBusy, setOvBusy] = useState(false);
   const [pdfView, setPdfView] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [actRows, setActRows] = useState<any[]>([]);
@@ -266,6 +267,25 @@ export function MemoView() {
     try { await api.ownerApproveMemo(mid); load(); }
     catch (e: any) { alert(e?.response?.data?.message || e.message); }
     finally { setOwnerBusy(false); }
+  };
+  // Executive (MD / Owner) status override on an already-approved memo.
+  const doOverride = async (to: 'pending' | 'rejected' | 'draft') => {
+    let reason: string | undefined;
+    if (to === 'rejected') {
+      const r = window.prompt(lang === 'th' ? 'ระบุเหตุผลที่เปลี่ยนเป็น "ไม่อนุมัติ":' : 'Reason for rejecting:', '');
+      if (r == null || !r.trim()) return;
+      reason = r.trim();
+    } else {
+      const msg = to === 'pending'
+        ? (lang === 'th' ? 'ยกเลิกการอนุมัติ และส่งเอกสารกลับไปที่สถานะ "รออนุมัติ" ?' : 'Undo approval → back to pending?')
+        : (lang === 'th' ? 'ส่งเอกสารกลับเป็น "ฉบับร่าง" ให้ผู้สร้างแก้ไขใหม่ ? (ลายเซ็นอนุมัติเดิมจะถูกล้าง)' : 'Send back to draft for the creator to edit?');
+      if (!window.confirm(msg)) return;
+      if (to === 'draft') { const r = window.prompt(lang === 'th' ? 'หมายเหตุถึงผู้สร้าง (ถ้ามี):' : 'Note to the creator (optional):', ''); reason = (r || '').trim() || undefined; }
+    }
+    setOvBusy(true);
+    try { await api.overrideStatus(mid, to, reason); await load(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    finally { setOvBusy(false); }
   };
   const doCancel = async () => {
     const reason = window.prompt(lang === 'th'
@@ -677,6 +697,17 @@ export function MemoView() {
             {memo.ownerPending && (user?.role === 'owner' || user?.role === 'admin') &&
               <button className="btn btn-primary" onClick={doOwnerApprove} disabled={ownerBusy}>{ownerBusy ? (lang === 'th' ? 'กำลังลงนาม…' : 'Signing…') : (lang === 'th' ? 'อนุมัติ / ลงนาม (Owner)' : 'Approve / sign (Owner)')}</button>}
           </div>
+          {/* Executive status override — MD / Owner can revise an approved memo. */}
+          {(user?.role === 'md' || user?.role === 'owner') && memo.status === 'approved' && (
+            <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/50 p-3.5">
+              <div className="text-[12.5px] font-semibold text-indigo-900 mb-2">{lang === 'th' ? 'แก้ไขสถานะ (ผู้บริหาร)' : 'Change status (executive)'}</div>
+              <div className="flex gap-2.5 flex-wrap">
+                <button className="btn bg-amber-400 text-amber-950 hover:bg-amber-500 !py-1.5 text-[13px]" onClick={() => doOverride('pending')} disabled={ovBusy}>{lang === 'th' ? 'ยกเลิกการอนุมัติ → รออนุมัติ' : 'Undo approval'}</button>
+                <button className="btn btn-red !py-1.5 text-[13px]" onClick={() => doOverride('rejected')} disabled={ovBusy}>{lang === 'th' ? 'เปลี่ยนเป็นไม่อนุมัติ' : 'Change to rejected'}</button>
+                <button className="btn btn-ghost !py-1.5 text-[13px]" onClick={() => doOverride('draft')} disabled={ovBusy}>{lang === 'th' ? 'ส่งกลับเป็นฉบับร่าง' : 'Send back to draft'}</button>
+              </div>
+            </div>
+          )}
           {memo.forwardedAt && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-[12.5px] px-3 py-2">
               ✓ {t('view.forwardedTo')}: {memo.forwardedTo} · {fmtDate(memo.forwardedAt, lang)}

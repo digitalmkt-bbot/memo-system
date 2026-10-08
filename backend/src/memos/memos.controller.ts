@@ -56,6 +56,9 @@ export class MemosController {
   @Post(':id/owner-approve')
   ownerApprove(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.ownerApprove(req.user, id, dto?.comment); }
 
+  @Post(':id/override-status')
+  overrideStatus(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.overrideStatus(req.user, id, (dto?.to || '') as any, dto?.comment); }
+
   @Post(':id/substitute')
   substitute(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SubstituteDto) { return this.svc.saveSubstitute(req.user, id, dto); }
 

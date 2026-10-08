@@ -67,6 +67,7 @@ export const api = {
   settleMemo: (id: number, body: { actualAmount?: number; actualItems?: any[] }) => http.post(`/memos/${id}/settle`, body).then((r) => r.data),
   cancelMemo: (id: number, reason?: string) => http.post(`/memos/${id}/cancel`, { comment: reason }).then((r) => r.data),
   ownerApproveMemo: (id: number, comment?: string) => http.post(`/memos/${id}/owner-approve`, { comment }).then((r) => r.data),
+  overrideStatus: (id: number, to: 'pending' | 'rejected' | 'draft', comment?: string) => http.post(`/memos/${id}/override-status`, { to, comment }).then((r) => r.data),
   announcements: () => http.get('/announcements').then((r) => r.data),
   createAnnouncement: (dto: any) => http.post('/announcements', dto).then((r) => r.data),
   updateAnnouncement: (id: number, dto: any) => http.patch(`/announcements/${id}`, dto).then((r) => r.data),
