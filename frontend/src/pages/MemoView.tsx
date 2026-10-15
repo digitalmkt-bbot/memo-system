@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api, BASE, getToken } from '../api';
 import { StatusTag, fmtDate, fmtDay } from '../ui';
@@ -30,6 +30,7 @@ export function MemoView() {
   const [data, setData] = useState<any>(null);
   const [atts, setAtts] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [itemUploading, setItemUploading] = useState<number | null>(null);
   const [modal, setModal] = useState<'approve' | 'reject' | 'hold' | null>(null);
   const [comment, setComment] = useState('');
   const [nextRole, setNextRole] = useState<string>('hrm');
@@ -363,6 +364,40 @@ export function MemoView() {
     if (!confirm(t('view.delFileConfirm'))) return;
     try { await api.deleteAttachment(mid, attId); await loadAtts(); } catch (e: any) { alert(e.message); }
   };
+  // Per-item attachments
+  const onPickItem = async (file: File | undefined, itemId: number) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert(t('view.fileTooBig')); return; }
+    setItemUploading(itemId);
+    try { await api.uploadAttachment(mid, file, itemId); await loadAtts(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
+    finally { setItemUploading(null); }
+  };
+  const attsForItem = (itemId: number) => atts.filter((a: any) => a.itemId === itemId);
+  const memoAtts = atts.filter((a: any) => !a.itemId); // memo-level only (not tied to a line item)
+  // Chips + "attach" control for a single line item (files, preview, save, delete).
+  const itemFiles = (it: any) => {
+    const files = attsForItem(it.id);
+    if (!canAttach && files.length === 0) return null;
+    return (
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {files.map((a: any) => (
+          <span key={a.id} className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-[11.5px] text-slate-700">
+            📎<span className="max-w-[150px] truncate align-middle" title={a.filename}>{a.filename}</span>
+            {canPreview(a.mimeType) && <button className="text-ocean hover:underline" onClick={() => openPreview(a)}>{lang === 'th' ? 'ดูตัวอย่าง' : 'Preview'}</button>}
+            <button className="text-ocean hover:underline" onClick={() => api.downloadAttachment(mid, a.id, a.filename)}>{lang === 'th' ? 'บันทึก' : 'Save'}</button>
+            {canAttach && <button className="text-rose-500 hover:text-rose-700" title={lang === 'th' ? 'ลบ' : 'Delete'} onClick={() => del(a.id)}>✕</button>}
+          </span>
+        ))}
+        {canAttach && (
+          <label className="inline-flex items-center gap-1 rounded-md border border-dashed border-ocean/50 text-ocean px-2 py-1 text-[11.5px] cursor-pointer hover:bg-ocean-light">
+            {itemUploading === it.id ? (lang === 'th' ? 'กำลังแนบ…' : 'Uploading…') : (lang === 'th' ? '+ แนบไฟล์' : '+ Attach')}
+            <input type="file" className="hidden" disabled={itemUploading === it.id} onChange={(e) => onPickItem(e.target.files?.[0], it.id)} />
+          </label>
+        )}
+      </div>
+    );
+  };
 
   const steps: any[] = [
     { c: '#1a9d5a', t: t('view.stepCreate'), w: memo.creatorName, d: memo.createdAt },
@@ -452,6 +487,7 @@ export function MemoView() {
                       {Number(it.discount) ? <span className="text-rose-600"><span className="text-slate-400">{lang === 'th' ? 'ส่วนลด' : 'Disc.'}:</span> -฿{money(it.discount)}</span> : null}
                       {Number(it.taxRate) ? <span><span className="text-slate-400">{lang === 'th' ? 'ภาษี' : 'Tax'}:</span> {money(it.taxRate)}%</span> : null}
                     </div>
+                    {itemFiles(it)}
                   </div>
                 ))}
               </div>
@@ -471,8 +507,11 @@ export function MemoView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((it: any, i: number) => (
-                      <tr key={i} className={'border-t border-slate-200/70 ' + (isStruck(it) ? 'bg-rose-50/40' : '')}>
+                    {items.map((it: any, i: number) => {
+                      const files = itemFiles(it);
+                      return (
+                      <Fragment key={i}>
+                      <tr className={'border-t border-slate-200/70 ' + (isStruck(it) ? 'bg-rose-50/40' : '')}>
                         <td className="px-3 py-2 text-slate-400 align-top">{i + 1}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-start gap-2">
@@ -490,7 +529,15 @@ export function MemoView() {
                         <td className={'px-3 py-2 text-right align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : '')}>{Number(it.taxRate) ? money(it.taxRate) + '%' : '—'}</td>
                         <td className={'px-3 py-2 text-right font-semibold whitespace-nowrap align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : 'text-ocean-dark')}>{money(it.lineTotal ?? lineNetOf(it))}</td>
                       </tr>
-                    ))}
+                      {files && (
+                        <tr className="bg-slate-50/40">
+                          <td></td>
+                          <td colSpan={7} className="px-3 pb-2.5 pt-0">{files}</td>
+                        </tr>
+                      )}
+                      </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -752,9 +799,9 @@ export function MemoView() {
 
         <div className="flex flex-col gap-4 min-w-0">
           <div className="card p-5 min-w-0">
-            <div className="font-bold text-ocean-dark text-sm mb-3">{t('view.attachments')} ({atts.length})</div>
-            {atts.length === 0 && <p className="text-gray-400 text-[13px] mb-2">{t('view.noAttachments')}</p>}
-            {atts.map((a) => (
+            <div className="font-bold text-ocean-dark text-sm mb-3">{t('view.attachments')} ({memoAtts.length})</div>
+            {memoAtts.length === 0 && <p className="text-gray-400 text-[13px] mb-2">{t('view.noAttachments')}</p>}
+            {memoAtts.map((a) => (
               <div key={a.id} className="flex items-center justify-between py-1.5 border-b border-dashed border-gray-200 last:border-0 text-[13px]">
                 <button className="text-ocean hover:underline text-left truncate mr-2" title={a.filename}
                   onClick={() => api.downloadAttachment(mid, a.id, a.filename)}>

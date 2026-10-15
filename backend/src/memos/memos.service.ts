@@ -951,10 +951,17 @@ export class MemosService {
     return name;
   }
 
-  async addAttachment(user: JwtUser, memoId: number, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }) {
+  async addAttachment(user: JwtUser, memoId: number, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, itemId?: number) {
     if (!file) throw new BadRequestException('No file uploaded');
     const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
     if (!memo) throw new NotFoundException('Memo not found');
+    // If attaching to a specific line item, make sure it belongs to this memo.
+    let linkItemId: number | null = null;
+    if (itemId != null && !Number.isNaN(Number(itemId))) {
+      const it = await this.prisma.memoItem.findFirst({ where: { id: Number(itemId), memoId }, select: { id: true } });
+      if (!it) throw new BadRequestException('ไม่พบรายการที่ต้องการแนบไฟล์');
+      linkItemId = it.id;
+    }
     // Creator or admin may always attach. Additionally, on a REJECTED memo the
     // person who rejected it (or MD/Owner) may attach a file back with their note.
     let allowed = memo.createdBy === user.id || user.role === 'admin';
@@ -970,13 +977,14 @@ export class MemosService {
     const att = await this.prisma.attachment.create({
       data: {
         memoId,
+        itemId: linkItemId,
         filename,
         mimeType: file.mimetype || 'application/octet-stream',
         size: file.size,
         data: file.buffer,
         uploadedBy: user.id,
-      },
-      select: { id: true, filename: true, mimeType: true, size: true, createdAt: true },
+      } as any,
+      select: { id: true, itemId: true, filename: true, mimeType: true, size: true, createdAt: true } as any,
     });
     await this.audit(memoId, user.id, 'attachment_added', filename);
     return att;
@@ -988,7 +996,7 @@ export class MemosService {
     await this.assertCanView(user, memo);
     return this.prisma.attachment.findMany({
       where: { memoId },
-      select: { id: true, filename: true, mimeType: true, size: true, createdAt: true },
+      select: { id: true, itemId: true, filename: true, mimeType: true, size: true, createdAt: true } as any,
       orderBy: { id: 'asc' },
     });
   }

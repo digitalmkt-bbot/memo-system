@@ -72,8 +72,10 @@ export class MemosController {
     @Req() req: any,
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
+    @Body('itemId') itemId?: string,
   ) {
-    return this.svc.addAttachment(req.user, id, file as any);
+    const iid = itemId != null && itemId !== '' ? Number(itemId) : undefined;
+    return this.svc.addAttachment(req.user, id, file as any, iid);
   }
 
   @Get(':id/attachments')

@@ -81,9 +81,10 @@ export const api = {
   byCompany: () => http.get('/dashboard/company').then((r) => r.data),
   byDept: () => http.get('/dashboard/department').then((r) => r.data),
   listAttachments: (memoId: number) => http.get(`/memos/${memoId}/attachments`).then((r) => r.data),
-  uploadAttachment: (memoId: number, file: File) => {
+  uploadAttachment: (memoId: number, file: File, itemId?: number) => {
     const fd = new FormData();
     fd.append('file', file);
+    if (itemId != null) fd.append('itemId', String(itemId));
     return http.post(`/memos/${memoId}/attachments`, fd).then((r) => r.data);
   },
   deleteAttachment: (memoId: number, attId: number) =>

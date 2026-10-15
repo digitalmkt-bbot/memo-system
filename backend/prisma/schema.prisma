@@ -168,6 +168,7 @@ model MemoRunning {
 model Attachment {
   id         Int      @id @default(autoincrement())
   memoId     Int      @map("memo_id")
+  itemId     Int?     @map("item_id")   // attached to a specific line item (null = memo-level)
   filename   String
   mimeType   String   @map("mime_type")
   size       Int
@@ -175,9 +176,11 @@ model Attachment {
   uploadedBy Int      @map("uploaded_by")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  memo Memo      @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  item MemoItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@index([memoId])
+  @@index([itemId])
   @@map("attachments")
 }
 
@@ -206,7 +209,8 @@ model MemoItem {
   taxRate   Float   @default(0) @map("tax_rate")      // per-line tax percentage (%)
   excluded  Boolean @default(false)                   // MD/Owner marked this line "ไม่อนุมัติ" (kept, struck-through, not counted)
 
-  memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  memo        Memo         @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
 
   @@index([memoId])
   @@map("memo_items")
