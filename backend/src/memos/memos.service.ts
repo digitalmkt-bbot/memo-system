@@ -27,21 +27,26 @@ export class MemosService {
       const lineDiscount = Number(it.discount) || 0;
       const lineNet = Math.max(0, gross - lineDiscount);
       const lineTax = lineNet * ((Number(it.taxRate) || 0) / 100);
-      return { ...it, gross, lineDiscount, lineNet, lineTax, lineTotal: lineNet + lineTax };
+      return { ...it, excluded: !!it.excluded, gross, lineDiscount, lineNet, lineTax, lineTotal: lineNet + lineTax };
     });
+    // Items the MD/Owner marked "ไม่อนุมัติ" are kept for display but do NOT count
+    // toward any total. Totals are computed from the approved (non-excluded) lines.
+    const live = items.filter((it: any) => !it.excluded);
+    const hasExcluded = items.some((it: any) => it.excluded);
     // subtotal = net of per-line discounts; then subtract the overall discount.
-    const subTotal = items.reduce((s: number, it: any) => s + it.lineNet, 0);
+    const subTotal = live.reduce((s: number, it: any) => s + it.lineNet, 0);
     const memoDiscount = Number(rest.discount) || 0;
     const totalAmount = Math.max(0, subTotal - memoDiscount);
     // tax = sum of per-line taxes; fall back to a flat 7% VAT for legacy memos
     // (vat=true but no per-line tax) so their historical totals stay correct.
-    const perLineTax = items.reduce((s: number, it: any) => s + it.lineTax, 0);
+    const perLineTax = live.reduce((s: number, it: any) => s + it.lineTax, 0);
     const vatAmount = perLineTax > 0 ? perLineTax : (rest.vat ? totalAmount * 0.07 : 0);
-    const totalDiscount = items.reduce((s: number, it: any) => s + it.lineDiscount, 0) + memoDiscount;
+    const totalDiscount = live.reduce((s: number, it: any) => s + it.lineDiscount, 0) + memoDiscount;
     const grandTotal = totalAmount + vatAmount;
     return {
       ...rest,
       items,
+      hasExcluded,
       subTotal,
       totalAmount,
       totalDiscount,
@@ -468,11 +473,23 @@ export class MemosService {
     return result;
   }
 
-  async approve(user: JwtUser, id: number, comment?: string, next?: string) {
+  async approve(user: JwtUser, id: number, comment?: string, next?: string, excludedItemIds?: number[]) {
     const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
       if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot approve at current step');
+
+      // Per-item approval (MD / Owner only): mark the chosen lines "ไม่อนุมัติ".
+      // They stay on the memo (struck-through) but don't count toward the total.
+      if ((user.role === 'md' || user.role === 'owner') && Array.isArray(excludedItemIds)) {
+        const all = await tx.memoItem.findMany({ where: { memoId: id }, select: { id: true } });
+        const allIds = all.map((x) => x.id);
+        const excl = excludedItemIds.filter((x) => allIds.includes(Number(x))).map(Number);
+        if (allIds.length > 0 && excl.length >= allIds.length)
+          throw new BadRequestException('ไม่สามารถไม่อนุมัติทุกรายการได้ — หากต้องการปฏิเสธทั้งฉบับให้กด "ไม่อนุมัติ"');
+        await tx.memoItem.updateMany({ where: { memoId: id }, data: { excluded: false } as any });
+        if (excl.length) await tx.memoItem.updateMany({ where: { memoId: id, id: { in: excl } }, data: { excluded: true } as any });
+      }
 
       const step = memo.status === 'pending_manager' ? 'manager'
         : memo.status === 'pending_hrmd' ? user.role
@@ -859,6 +876,27 @@ export class MemosService {
   }
 
   /**
+   * Edit / add to the reason on an already-rejected memo. Allowed for the person
+   * who rejected it, or MD / Owner / Admin. (The initial reason is required at
+   * reject time; this lets them revise or expand it afterward.)
+   */
+  async updateRejectReason(user: JwtUser, id: number, comment?: string) {
+    const text = (comment || '').trim();
+    if (!text) throw new BadRequestException('กรุณาระบุเหตุผล');
+    const memo = await this.prisma.memo.findUnique({ where: { id } });
+    if (!memo) throw new NotFoundException('Memo not found');
+    if (memo.status !== 'rejected') throw new BadRequestException('แก้ไขเหตุผลได้เฉพาะเอกสารที่ไม่อนุมัติเท่านั้น');
+    const rej = await this.prisma.approval.findFirst({ where: { memoId: id, status: 'reject' }, orderBy: { approvedAt: 'desc' } });
+    if (!rej) throw new NotFoundException('ไม่พบรายการไม่อนุมัติ');
+    if (rej.approvedBy !== user.id && !['md', 'owner', 'admin'].includes(user.role))
+      throw new ForbiddenException('เฉพาะผู้ที่กดไม่อนุมัติ หรือผู้บริหาร/แอดมิน เท่านั้นที่แก้ไขเหตุผลได้');
+    await this.prisma.approval.update({ where: { id: rej.id }, data: { comment: text } });
+    await this.audit(id, user.id, 'reject_reason_edited', text);
+    const updated = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
+    return this.shape(updated);
+  }
+
+  /**
    * "รอพิจารณา" — the current approver marks the memo as on-hold (under
    * consideration) without deciding yet. It stays assigned to the same
    * approver, who can later approve or reject it.
@@ -917,9 +955,17 @@ export class MemosService {
     if (!file) throw new BadRequestException('No file uploaded');
     const memo = await this.prisma.memo.findUnique({ where: { id: memoId } });
     if (!memo) throw new NotFoundException('Memo not found');
-    if (memo.createdBy !== user.id && user.role !== 'admin') {
-      throw new ForbiddenException('Only the creator can attach files');
+    // Creator or admin may always attach. Additionally, on a REJECTED memo the
+    // person who rejected it (or MD/Owner) may attach a file back with their note.
+    let allowed = memo.createdBy === user.id || user.role === 'admin';
+    if (!allowed && memo.status === 'rejected') {
+      if (user.role === 'md' || user.role === 'owner') allowed = true;
+      else {
+        const rej = await this.prisma.approval.findFirst({ where: { memoId, status: 'reject', approvedBy: user.id } });
+        if (rej) allowed = true;
+      }
     }
+    if (!allowed) throw new ForbiddenException('Only the creator can attach files');
     const filename = this.decodeFilename(file.originalname);
     const att = await this.prisma.attachment.create({
       data: {

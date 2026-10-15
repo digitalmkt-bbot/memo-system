@@ -42,6 +42,8 @@ export class ActionDto {
   @IsOptional() @IsInt() approverId?: number;
   // Executive status override target: 'pending' | 'rejected' | 'draft'
   @IsOptional() @IsString() to?: string;
+  // Per-item approval (MD/Owner): ids of line items marked "ไม่อนุมัติ".
+  @IsOptional() @IsArray() excludedItemIds?: number[];
 }
 
 export class ForwardDto {

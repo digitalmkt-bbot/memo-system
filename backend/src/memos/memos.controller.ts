@@ -36,7 +36,7 @@ export class MemosController {
   submit(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.submit(req.user, id, dto?.approverId); }
 
   @Post(':id/approve')
-  approve(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.approve(req.user, id, dto.comment, dto.next); }
+  approve(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.approve(req.user, id, dto.comment, dto.next, dto.excludedItemIds); }
 
   @Post(':id/reject')
   reject(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.reject(req.user, id, dto.comment); }
@@ -58,6 +58,9 @@ export class MemosController {
 
   @Post(':id/override-status')
   overrideStatus(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.overrideStatus(req.user, id, (dto?.to || '') as any, dto?.comment); }
+
+  @Post(':id/reject-reason')
+  rejectReason(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: ActionDto) { return this.svc.updateRejectReason(req.user, id, dto?.comment); }
 
   @Post(':id/substitute')
   substitute(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: SubstituteDto) { return this.svc.saveSubstitute(req.user, id, dto); }

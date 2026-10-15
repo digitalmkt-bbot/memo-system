@@ -204,6 +204,7 @@ model MemoItem {
   unitPrice Float   @default(0) @map("unit_price")
   discount  Float   @default(0)                      // per-line discount amount (บาท)
   taxRate   Float   @default(0) @map("tax_rate")      // per-line tax percentage (%)
+  excluded  Boolean @default(false)                   // MD/Owner marked this line "ไม่อนุมัติ" (kept, struck-through, not counted)
 
   memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
 

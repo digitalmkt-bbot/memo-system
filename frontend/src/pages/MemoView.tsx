@@ -44,6 +44,8 @@ export function MemoView() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
   const [ovBusy, setOvBusy] = useState(false);
+  const [exclSel, setExclSel] = useState<number[]>([]);
+  const toggleExcl = (itemId: number) => setExclSel((xs) => xs.includes(itemId) ? xs.filter((x) => x !== itemId) : [...xs, itemId]);
   const [pdfView, setPdfView] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [actRows, setActRows] = useState<any[]>([]);
@@ -145,6 +147,9 @@ export function MemoView() {
   const grandTotal = memo.grandTotal ?? (netTotal + vatAmount);
   const isSmall = netTotal <= 1000; // ≤ 1,000: skip MD (manager finalizes or forwards to HRM)
   const isCreator = memo.createdBy === user?.id;
+  // Per-item approval: MD/Owner, at the final (executive) step, on a memo with >1 line.
+  const canItemSelect = (user?.role === 'md' || user?.role === 'owner') && canApprove && isExecStep && items.length > 1;
+  const isStruck = (it: any) => !!it.excluded || exclSel.includes(it.id);
 
   // "ใบรับรองแทนใบเสร็จรับเงิน" — Love Island letterhead, blank fillable table,
   // reference number auto-pulled from this memo. User types the rows themselves.
@@ -247,16 +252,22 @@ export function MemoView() {
   };
 
   const isOpen = !['approved', 'rejected', 'cancelled'].includes(memo.status);
+  // On a REJECTED memo, the person who rejected (or MD/Owner/Admin) can edit the
+  // reason and attach a file back.
+  const rejAppr = [...approvals].reverse().find((a: any) => a.status === 'reject');
+  const canEditReject = memo.status === 'rejected' && !!rejAppr &&
+    (rejAppr.approvedBy === user?.id || ['md', 'owner', 'admin'].includes(user?.role || ''));
   // creator may attach files while in progress AND after final approval/close
-  // (e.g. tax invoice / receipt / bill for the approved memo)
-  const canAttach = isCreator && (isOpen || memo.status === 'approved');
+  // (e.g. tax invoice / receipt / bill for the approved memo); on a rejected memo
+  // the rejecter / MD / Owner / Admin may attach a supporting file back.
+  const canAttach = (isCreator && (isOpen || memo.status === 'approved')) || canEditReject;
 
   const act = async () => {
     try {
-      if (modal === 'approve') await api.approveMemo(mid, comment, memo.status === 'pending_manager' ? nextRole : undefined);
+      if (modal === 'approve') await api.approveMemo(mid, comment, memo.status === 'pending_manager' ? nextRole : undefined, canItemSelect ? exclSel : undefined);
       else if (modal === 'reject') { if (!comment.trim()) return alert(t('view.reasonRequired')); await api.rejectMemo(mid, comment); }
       else if (modal === 'hold') await api.holdMemo(mid, comment);
-      setModal(null); setComment(''); load();
+      setModal(null); setComment(''); setExclSel([]); load();
     } catch (e: any) { alert(e.message); }
   };
   const doOwnerApprove = async () => {
@@ -286,6 +297,13 @@ export function MemoView() {
     try { await api.overrideStatus(mid, to, reason); await load(); }
     catch (e: any) { alert(e?.response?.data?.message || e.message); }
     finally { setOvBusy(false); }
+  };
+  // Edit / add to the rejection reason after it was submitted.
+  const doEditReject = async () => {
+    const r = window.prompt(lang === 'th' ? 'แก้ไข / เพิ่มเติมเหตุผลการไม่อนุมัติ:' : 'Edit the rejection reason:', rejAppr?.comment || '');
+    if (r == null || !r.trim()) return;
+    try { await api.updateRejectReason(mid, r.trim()); await load(); }
+    catch (e: any) { alert(e?.response?.data?.message || e.message); }
   };
   const doCancel = async () => {
     const reason = window.prompt(lang === 'th'
@@ -403,19 +421,29 @@ export function MemoView() {
           {items.length > 0 && (
             <div className="mt-5">
               <div className="font-bold text-ocean-dark text-sm mb-2">{t('items.title')}</div>
+              {canItemSelect && (
+                <div className="mb-2.5 rounded-lg border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-[12.5px] text-indigo-900">
+                  {lang === 'th'
+                    ? `✔ ติ๊กช่องหน้ารายการที่ "ไม่อนุมัติ" (รายการที่ติ๊กจะถูกขีดทิ้งและไม่คิดยอด) จากนั้นกด "อนุมัติ"${exclSel.length ? ` · เลือกไม่อนุมัติ ${exclSel.length} รายการ` : ''}`
+                    : `Tick the items to reject, then press Approve.${exclSel.length ? ` (${exclSel.length} selected)` : ''}`}
+                </div>
+              )}
 
               {/* Mobile: stacked cards so price + total are always visible without scrolling */}
               <div className="sm:hidden flex flex-col gap-2.5">
                 {items.map((it: any, i: number) => (
-                  <div key={i} className="rounded-xl border border-slate-200 bg-surface p-3">
+                  <div key={i} className={'rounded-xl border p-3 ' + (isStruck(it) ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-surface')}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-ink text-[13.5px] [overflow-wrap:anywhere]"><span className="text-slate-400 mr-1">{i + 1}.</span>{it.name}</div>
-                        {it.detail && <div className="text-[12px] text-slate-500 mt-0.5 [overflow-wrap:anywhere]">{it.detail}</div>}
+                      <div className="min-w-0 flex items-start gap-2">
+                        {canItemSelect && <input type="checkbox" className="mt-0.5 h-4 w-4 accent-rose-500 shrink-0" checked={exclSel.includes(it.id)} onChange={() => toggleExcl(it.id)} title={lang === 'th' ? 'ไม่อนุมัติรายการนี้' : 'Reject this item'} />}
+                        <div className="min-w-0">
+                          <div className={'font-semibold text-[13.5px] [overflow-wrap:anywhere] ' + (isStruck(it) ? 'text-slate-400 line-through' : 'text-ink')}><span className="text-slate-400 mr-1">{i + 1}.</span>{it.name}{it.excluded && <span className="ml-1.5 align-middle rounded bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 no-underline">ไม่อนุมัติ</span>}</div>
+                          {it.detail && <div className={'text-[12px] mt-0.5 [overflow-wrap:anywhere] ' + (isStruck(it) ? 'text-slate-300 line-through' : 'text-slate-500')}>{it.detail}</div>}
+                        </div>
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-[10.5px] text-slate-400">{t('items.colAmount')}</div>
-                        <div className="font-extrabold text-ocean-dark text-[14px] whitespace-nowrap">฿{money(it.lineTotal ?? lineNetOf(it))}</div>
+                        <div className={'font-extrabold text-[14px] whitespace-nowrap ' + (isStruck(it) ? 'text-slate-400 line-through' : 'text-ocean-dark')}>฿{money(it.lineTotal ?? lineNetOf(it))}</div>
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-slate-600">
@@ -444,18 +472,23 @@ export function MemoView() {
                   </thead>
                   <tbody>
                     {items.map((it: any, i: number) => (
-                      <tr key={i} className="border-t border-slate-200/70">
+                      <tr key={i} className={'border-t border-slate-200/70 ' + (isStruck(it) ? 'bg-rose-50/40' : '')}>
                         <td className="px-3 py-2 text-slate-400 align-top">{i + 1}</td>
                         <td className="px-3 py-2">
-                          <div className="font-medium text-ink">{it.name}</div>
-                          {it.detail && <div className="text-[12px] text-slate-500 mt-0.5">{it.detail}</div>}
+                          <div className="flex items-start gap-2">
+                            {canItemSelect && <input type="checkbox" className="mt-0.5 h-4 w-4 accent-rose-500 shrink-0" checked={exclSel.includes(it.id)} onChange={() => toggleExcl(it.id)} title={lang === 'th' ? 'ไม่อนุมัติรายการนี้' : 'Reject this item'} />}
+                            <div className="min-w-0">
+                              <div className={'font-medium ' + (isStruck(it) ? 'text-slate-400 line-through' : 'text-ink')}>{it.name}{it.excluded && <span className="ml-1.5 align-middle rounded bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 no-underline">ไม่อนุมัติ</span>}</div>
+                              {it.detail && <div className={'text-[12px] mt-0.5 ' + (isStruck(it) ? 'text-slate-300 line-through' : 'text-slate-500')}>{it.detail}</div>}
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-3 py-2 text-right align-top">{money(it.qty)}</td>
-                        <td className="px-3 py-2 align-top">{it.unit || '—'}</td>
-                        <td className="px-3 py-2 text-right align-top">{money(it.unitPrice)}</td>
-                        <td className="px-3 py-2 text-right text-rose-600 align-top">{Number(it.discount) ? '-' + money(it.discount) : '—'}</td>
-                        <td className="px-3 py-2 text-right align-top">{Number(it.taxRate) ? money(it.taxRate) + '%' : '—'}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-ocean-dark whitespace-nowrap align-top">{money(it.lineTotal ?? lineNetOf(it))}</td>
+                        <td className={'px-3 py-2 text-right align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : '')}>{money(it.qty)}</td>
+                        <td className={'px-3 py-2 align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : '')}>{it.unit || '—'}</td>
+                        <td className={'px-3 py-2 text-right align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : '')}>{money(it.unitPrice)}</td>
+                        <td className={'px-3 py-2 text-right align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : 'text-rose-600')}>{Number(it.discount) ? '-' + money(it.discount) : '—'}</td>
+                        <td className={'px-3 py-2 text-right align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : '')}>{Number(it.taxRate) ? money(it.taxRate) + '%' : '—'}</td>
+                        <td className={'px-3 py-2 text-right font-semibold whitespace-nowrap align-top ' + (isStruck(it) ? 'text-slate-400 line-through' : 'text-ocean-dark')}>{money(it.lineTotal ?? lineNetOf(it))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -696,6 +729,8 @@ export function MemoView() {
               <button className="btn btn-red" onClick={doCancel} disabled={cancelBusy}>{cancelBusy ? (lang === 'th' ? 'กำลังยกเลิก…' : 'Cancelling…') : (lang === 'th' ? 'ยกเลิก Memo' : 'Cancel memo')}</button>}
             {memo.ownerPending && (user?.role === 'owner' || user?.role === 'admin') &&
               <button className="btn btn-primary" onClick={doOwnerApprove} disabled={ownerBusy}>{ownerBusy ? (lang === 'th' ? 'กำลังลงนาม…' : 'Signing…') : (lang === 'th' ? 'อนุมัติ / ลงนาม (Owner)' : 'Approve / sign (Owner)')}</button>}
+            {canEditReject &&
+              <button className="btn btn-ghost" onClick={doEditReject}>{lang === 'th' ? 'แก้ไข/เพิ่มเหตุผลไม่อนุมัติ' : 'Edit rejection reason'}</button>}
           </div>
           {/* Executive status override — MD / Owner can revise an approved memo. */}
           {(user?.role === 'md' || user?.role === 'owner') && memo.status === 'approved' && (
@@ -736,6 +771,9 @@ export function MemoView() {
               <div className="mt-3">
                 {memo.status === 'approved' && (
                   <p className="text-emerald-600 text-[11.5px] mb-1.5">{t('view.attachAfterClose')}</p>
+                )}
+                {canEditReject && (
+                  <p className="text-rose-600 text-[11.5px] mb-1.5">{lang === 'th' ? 'แนบไฟล์ประกอบการไม่อนุมัติ (ส่งกลับให้ผู้สร้าง)' : 'Attach a supporting file for the rejection'}</p>
                 )}
                 <input ref={fileRef} type="file" onChange={onPick} disabled={uploading} className="text-[12px]" />
                 {uploading && <p className="text-gray-400 text-xs mt-1">{t('view.uploading')}</p>}

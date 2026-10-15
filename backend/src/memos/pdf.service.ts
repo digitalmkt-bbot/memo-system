@@ -168,9 +168,12 @@ export class PdfService {
     const catMap: Record<string, string> = { general: 'ขออนุมัติทั่วไป', budget: 'ขออนุมัติงบประมาณ', advance: 'เบิกเงินสำรองจ่าย', procurement: 'ขอจัดซื้อ/จัดจ้าง', salary: 'เงินเดือน/ค่าจ้าง', allowance: 'เบี้ยเลี้ยง', fuel: 'ค่าน้ำมัน', island: 'ค่าลงเกาะ', info: 'แจ้งเพื่อทราบ', other: 'อื่นๆ' };
     const catLabel = memo.category ? ((catMap[memo.category] || memo.category) + (memo.category === 'other' && memo.categoryNote ? ` (${memo.categoryNote})` : '')) : '-';
     const items = Array.isArray(memo.items) ? memo.items : [];
-    const totalAmount = items.reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-    const vatAmount = memo.vat ? totalAmount * 0.07 : 0;
-    const grandTotal = totalAmount + vatAmount;
+    // Excluded (ไม่อนุมัติ) lines are kept for display but never counted.
+    const totalAmount = memo.totalAmount != null
+      ? Number(memo.totalAmount)
+      : items.filter((it: any) => !it.excluded).reduce((sum: number, it: any) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+    const vatAmount = memo.vatAmount != null ? Number(memo.vatAmount) : (memo.vat ? totalAmount * 0.07 : 0);
+    const grandTotal = memo.grandTotal != null ? Number(memo.grandTotal) : (totalAmount + vatAmount);
     const itemsBlock = items.length
       ? `<div class="items-label">รายการสินค้า / บริการ (Items)</div>
         <table class="items">
@@ -179,14 +182,14 @@ export class PdfService {
             <th class="num" style="width:60px">จำนวน</th><th class="c" style="width:60px">หน่วย</th>
             <th class="num" style="width:90px">ราคา/หน่วย</th><th class="num" style="width:100px">รวม</th>
           </tr></thead>
-          <tbody>${items.map((it: any, i: number) => `<tr>
+          <tbody>${items.map((it: any, i: number) => `<tr${it.excluded ? ' class="excl"' : ''}>
             <td class="c">${i + 1}</td>
-            <td>${this.esc(it.name)}</td>
+            <td>${this.esc(it.name)}${it.excluded ? ' <span class="xtag">ไม่อนุมัติ</span>' : ''}</td>
             <td>${this.esc(it.detail || '')}</td>
             <td class="num">${this.fmtMoney(it.qty)}</td>
             <td class="c">${this.esc(it.unit || '')}</td>
             <td class="num">${this.fmtMoney(it.unitPrice)}</td>
-            <td class="num">${this.fmtMoney((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td>
+            <td class="num">${it.excluded ? '—' : this.fmtMoney((Number(it.qty) || 0) * (Number(it.unitPrice) || 0))}</td>
           </tr>`).join('')}</tbody>
         </table>
         <div class="total-box">
@@ -233,6 +236,8 @@ export class PdfService {
       table.items th{background:#f6f3ec;color:#5a6b78;font-weight:700;text-align:left}
       table.items td.num,table.items th.num{text-align:right}
       table.items td.c,table.items th.c{text-align:center}
+      table.items tr.excl td{color:#9aa5b1;text-decoration:line-through;background:#faf2f2}
+      .xtag{display:inline-block;font-size:9.5px;font-weight:700;color:#b42318;background:#fde8e6;border-radius:4px;padding:1px 5px;margin-left:4px;text-decoration:none;vertical-align:middle}
       .total-box{margin-top:8px;text-align:right;font-size:13px}
       .total-box .amt{font-size:18px;font-weight:800;color:#0a6e7c}
       .total-box .note{font-size:11px;color:#888}
@@ -299,13 +304,13 @@ export class PdfService {
     const vat = memo.vatAmount != null ? Number(memo.vatAmount) : (memo.vat ? total * 0.07 : 0);
     const grand = memo.grandTotal != null ? Number(memo.grandTotal) : (total + vat);
     const rows = items.length
-      ? items.map((it: any, i: number) => `<tr>
-          <td class="c">${i + 1}</td><td>${this.esc(it.name)}</td><td>${this.esc(it.detail || '')}</td>
+      ? items.map((it: any, i: number) => `<tr${it.excluded ? ' class="excl"' : ''}>
+          <td class="c">${i + 1}</td><td>${this.esc(it.name)}${it.excluded ? ' <span class="xtag">ไม่อนุมัติ</span>' : ''}</td><td>${this.esc(it.detail || '')}</td>
           <td class="num">${this.fmtMoney(it.qty)}</td><td class="c">${this.esc(it.unit || '')}</td>
           <td class="num">${this.fmtMoney(it.unitPrice)}</td>
           <td class="num">${Number(it.discount) ? '-' + this.fmtMoney(it.discount) : '-'}</td>
           <td class="num">${Number(it.taxRate) ? this.fmtMoney(it.taxRate) + '%' : '-'}</td>
-          <td class="num">${this.fmtMoney(lineTotOf(it))}</td></tr>`).join('')
+          <td class="num">${it.excluded ? '—' : this.fmtMoney(lineTotOf(it))}</td></tr>`).join('')
       : `<tr><td class="c">1</td><td colspan="8" style="color:#9aa5b1">—</td></tr>`;
     const totalsBlock = items.length ? `<div class="tot">
         <div>ยอดรวม: ฿${this.fmtMoney(subTotal)}</div>
@@ -341,6 +346,8 @@ export class PdfService {
       table.it tr:nth-child(even) td{background:#f5f7f9}
       table.it td.num,table.it th.num{text-align:right}
       table.it td.c,table.it th.c{text-align:center}
+      table.it tr.excl td{color:#9aa5b1;text-decoration:line-through;background:#faf2f2}
+      .xtag{display:inline-block;font-size:9.5px;font-weight:700;color:#b42318;background:#fde8e6;border-radius:4px;padding:1px 5px;margin-left:4px;text-decoration:none;vertical-align:middle}
       .tot{margin-top:8px;text-align:right;font-size:13px}
       .tot .amt{font-size:18px;font-weight:800;color:#17263f}
       .detail{background:#eef1f4;border-radius:6px;padding:12px;white-space:pre-wrap;line-height:1.7;min-height:120px}

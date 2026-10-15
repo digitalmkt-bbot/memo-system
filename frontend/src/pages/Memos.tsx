@@ -12,8 +12,12 @@ export function Memos() {
   // Keep the active mailbox (sent / inbox / received / all) in the URL so pressing
   // "Back" from a memo returns to the SAME list (e.g. รออนุมัติ), not the default.
   const [sp, setSp] = useSearchParams();
-  const box = sp.get('box') || 'sent';
-  const setBox = (k: string) => setSp(k === 'sent' ? {} : { box: k }, { replace: true });
+  // The Owner is a pure approver (doesn't create memos), so hide the "ของฉัน"
+  // (sent) mailbox for them and default their view to "รออนุมัติ" (inbox).
+  const isOwner = user?.role === 'owner';
+  const defaultBox = isOwner ? 'inbox' : 'sent';
+  const box = sp.get('box') || defaultBox;
+  const setBox = (k: string) => setSp(k === defaultBox ? {} : { box: k }, { replace: true });
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +25,8 @@ export function Memos() {
   const [companyId, setCompanyId] = useState('');
   const canFilterCompany = ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user?.role || '');
 
-  const BOXES: [string, string][] = [['sent', t('memos.boxSent')], ['inbox', t('memos.boxInbox')], ['received', t('memos.boxReceived')], ['all', t('memos.boxAll')]];
+  const ALL_BOXES: [string, string][] = [['sent', t('memos.boxSent')], ['inbox', t('memos.boxInbox')], ['received', t('memos.boxReceived')], ['all', t('memos.boxAll')]];
+  const BOXES = isOwner ? ALL_BOXES.filter(([k]) => k !== 'sent') : ALL_BOXES;
 
   const load = () => {
     setLoading(true);
