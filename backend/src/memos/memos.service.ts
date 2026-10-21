@@ -715,13 +715,20 @@ export class MemosService {
     const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
-      if (memo.status !== 'approved')
-        throw new BadRequestException('แก้สถานะได้เฉพาะเอกสารที่อนุมัติแล้วเท่านั้น');
+      // Revive (→ pending) and send-back (→ draft) also work on a REJECTED memo,
+      // so a memo rejected by mistake can be brought back. Changing to 'rejected'
+      // only makes sense from an approved memo.
+      const allowedFrom = to === 'rejected' ? ['approved'] : ['approved', 'rejected'];
+      if (!allowedFrom.includes(memo.status as any))
+        throw new BadRequestException(to === 'rejected'
+          ? 'เปลี่ยนเป็นไม่อนุมัติได้เฉพาะเอกสารที่อนุมัติแล้ว'
+          : 'นำกลับมาพิจารณาใหม่ได้เฉพาะเอกสารที่อนุมัติแล้วหรือไม่อนุมัติเท่านั้น');
 
       if (to === 'pending') {
-        // Undo the approval → back to the executive step. Remove the final
-        // exec-level signatures so MD/Owner can decide again.
-        await tx.approval.deleteMany({ where: { memoId: id, step: { in: ['md', 'owner', 'executive'] as any } } });
+        // Undo the approval / revive a rejection → back to the executive step.
+        // Remove the final exec-level signatures and any rejection record so
+        // MD/Owner can decide again from a clean slate.
+        await tx.approval.deleteMany({ where: { memoId: id, OR: [{ step: { in: ['md', 'owner', 'executive'] as any } }, { status: 'reject' }] } });
         const md = (await this.pickByRole('md', memo.companyId)) ?? (await this.pickByRole('md'));
         const owner = (await this.pickByRole('owner', memo.companyId)) ?? (await this.pickByRole('owner'));
         const primary = md ?? owner ?? user.id;

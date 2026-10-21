@@ -149,7 +149,10 @@ export function MemoView() {
   const isSmall = netTotal <= 1000; // ≤ 1,000: skip MD (manager finalizes or forwards to HRM)
   const isCreator = memo.createdBy === user?.id;
   // Per-item approval: MD/Owner, at the final (executive) step, on a memo with >1 line.
-  const canItemSelect = (user?.role === 'md' || user?.role === 'owner') && canApprove && isExecStep && items.length > 1;
+  // MD/Owner are top authority and finalize at ANY step, so per-item selection is
+  // available whenever they can approve a multi-line memo — including HR-route
+  // categories (ค่าลงเกาะ ฯลฯ) that never reach the executive step.
+  const canItemSelect = (user?.role === 'md' || user?.role === 'owner') && canApprove && isPending && items.length > 1;
   const isStruck = (it: any) => !!it.excluded || exclSel.includes(it.id);
 
   // "ใบรับรองแทนใบเสร็จรับเงิน" — Love Island letterhead, blank fillable table,
@@ -289,7 +292,9 @@ export function MemoView() {
       reason = r.trim();
     } else {
       const msg = to === 'pending'
-        ? (lang === 'th' ? 'ยกเลิกการอนุมัติ และส่งเอกสารกลับไปที่สถานะ "รออนุมัติ" ?' : 'Undo approval → back to pending?')
+        ? (memo.status === 'rejected'
+            ? (lang === 'th' ? 'นำเอกสารที่ไม่อนุมัติกลับมาพิจารณาใหม่ (สถานะ "รออนุมัติ") ? ระบบจะล้างการปฏิเสธเดิมออก' : 'Reopen the rejected memo → pending? The rejection will be cleared.')
+            : (lang === 'th' ? 'ยกเลิกการอนุมัติ และส่งเอกสารกลับไปที่สถานะ "รออนุมัติ" ?' : 'Undo approval → back to pending?'))
         : (lang === 'th' ? 'ส่งเอกสารกลับเป็น "ฉบับร่าง" ให้ผู้สร้างแก้ไขใหม่ ? (ลายเซ็นอนุมัติเดิมจะถูกล้าง)' : 'Send back to draft for the creator to edit?');
       if (!window.confirm(msg)) return;
       if (to === 'draft') { const r = window.prompt(lang === 'th' ? 'หมายเหตุถึงผู้สร้าง (ถ้ามี):' : 'Note to the creator (optional):', ''); reason = (r || '').trim() || undefined; }
@@ -778,6 +783,8 @@ export function MemoView() {
               <button className="btn btn-primary" onClick={doOwnerApprove} disabled={ownerBusy}>{ownerBusy ? (lang === 'th' ? 'กำลังลงนาม…' : 'Signing…') : (lang === 'th' ? 'อนุมัติ / ลงนาม (Owner)' : 'Approve / sign (Owner)')}</button>}
             {canEditReject &&
               <button className="btn btn-ghost" onClick={doEditReject}>{lang === 'th' ? 'แก้ไข/เพิ่มเหตุผลไม่อนุมัติ' : 'Edit rejection reason'}</button>}
+            {memo.status === 'rejected' && (user?.role === 'md' || user?.role === 'owner') &&
+              <button className="btn bg-amber-400 text-amber-950 hover:bg-amber-500" onClick={() => doOverride('pending')} disabled={ovBusy}>{lang === 'th' ? 'นำกลับมาพิจารณาใหม่ (รออนุมัติ)' : 'Reopen → pending'}</button>}
           </div>
           {/* Executive status override — MD / Owner can revise an approved memo. */}
           {(user?.role === 'md' || user?.role === 'owner') && memo.status === 'approved' && (
