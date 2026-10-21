@@ -23,7 +23,25 @@ export function Memos() {
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState('');
+  // Client-side filters: by status, and by created-date range.
+  const [status, setStatus] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const canFilterCompany = ['admin', 'executive', 'hrm', 'md', 'fc'].includes(user?.role || '');
+
+  const PENDING = ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'];
+  const filtered = rows.filter((m) => {
+    if (status) {
+      if (status === 'pending') { if (!PENDING.includes(m.status)) return false; }
+      else if (m.status !== status) return false;
+    }
+    if (dateFrom || dateTo) {
+      const ts = new Date(m.createdAt).getTime();
+      if (dateFrom) { const f = new Date(dateFrom); f.setHours(0, 0, 0, 0); if (ts < f.getTime()) return false; }
+      if (dateTo) { const tt = new Date(dateTo); tt.setHours(23, 59, 59, 999); if (ts > tt.getTime()) return false; }
+    }
+    return true;
+  });
 
   const ALL_BOXES: [string, string][] = [['sent', t('memos.boxSent')], ['inbox', t('memos.boxInbox')], ['received', t('memos.boxReceived')], ['all', t('memos.boxAll')]];
   const BOXES = isOwner ? ALL_BOXES.filter(([k]) => k !== 'sent') : ALL_BOXES;
@@ -72,9 +90,32 @@ export function Memos() {
         </form>
       </div>
 
+      {/* Filters: by status and by created-date range */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <select className="input !w-auto !py-1.5 text-[13px]" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">{lang === 'th' ? 'ทุกสถานะ' : 'All statuses'}</option>
+          <option value="pending">{lang === 'th' ? 'รออนุมัติ' : 'Pending'}</option>
+          <option value="approved">{lang === 'th' ? 'อนุมัติแล้ว' : 'Approved'}</option>
+          <option value="rejected">{lang === 'th' ? 'ไม่อนุมัติ' : 'Rejected'}</option>
+          <option value="cancelled">{lang === 'th' ? 'ยกเลิก' : 'Cancelled'}</option>
+          <option value="draft">{lang === 'th' ? 'ฉบับร่าง' : 'Draft'}</option>
+        </select>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[12px] text-slate-400">{lang === 'th' ? 'วันที่' : 'Date'}</span>
+          <input type="date" className="input !w-auto !py-1.5 text-[13px]" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} />
+          <span className="text-slate-400 text-[12px]">–</span>
+          <input type="date" className="input !w-auto !py-1.5 text-[13px]" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        {(status || dateFrom || dateTo) && (
+          <button className="btn btn-ghost !py-1.5 text-[13px]" onClick={() => { setStatus(''); setDateFrom(''); setDateTo(''); }}>{lang === 'th' ? 'ล้างตัวกรอง' : 'Clear'}</button>
+        )}
+        <div className="flex-1 min-w-0" />
+        <span className="text-[12px] text-slate-400">{lang === 'th' ? `พบ ${filtered.length} รายการ` : `${filtered.length} memos`}</span>
+      </div>
+
       <div className="card overflow-x-auto">
         {loading ? <div className="p-10 text-center text-gray-400">{t('common.loading')}</div> :
-          rows.length === 0 ? <div className="p-10 text-center text-gray-400">{t('memos.noMemos')}</div> : (
+          filtered.length === 0 ? <div className="p-10 text-center text-gray-400">{t('memos.noMemos')}</div> : (
             <table className="w-full min-w-[780px]">
               <thead>
                 <tr className="bg-sand text-slate-500 text-[11px] uppercase tracking-wide">
@@ -87,8 +128,8 @@ export function Memos() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((m) => (
-                  <tr key={m.id} onClick={() => nav(`/memos/view/${m.id}`, { state: { queue: rows.map((r) => r.id), box } })}
+                {filtered.map((m) => (
+                  <tr key={m.id} onClick={() => nav(`/memos/view/${m.id}`, { state: { queue: filtered.map((r) => r.id), box } })}
                     className="border-t border-slate-200/70 hover:bg-ocean-light cursor-pointer">
                     <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{m.memoNo || '—'}</td>
                     <td className="px-4 py-3 text-[13.5px]">{m.subject}</td>
