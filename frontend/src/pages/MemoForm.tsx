@@ -78,6 +78,9 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
   const addRow = () => setItems((xs) => [...xs, { name: '', detail: '', qty: 1, unit: '', unitPrice: '', discount: '', taxRate: '' }]);
   const removeRow = (i: number) => setItems((xs) => xs.filter((_, idx) => idx !== i));
   const setCell = (i: number, k: keyof MemoItemRow, v: any) => setItems((xs) => xs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
+  // A file the user attaches to a line item while creating/editing — held in
+  // memory on the row, then uploaded to that item right after the memo is saved.
+  const setItemFile = (i: number, f?: File) => setItems((xs) => xs.map((r, idx) => idx === i ? ({ ...r, _file: f } as any) : r));
   const subtotal = items.reduce((s, r) => s + lineNet(r), 0);           // net of per-line discounts
   const memoDiscount = Number(discount) || 0;
   const netTotal = Math.max(0, subtotal - memoDiscount);
@@ -106,6 +109,23 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     if (f.size > 10 * 1024 * 1024) { alert(t('form.fileTooBig')); return; }
     try { await api.uploadAttachment(id, f); } catch (e: any) { alert(t('form.attachFailed') + e.message); }
   };
+  // Upload per-line-item files after save. Match each held file to the saved item
+  // by its order among named rows (same order the server stores them in).
+  const uploadItemFiles = async (id: number) => {
+    const named = items.filter((r) => String(r.name || '').trim());
+    if (!named.some((r) => (r as any)._file)) return;
+    try {
+      const data = await api.memo(id);
+      const created = data?.memo?.items || [];
+      for (let i = 0; i < named.length; i++) {
+        const f = (named[i] as any)._file as File | undefined;
+        const itemId = created[i]?.id;
+        if (f && itemId && f.size <= 10 * 1024 * 1024) {
+          try { await api.uploadAttachment(id, f, itemId); } catch { /* noop */ }
+        }
+      }
+    } catch { /* noop */ }
+  };
   const saveDraft = handleSubmit(async (v) => {
     if (noteRequired && !editNote.trim()) {
       alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — กรุณากรอก "หมายเหตุการแก้ไข" (เอกสารจะถูกส่งขออนุมัติใหม่)' : 'Total increased — an edit note is required.');
@@ -115,6 +135,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
     try {
       const id = memoId ? (await api.updateMemo(memoId, build(v)), memoId) : (await api.createMemo(build(v))).id;
       await uploadIfAny(id);
+      await uploadItemFiles(id);
       nav(memoId ? `/memos/view/${memoId}` : '/memos');
     } catch (e: any) {
       const m = e?.response?.data?.message || e?.message;
@@ -133,6 +154,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       if (id) await api.updateMemo(id, build(v));
       else { const m = await api.createMemo(build(v)); id = m.id; }
       await uploadIfAny(id!);
+      await uploadItemFiles(id!);
       try {
         await api.submitMemo(id!);
         nav(`/memos/view/${id}`);
@@ -157,7 +179,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
       return;
     }
     setBusy(true);
-    try { await api.updateMemo(memoId!, build(v)); await uploadIfAny(memoId!); nav(`/memos/view/${memoId}`); }
+    try { await api.updateMemo(memoId!, build(v)); await uploadIfAny(memoId!); await uploadItemFiles(memoId!); nav(`/memos/view/${memoId}`); }
     catch (e: any) {
       const m = e?.response?.data?.message || e?.message;
       if (m === 'EDIT_NOTE_REQUIRED_INCREASE') alert(lang === 'th' ? 'ยอดรวมเพิ่มขึ้น — ต้องกรอกหมายเหตุการแก้ไข' : 'Total increased — edit note required.');
@@ -273,7 +295,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
           <div className="font-bold text-ocean-dark text-sm mb-3">{t('items.title')}</div>
           <datalist id="memo-units">{UNITS.map((u) => <option key={u} value={u} />)}</datalist>
           <div className="overflow-x-auto -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-            <table className="w-full text-[13px] min-w-[860px]">
+            <table className="w-full text-[13px] min-w-[1000px]">
               <thead>
                 <tr className="text-slate-500 text-[11px] uppercase tracking-wide">
                   <th className="text-left font-semibold px-2 py-2 w-8">#</th>
@@ -285,6 +307,7 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                   <th className="text-right font-semibold px-2 py-2 w-20">{lang === 'th' ? 'ส่วนลด' : 'Disc.'}</th>
                   <th className="text-right font-semibold px-2 py-2 w-16">{lang === 'th' ? 'ภาษี %' : 'Tax %'}</th>
                   <th className="text-right font-semibold px-2 py-2 w-28">{t('items.colAmount')}</th>
+                  <th className="text-left font-semibold px-2 py-2 w-32">{lang === 'th' ? 'ไฟล์แนบ' : 'File'}</th>
                   <th className="w-8"></th>
                 </tr>
               </thead>
@@ -302,10 +325,23 @@ export function MemoForm({ initial, memoId, status }: { initial?: (Partial<MemoF
                     <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.discount} onChange={(e) => setCell(i, 'discount', e.target.value)} placeholder="0" /></td>
                     <td className="px-2 py-1"><input className={cell + ' text-right'} type="number" min="0" step="any" value={r.taxRate} onChange={(e) => setCell(i, 'taxRate', e.target.value)} placeholder="0" /></td>
                     <td className="px-2 py-1 text-right font-semibold text-ocean-dark whitespace-nowrap">{money(lineTotal(r))}</td>
+                    <td className="px-2 py-1">
+                      {(r as any)._file ? (
+                        <div className="flex items-center gap-1 text-[11.5px] text-slate-600">
+                          <span className="max-w-[88px] truncate" title={(r as any)._file.name}>📎 {(r as any)._file.name}</span>
+                          <button type="button" className="text-rose-500 hover:text-rose-700 shrink-0" onClick={() => setItemFile(i, undefined)} aria-label="remove file">✕</button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1 rounded-md border border-dashed border-ocean/50 text-ocean px-2 py-1 text-[11.5px] cursor-pointer hover:bg-ocean-light whitespace-nowrap">
+                          {lang === 'th' ? '+ ไฟล์' : '+ File'}
+                          <input type="file" className="hidden" onChange={(e) => { setItemFile(i, e.target.files?.[0]); e.target.value = ''; }} />
+                        </label>
+                      )}
+                    </td>
                     <td className="px-2 py-1 text-center"><button type="button" className="text-red-400 hover:text-red-600 text-lg leading-none" onClick={() => removeRow(i)} aria-label="remove">×</button></td>
                   </tr>
                 ))}
-                {items.length === 0 && <tr><td colSpan={10} className="text-center text-slate-400 py-4 text-[13px]">{t('items.none')}</td></tr>}
+                {items.length === 0 && <tr><td colSpan={11} className="text-center text-slate-400 py-4 text-[13px]">{t('items.none')}</td></tr>}
               </tbody>
             </table>
           </div>
