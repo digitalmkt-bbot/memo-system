@@ -150,11 +150,26 @@ export class MemosService {
   // (ฝ่ายบุคคล) who finalizes — they never route to the MD, regardless of amount.
   private readonly HR_APPROVAL_CATS = ['salary', 'allowance', 'fuel', 'island'];
 
-  private canApprove(user: JwtUser, memo: any) {
+  // Designated approver whose sign-off alone CLOSES a memo (no MD/Owner needed).
+  // MD/Owner may view such a memo and its full history, but get NO approve button.
+  private readonly EXCLUSIVE_APPROVER_EMAIL = 'rm@loveandaman.com';
+  private exclusiveApproverIdCache: number | null = null;
+  private async getExclusiveApproverId(): Promise<number | null> {
+    if (this.exclusiveApproverIdCache != null) return this.exclusiveApproverIdCache;
+    const u = await this.prisma.user.findUnique({ where: { email: this.EXCLUSIVE_APPROVER_EMAIL }, select: { id: true } });
+    if (u) this.exclusiveApproverIdCache = u.id;
+    return u?.id ?? null;
+  }
+
+  private canApprove(user: JwtUser, memo: any, exclusiveApproverId?: number | null) {
     if (!['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(memo.status)) return false;
+    // Memos routed exclusively to the designated approver (นายอานนท์ / rm@) are closed
+    // by HIS approval alone. MD/Owner may VIEW them and the full history, but get no
+    // approve button while he has not decided yet.
+    const isExclusive = exclusiveApproverId != null && memo.currentApproverId === exclusiveApproverId;
     // MD and Owner are the top authority (equal): they can approve ANY pending memo
-    // at ANY step — including the dept-head step — and their approval finalizes it.
-    if (user.role === 'md' || user.role === 'owner') return true;
+    // at ANY step — EXCEPT one reserved for the exclusive approver above.
+    if (user.role === 'md' || user.role === 'owner') return !isExclusive;
     if (memo.currentApproverId !== user.id) return false;
     if (memo.status === 'pending_manager') return true; // assigned first approver (any role)
     if (memo.status === 'pending_hrmd') return user.role === 'hrm';
@@ -244,11 +259,12 @@ export class MemosService {
     });
     const audit = await this.prisma.auditLog.findMany({ where: { memoId: id }, orderBy: { createdAt: 'asc' } });
 
+    const exId = await this.getExclusiveApproverId();
     return {
       memo: this.shape(memo),
       approvals: approvals.map((a) => ({ ...a, approverName: a.approver.name, approverRole: a.approver.role })),
       audit,
-      canApprove: this.canApprove(user, memo),
+      canApprove: this.canApprove(user, memo, exId),
     };
   }
 
@@ -474,10 +490,11 @@ export class MemosService {
   }
 
   async approve(user: JwtUser, id: number, comment?: string, next?: string, excludedItemIds?: number[]) {
+    const exId = await this.getExclusiveApproverId();
     const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
-      if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot approve at current step');
+      if (!this.canApprove(user, memo, exId)) throw new ForbiddenException('Cannot approve at current step');
 
       // Per-item approval (MD / Owner only): mark the chosen lines "ไม่อนุมัติ".
       // They stay on the memo (struck-through) but don't count toward the total.
@@ -510,7 +527,11 @@ export class MemosService {
       };
 
       let data: any; let action = 'approved';
-      if (user.role === 'md' || user.role === 'owner') {
+      if (exId != null && user.id === exId) {
+        // นายอานนท์ (rm@) is the exclusive approver — his sign-off CLOSES the memo
+        // directly: no MD/Owner step, regardless of amount or category.
+        data = finalize(); action = 'approved_rm_final';
+      } else if (user.role === 'md' || user.role === 'owner') {
         // MD and Owner are top authority (equal) — approving at ANY step finalizes.
         data = finalize(); action = `approved_${user.role}_final`;
       } else if (memo.status === 'pending_manager') {
@@ -864,10 +885,11 @@ export class MemosService {
 
   async reject(user: JwtUser, id: number, comment?: string) {
     if (!comment || !comment.trim()) throw new BadRequestException('A reason is required to reject');
+    const exId = await this.getExclusiveApproverId();
     const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
-      if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot reject at current step');
+      if (!this.canApprove(user, memo, exId)) throw new ForbiddenException('Cannot reject at current step');
       const step = memo.status === 'pending_manager' ? 'manager'
         : memo.status === 'pending_hrmd' ? user.role
         : memo.status === 'pending_fc' ? 'fc' : 'executive';
@@ -909,10 +931,11 @@ export class MemosService {
    * approver, who can later approve or reject it.
    */
   async hold(user: JwtUser, id: number, comment?: string) {
+    const exId = await this.getExclusiveApproverId();
     const result = await this.prisma.$transaction(async (tx) => {
       const memo = await tx.memo.findUnique({ where: { id } });
       if (!memo) throw new NotFoundException('Memo not found');
-      if (!this.canApprove(user, memo)) throw new ForbiddenException('Cannot act at current step');
+      if (!this.canApprove(user, memo, exId)) throw new ForbiddenException('Cannot act at current step');
       const step = memo.status === 'pending_manager' ? 'manager'
         : memo.status === 'pending_hrmd' ? user.role
         : memo.status === 'pending_fc' ? 'fc' : 'executive';
