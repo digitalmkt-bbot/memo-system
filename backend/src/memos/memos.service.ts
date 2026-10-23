@@ -163,9 +163,10 @@ export class MemosService {
 
   private canApprove(user: JwtUser, memo: any, exclusiveApproverId?: number | null) {
     if (!['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(memo.status)) return false;
-    // Memos routed exclusively to the designated approver (นายอานนท์ / rm@) are closed
-    // by HIS approval alone. MD/Owner may VIEW them and the full history, but get no
-    // approve button while he has not decided yet.
+    // Memos routed to the designated first approver (นายอานนท์ / rm@): MD/Owner may
+    // VIEW them and the full history, but get NO approve button while he is still the
+    // current approver. Once he approves, it routes to the executive step and the
+    // approve button appears for MD/Owner there.
     const isExclusive = exclusiveApproverId != null && memo.currentApproverId === exclusiveApproverId;
     // MD and Owner are the top authority (equal): they can approve ANY pending memo
     // at ANY step — EXCEPT one reserved for the exclusive approver above.
@@ -528,9 +529,10 @@ export class MemosService {
 
       let data: any; let action = 'approved';
       if (exId != null && user.id === exId) {
-        // นายอานนท์ (rm@) is the exclusive approver — his sign-off CLOSES the memo
-        // directly: no MD/Owner step, regardless of amount or category.
-        data = finalize(); action = 'approved_rm_final';
+        // นายอานนท์ (rm@) is the exclusive FIRST approver. His sign-off does NOT close
+        // the memo — it routes to MD/Owner (regardless of amount/category). Only AFTER
+        // he approves does the approve button appear for MD/Owner.
+        data = await routeExec(); action = data.status === 'pending_executive' ? 'approved_rm_to_exec' : 'approved_rm_final';
       } else if (user.role === 'md' || user.role === 'owner') {
         // MD and Owner are top authority (equal) — approving at ANY step finalizes.
         data = finalize(); action = `approved_${user.role}_final`;
