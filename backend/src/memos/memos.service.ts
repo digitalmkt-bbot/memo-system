@@ -628,7 +628,7 @@ export class MemosService {
     // domain; HR / purchasing stay on loveandaman.com for every company.
     const acEmail = (memo as any).company?.code === 'ANDAMAN' ? 'ac@andamansunday.com' : 'ac@loveandaman.com';
     const ALLOWED = [acEmail, 'hr@loveandaman.com', 'apm@loveandaman.com'];
-    if (memo.createdBy !== user.id && user.role !== 'admin') throw new ForbiddenException('เฉพาะผู้สร้างเท่านั้นที่ส่งปิดงานได้');
+    if (memo.createdBy !== user.id && !['admin', 'md', 'owner'].includes(user.role)) throw new ForbiddenException('เฉพาะผู้สร้าง หรือผู้บริหาร/แอดมิน เท่านั้นที่ส่งปิดงานได้');
     if (memo.status !== 'approved') throw new BadRequestException('ต้องอนุมัติสมบูรณ์ก่อนจึงจะส่งปิดงานได้');
     // Budget memos may be closed on the FIRST round without the actual amount —
     // the actual is reconciled later (see settle(), which works post-close too).

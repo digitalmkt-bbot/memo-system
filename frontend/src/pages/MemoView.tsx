@@ -771,9 +771,9 @@ export function MemoView() {
             {memo.memoNo && <button className="btn btn-ghost" onClick={openPdfPreview} disabled={pdfBusy}>{pdfBusy ? (lang === 'th' ? 'กำลังเปิด…' : 'Opening…') : (lang === 'th' ? 'ดูตัวอย่าง PDF' : 'Preview PDF')}</button>}
             {memo.memoNo && <button className="btn btn-ghost" onClick={() => api.openPdf(mid, memo.memoNo).catch((e) => alert(e.message))}>{t('view.downloadPdf')}</button>}
             <button className="btn btn-ghost" onClick={openSubstitute}>{lang === 'th' ? 'ออกใบแทน' : 'Receipt substitute'}</button>
-            {memo.status === 'approved' && (isCreator || user?.role === 'admin') && !memo.forwardedAt &&
+            {memo.status === 'approved' && (isCreator || ['admin', 'md', 'owner'].includes(user?.role || '')) && !memo.forwardedAt &&
               <button className="btn btn-primary" onClick={() => setFwd(true)}>{t('view.forwardClose')}</button>}
-            {memo.status === 'approved' && (isCreator || user?.role === 'admin') && memo.forwardedAt &&
+            {memo.status === 'approved' && (isCreator || ['admin', 'md', 'owner'].includes(user?.role || '')) && memo.forwardedAt &&
               <button className="btn btn-ghost" onClick={() => setFwd(true)}>{lang === 'th' ? 'ส่งปิดงานเพิ่ม / ส่งอัปเดต' : 'Close to more / resend'}</button>}
             {isCreator && memo.status === 'approved' &&
               <button className="btn btn-ghost" onClick={() => nav(`/memos/edit/${mid}`)}>{t('view.edit')}</button>}
