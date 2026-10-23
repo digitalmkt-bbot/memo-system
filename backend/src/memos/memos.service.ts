@@ -529,10 +529,11 @@ export class MemosService {
 
       let data: any; let action = 'approved';
       if (exId != null && user.id === exId) {
-        // นายอานนท์ (rm@) is the exclusive FIRST approver. His sign-off does NOT close
-        // the memo — it routes to MD/Owner (regardless of amount/category). Only AFTER
-        // he approves does the approve button appear for MD/Owner.
-        data = await routeExec(); action = data.status === 'pending_executive' ? 'approved_rm_to_exec' : 'approved_rm_final';
+        // นายอานนท์ (rm@) is the exclusive approver — his sign-off CLOSES the memo
+        // directly (อนุมัติสมบูรณ์ → ปิดงานได้เลย), no MD/Owner step. MD/Owner are
+        // notified for their records and can view the full history (view-only before,
+        // not blocking the close).
+        data = finalize(); action = 'approved_rm_final';
       } else if (user.role === 'md' || user.role === 'owner') {
         // MD and Owner are top authority (equal) — approving at ANY step finalizes.
         data = finalize(); action = `approved_${user.role}_final`;
@@ -568,11 +569,13 @@ export class MemosService {
     });
     // notify — FIRE-AND-FORGET so a slow / over-quota mail provider can never
     // block or fail the approval response (the request returns immediately).
+    const rmFinalized = exId != null && user.id === exId && result.status === 'approved';
     void (async () => {
       try {
         if (result.status === 'approved') {
           await this.mail.notifyCreator(result, 'approved');
           await this.mail.notifyFcAcknowledge(result); // FC receives it for acknowledgement only
+          if (rmFinalized) { try { await this.mail.notifyExecAcknowledge(result); } catch { /* noop */ } } // MD/Owner informed for the record (FYI)
         } else if (result.status === 'pending_executive') {
           await this.mail.notifyExecApprovers(result); // MD + Owner notified together
         } else {

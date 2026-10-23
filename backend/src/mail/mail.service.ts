@@ -232,6 +232,29 @@ export class MailService {
     }
   }
 
+  /** Inform MD/Owner (for their records) that a memo was approved & closed by the
+   *  designated approver — no action needed from them. */
+  async notifyExecAcknowledge(memo: any) {
+    const users = await this.prisma.user.findMany({ where: { role: { in: ['md', 'owner'] as any }, active: true }, select: { name: true, email: true } });
+    const list = users.filter((u) => u.email);
+    if (!list.length) return;
+    for (const u of list) {
+      const html = this.layout(
+        'บันทึกข้อความอนุมัติแล้ว (แจ้งเพื่อทราบ)',
+        [
+          `เรียน คุณ${this.esc(u.name)}`,
+          `มีบันทึกข้อความที่อนุมัติสมบูรณ์โดยผู้อนุมัติที่กำหนด (ปิดงานได้เลย) — แจ้งเพื่อทราบ ไม่ต้องดำเนินการ`,
+          `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
+          `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
+          `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
+        ],
+        memo.id,
+        'เปิดดูบันทึก',
+      );
+      await this.send(u.email, `[MEMO] แจ้งเพื่อทราบ (ผู้บริหาร): ${memo.memoNo || ''} ${memo.subject || ''}`.trim(), html);
+    }
+  }
+
   /** Notify the Owner (ผู้บริหาร/Owner) that an approved memo awaits their final sign-off. */
   async notifyOwnerPending(memo: any) {
     const owners = await this.prisma.user.findMany({ where: { role: 'owner' as any, active: true }, select: { name: true, email: true } });
