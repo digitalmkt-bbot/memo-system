@@ -561,14 +561,16 @@ async function main() {
     }
   }
 
-  // 25) Direct-to-Owner routing retrofit: memos created by contentcreator@loveandaman.com
-  //     now go straight to the Owner. Re-route that creator's still-pending memos
-  //     (not yet approved/rejected) to 'pending_executive' with the Owner as the
-  //     current approver, so the latest unapproved document is sent to the Owner.
+  // 25) Direct-to-Owner routing retrofit: memos created by these users now go straight
+  //     to the Owner. Re-route each creator's still-pending memos (not yet approved/
+  //     rejected) to 'pending_executive' with the Owner as the current approver.
   {
-    const creator = await prisma.user.findUnique({ where: { email: 'contentcreator@loveandaman.com' }, select: { id: true } });
+    const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com', 'pakorn@loveandaman.com'];
     const owner = await prisma.user.findFirst({ where: { role: 'owner' as any, active: true }, orderBy: { id: 'asc' }, select: { id: true } });
-    if (creator && owner) {
+    for (const email of DIRECT_OWNER_EMAILS) {
+      const creator = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (!creator) { console.warn(`seed 25: ${email} not found — skipped`); continue; }
+      if (!owner) break;
       const pending = await prisma.memo.findMany({
         where: {
           createdBy: creator.id,
@@ -582,10 +584,8 @@ async function main() {
           where: { id: { in: ids } },
           data: { status: 'pending_executive' as any, currentApproverId: owner.id, reminderCount: 0, lastReminderAt: null, escalatedAt: null },
         });
-        console.log(`Re-routed ${ids.length} pending memo(s) from contentcreator@loveandaman.com straight to the Owner`);
+        console.log(`Re-routed ${ids.length} pending memo(s) from ${email} straight to the Owner`);
       }
-    } else if (!creator) {
-      console.warn('seed 25: contentcreator@loveandaman.com not found — skipped');
     }
   }
 

@@ -425,7 +425,7 @@ export class MemosService {
       const creator = await tx.user.findUnique({ where: { id: user.id }, select: { email: true, managerId: true } });
       // Special routing: these creators' memos skip the department head / HR / MD
       // chain and go STRAIGHT to the Owner for final sign-off.
-      const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com'];
+      const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com', 'pakorn@loveandaman.com'];
       const directToOwner = DIRECT_OWNER_EMAILS.includes((creator?.email || '').toLowerCase());
       if (directToOwner) {
         const owner = await tx.user.findFirst({ where: { role: 'owner', active: true }, orderBy: { id: 'asc' }, select: { id: true } });
