@@ -178,14 +178,47 @@ export class MemosService {
     return false;
   }
 
+  // Cross-department viewers: specific users who may see EVERY memo in a set of
+  // departments (beyond their own). e.g. pier.phuket@ sees all TLP + PKTP memos.
+  private readonly CROSS_DEPT_VIEWERS: { email: string; deptCodes: string[] }[] = [
+    { email: 'pier.phuket@loveandaman.com', deptCodes: ['TLP', 'PKTP'] },
+  ];
+  private crossDeptViewerCache: { userId: number; deptIds: number[] }[] | null = null;
+  private async getCrossDeptViewers() {
+    if (this.crossDeptViewerCache) return this.crossDeptViewerCache;
+    const out: { userId: number; deptIds: number[] }[] = [];
+    for (const v of this.CROSS_DEPT_VIEWERS) {
+      const u = await this.prisma.user.findUnique({ where: { email: v.email }, select: { id: true } });
+      if (!u) continue;
+      const depts = await this.prisma.department.findMany({ where: { code: { in: v.deptCodes } }, select: { id: true } });
+      if (depts.length) out.push({ userId: u.id, deptIds: depts.map((d) => d.id) });
+    }
+    this.crossDeptViewerCache = out;
+    return out;
+  }
+  /** Returns the department ids a cross-department viewer may see, or null. */
+  private async allowedDeptIdsFor(userId: number): Promise<number[] | null> {
+    const viewers = await this.getCrossDeptViewers();
+    const v = viewers.find((x) => x.userId === userId);
+    return v ? v.deptIds : null;
+  }
+
   /**
    * Department-level visibility:
    *  - executive / admin / hrm / md / fc : all memos
+   *  - cross-department viewers : all memos in their allowed departments
    *  - manager & staff : memos in their OWN department only (same company);
    *    other people's drafts are hidden (only own drafts are visible).
    */
-  private visibilityScope(user: JwtUser): any {
+  private async visibilityScope(user: JwtUser): Promise<any> {
     if (['admin', 'executive', 'hrm', 'md', 'fc', 'owner'].includes(user.role)) return {};
+    const allowed = await this.allowedDeptIdsFor(user.id);
+    if (allowed && allowed.length) {
+      return {
+        departmentId: { in: allowed },
+        OR: [{ status: { not: 'draft' } }, { createdBy: user.id }],
+      };
+    }
     return {
       companyId: user.companyId,
       departmentId: user.departmentId ?? -1,
@@ -211,7 +244,7 @@ export class MemosService {
       const me = await this.prisma.user.findUnique({ where: { id: user.id }, select: { email: true } });
       where.forwardedTo = { contains: (me?.email || '__no_recipient__').toLowerCase(), mode: 'insensitive' };
     } else {
-      Object.assign(where, this.visibilityScope(user));
+      Object.assign(where, await this.visibilityScope(user));
     }
     if (f.status) where.status = f.status;
     if (f.companyId) where.companyId = parseInt(f.companyId, 10);
@@ -237,9 +270,12 @@ export class MemosService {
     const memo = await this.prisma.memo.findUnique({ where: { id }, include: INCLUDE });
     if (!memo) throw new NotFoundException('Memo not found');
 
+    const allowedDepts = await this.allowedDeptIdsFor(user.id);
     let participant =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
       ['admin', 'executive', 'hrm', 'md', 'fc', 'owner'].includes(user.role) ||
+      (!!allowedDepts && allowedDepts.includes(memo.departmentId) &&
+        (memo.status !== 'draft' || memo.createdBy === user.id)) ||
       (['manager', 'staff'].includes(user.role) &&
         memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
         (memo.status !== 'draft' || memo.createdBy === user.id));
@@ -955,9 +991,12 @@ export class MemosService {
 
   // ---- Attachments (stored in Postgres as bytea) ----
   private async assertCanView(user: JwtUser, memo: any) {
+    const allowedDepts = await this.allowedDeptIdsFor(user.id);
     const ok =
       memo.createdBy === user.id || memo.currentApproverId === user.id ||
       ['admin', 'executive', 'hrm', 'md', 'fc', 'owner'].includes(user.role) ||
+      (!!allowedDepts && allowedDepts.includes(memo.departmentId) &&
+        (memo.status !== 'draft' || memo.createdBy === user.id)) ||
       (['manager', 'staff'].includes(user.role) && memo.companyId === user.companyId && memo.departmentId === user.departmentId &&
         (memo.status !== 'draft' || memo.createdBy === user.id));
     if (ok) return;
