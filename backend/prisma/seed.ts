@@ -565,7 +565,7 @@ async function main() {
   //     to the Owner. Re-route each creator's still-pending memos (not yet approved/
   //     rejected) to 'pending_executive' with the Owner as the current approver.
   {
-    const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com', 'pakorn@loveandaman.com'];
+    const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com'];
     const owner = await prisma.user.findFirst({ where: { role: 'owner' as any, active: true }, orderBy: { id: 'asc' }, select: { id: true } });
     for (const email of DIRECT_OWNER_EMAILS) {
       const creator = await prisma.user.findUnique({ where: { email }, select: { id: true } });
@@ -585,6 +585,27 @@ async function main() {
           data: { status: 'pending_executive' as any, currentApproverId: owner.id, reminderCount: 0, lastReminderAt: null, escalatedAt: null },
         });
         console.log(`Re-routed ${ids.length} pending memo(s) from ${email} straight to the Owner`);
+      }
+    }
+  }
+
+  // 26) Revert pakorn@loveandaman.com back to the normal approval flow: his memos
+  //     were previously routed straight to the Owner (pending_executive). Move any
+  //     still sitting there back to his first approver (manager) at pending_manager.
+  {
+    const creator = await prisma.user.findUnique({ where: { email: 'pakorn@loveandaman.com' }, select: { id: true, managerId: true } });
+    if (creator?.managerId) {
+      const pending = await prisma.memo.findMany({
+        where: { createdBy: creator.id, status: 'pending_executive' as any },
+        select: { id: true },
+      });
+      const ids = pending.map((m) => m.id);
+      if (ids.length) {
+        await prisma.memo.updateMany({
+          where: { id: { in: ids } },
+          data: { status: 'pending_manager' as any, currentApproverId: creator.managerId, reminderCount: 0, lastReminderAt: null, escalatedAt: null },
+        });
+        console.log(`Reverted ${ids.length} pending memo(s) of pakorn@loveandaman.com back to the first approver (manager)`);
       }
     }
   }
