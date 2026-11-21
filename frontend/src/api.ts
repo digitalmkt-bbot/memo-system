@@ -104,6 +104,11 @@ export const api = {
     const res = await http.get(`/memos/${memoId}/attachments/${attId}`, { responseType: 'blob' });
     return URL.createObjectURL(res.data as Blob);
   },
+  // For .heic/.heif the server converts to JPEG so the browser can display it.
+  attachmentPreviewBlobUrl: async (memoId: number, attId: number) => {
+    const res = await http.get(`/memos/${memoId}/attachments/${attId}`, { responseType: 'blob', params: { convert: 'jpeg' } });
+    return URL.createObjectURL(res.data as Blob);
+  },
   pdfUrl: (id: number) => `${BASE}/memos/${id}/pdf`,
   pdfBlobUrl: async (id: number) => {
     const res = await http.get(`/memos/${id}/pdf`, { responseType: 'blob' });

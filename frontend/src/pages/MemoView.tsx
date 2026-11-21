@@ -79,36 +79,23 @@ export function MemoView() {
   const closePdfPreview = () => { if (pdfView) URL.revokeObjectURL(pdfView); setPdfView(null); };
 
   const canPreview = (mime: string) => !!mime && (mime.startsWith('image/') || mime === 'application/pdf');
-  // Browsers can't render .heic/.heif (iPhone photos); convert to JPEG on the fly.
-  const loadHeic2any = (): Promise<any> => new Promise((resolve, reject) => {
-    const w = window as any;
-    if (w.heic2any) return resolve(w.heic2any);
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-    s.onload = () => resolve(w.heic2any);
-    s.onerror = () => reject(new Error('load heic2any failed'));
-    document.head.appendChild(s);
-  });
   const openPreview = async (a: any) => {
+    // Browsers can't render .heic/.heif (iPhone photos) — the server converts those
+    // to JPEG so they display inline.
     const isHeic = /heic|heif/i.test(a.mimeType || '') || /\.(heic|heif)$/i.test(a.filename || '');
     try {
-      const url = await api.attachmentBlobUrl(mid, a.id);
       if (isHeic) {
-        setPreview({ url, mime: a.mimeType || 'image/heic', name: a.filename, heic: true, loading: true });
+        setPreview({ url: '', mime: 'image/jpeg', name: a.filename, loading: true });
         try {
-          const heic2any = await loadHeic2any();
-          const srcBlob = await fetch(url).then((r) => r.blob());
-          const out = await heic2any({ blob: srcBlob, toType: 'image/jpeg', quality: 0.9 });
-          const jpeg = Array.isArray(out) ? out[0] : out;
-          const jpegUrl = URL.createObjectURL(jpeg as Blob);
-          URL.revokeObjectURL(url);
+          const jpegUrl = await api.attachmentPreviewBlobUrl(mid, a.id);
           setPreview({ url: jpegUrl, mime: 'image/jpeg', name: String(a.filename || 'image').replace(/\.(heic|heif)$/i, '.jpg') });
         } catch {
-          // conversion unavailable — keep original blob so the user can download it
+          const url = await api.attachmentBlobUrl(mid, a.id);
           setPreview({ url, mime: a.mimeType || 'image/heic', name: a.filename, heic: true });
         }
         return;
       }
+      const url = await api.attachmentBlobUrl(mid, a.id);
       setPreview({ url, mime: a.mimeType, name: a.filename });
     } catch (e: any) { alert(e.message); }
   };

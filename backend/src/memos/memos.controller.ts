@@ -89,8 +89,21 @@ export class MemosController {
     @Param('id', ParseIntPipe) id: number,
     @Param('attId', ParseIntPipe) attId: number,
     @Res() res: Response,
+    @Query('convert') convert?: string,
   ) {
     const att = await this.svc.getAttachment(req.user, id, attId);
+    // Browsers can't display .heic/.heif (iPhone photos). When asked, convert to
+    // JPEG on the server so the preview shows the image inline.
+    const isHeic = /\.(heic|heif)$/i.test(att.filename || '') || /heic|heif/i.test(att.mimeType || '');
+    if (convert === 'jpeg' && isHeic) {
+      try {
+        const heicConvert = (await import('heic-convert')).default as any;
+        const jpeg: Buffer = await heicConvert({ buffer: Buffer.from(att.data as any), format: 'JPEG', quality: 0.9 });
+        res.set({ 'Content-Type': 'image/jpeg', 'Content-Disposition': 'inline; filename="preview.jpg"' });
+        res.send(Buffer.from(jpeg));
+        return;
+      } catch { /* fall through to the original bytes */ }
+    }
     const asciiName = (att.filename || 'file').replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
     res.set({
       'Content-Type': att.mimeType,
