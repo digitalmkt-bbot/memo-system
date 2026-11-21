@@ -34,7 +34,7 @@ export function MemoView() {
   const [modal, setModal] = useState<'approve' | 'reject' | 'hold' | null>(null);
   const [comment, setComment] = useState('');
   const [nextRole, setNextRole] = useState<string>('hrm');
-  const [preview, setPreview] = useState<{ url: string; mime: string; name: string } | null>(null);
+  const [preview, setPreview] = useState<{ url: string; mime: string; name: string; heic?: boolean; loading?: boolean } | null>(null);
   const [fwd, setFwd] = useState(false);
   const [recips, setRecips] = useState<string[]>([]);
   const [fwdBusy, setFwdBusy] = useState(false);
@@ -79,9 +79,36 @@ export function MemoView() {
   const closePdfPreview = () => { if (pdfView) URL.revokeObjectURL(pdfView); setPdfView(null); };
 
   const canPreview = (mime: string) => !!mime && (mime.startsWith('image/') || mime === 'application/pdf');
+  // Browsers can't render .heic/.heif (iPhone photos); convert to JPEG on the fly.
+  const loadHeic2any = (): Promise<any> => new Promise((resolve, reject) => {
+    const w = window as any;
+    if (w.heic2any) return resolve(w.heic2any);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload = () => resolve(w.heic2any);
+    s.onerror = () => reject(new Error('load heic2any failed'));
+    document.head.appendChild(s);
+  });
   const openPreview = async (a: any) => {
+    const isHeic = /heic|heif/i.test(a.mimeType || '') || /\.(heic|heif)$/i.test(a.filename || '');
     try {
       const url = await api.attachmentBlobUrl(mid, a.id);
+      if (isHeic) {
+        setPreview({ url, mime: a.mimeType || 'image/heic', name: a.filename, heic: true, loading: true });
+        try {
+          const heic2any = await loadHeic2any();
+          const srcBlob = await fetch(url).then((r) => r.blob());
+          const out = await heic2any({ blob: srcBlob, toType: 'image/jpeg', quality: 0.9 });
+          const jpeg = Array.isArray(out) ? out[0] : out;
+          const jpegUrl = URL.createObjectURL(jpeg as Blob);
+          URL.revokeObjectURL(url);
+          setPreview({ url: jpegUrl, mime: 'image/jpeg', name: String(a.filename || 'image').replace(/\.(heic|heif)$/i, '.jpg') });
+        } catch {
+          // conversion unavailable — keep original blob so the user can download it
+          setPreview({ url, mime: a.mimeType || 'image/heic', name: a.filename, heic: true });
+        }
+        return;
+      }
       setPreview({ url, mime: a.mimeType, name: a.filename });
     } catch (e: any) { alert(e.message); }
   };
@@ -937,9 +964,18 @@ export function MemoView() {
               </div>
             </div>
             <div className="bg-gray-50 flex-1 overflow-auto grid place-items-center">
-              {preview.mime.startsWith('image/')
-                ? <img src={preview.url} alt={preview.name} className="max-w-full max-h-[80vh] object-contain" />
-                : <iframe src={preview.url} title={preview.name} className="w-full h-[80vh] border-0" />}
+              {preview.loading
+                ? <div className="p-10 text-center text-slate-500 text-[14px]">{lang === 'th' ? 'กำลังแปลงไฟล์ .heic เพื่อแสดงตัวอย่าง…' : 'Converting .heic for preview…'}</div>
+                : preview.heic
+                  ? <div className="p-8 text-center">
+                      <div className="text-[40px] mb-2">🖼️</div>
+                      <div className="text-[14px] font-semibold text-ink mb-1">{preview.name}</div>
+                      <p className="text-[13px] text-slate-500 mb-4">{lang === 'th' ? 'ไฟล์ .heic (รูปจาก iPhone) เบราว์เซอร์แสดงตัวอย่างไม่ได้' : 'Browsers can’t preview .heic files'}</p>
+                      <a className="btn btn-primary" href={preview.url} download={preview.name}>{lang === 'th' ? 'ดาวน์โหลดเพื่อเปิดดู' : 'Download to view'}</a>
+                    </div>
+                  : preview.mime.startsWith('image/')
+                    ? <img src={preview.url} alt={preview.name} className="max-w-full max-h-[80vh] object-contain" />
+                    : <iframe src={preview.url} title={preview.name} className="w-full h-[80vh] border-0" />}
             </div>
           </div>
         </div>
