@@ -610,6 +610,21 @@ async function main() {
     }
   }
 
+  // 27) One-off fix: memo No.LOVE-MKT-2026-11-021 was already approved by the MD —
+  //     finalize it (approved) with the MD signature so the creator can close it.
+  {
+    const memo = await prisma.memo.findFirst({ where: { memoNo: { endsWith: 'LOVE-MKT-2026-11-021' } }, select: { id: true, status: true } });
+    if (memo && ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'].includes(memo.status as any)) {
+      const md = await prisma.user.findUnique({ where: { email: 'md@loveandaman.com' }, select: { id: true } });
+      if (md) {
+        const existing = await prisma.approval.findFirst({ where: { memoId: memo.id, approvedBy: md.id, status: 'approve' } });
+        if (!existing) await prisma.approval.create({ data: { memoId: memo.id, step: 'md', approvedBy: md.id, status: 'approve', comment: 'อนุมัติ (บันทึกย้อนหลัง)' } });
+      }
+      await prisma.memo.update({ where: { id: memo.id }, data: { status: 'approved' as any, currentApproverId: null, closedAt: new Date(), onHold: false } });
+      console.log('Finalized memo LOVE-MKT-2026-11-021 (MD approved) → approved');
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
