@@ -643,6 +643,35 @@ async function main() {
     }
   }
 
+  // 29) Retrofit for the direct-to-MD rule: move these creators' still-pending memos
+  //     to the MD for direct approval (pending_manager with the MD as current approver).
+  {
+    const DIRECT_MD_EMAILS = ['digital.mkt@loveandaman.com', 'asst_marcom@loveandaman.com', 'bd@loveandaman.com'];
+    const md = await prisma.user.findFirst({ where: { role: 'md' as any, active: true }, orderBy: { id: 'asc' }, select: { id: true } });
+    if (md) {
+      for (const email of DIRECT_MD_EMAILS) {
+        const creator = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+        if (!creator) { console.warn(`seed 29: ${email} not found — skipped`); continue; }
+        const pending = await prisma.memo.findMany({
+          where: {
+            createdBy: creator.id,
+            status: { in: ['pending_manager', 'pending_hrmd', 'pending_fc', 'pending_executive'] as any },
+            OR: [{ status: { not: 'pending_manager' as any } }, { currentApproverId: { not: md.id } }],
+          },
+          select: { id: true },
+        });
+        const ids = pending.map((m) => m.id);
+        if (ids.length) {
+          await prisma.memo.updateMany({
+            where: { id: { in: ids } },
+            data: { status: 'pending_manager' as any, currentApproverId: md.id, reminderCount: 0, lastReminderAt: null, escalatedAt: null },
+          });
+          console.log(`Moved ${ids.length} pending memo(s) from ${email} straight to the MD`);
+        }
+      }
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');
