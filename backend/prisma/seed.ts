@@ -625,6 +625,24 @@ async function main() {
     }
   }
 
+  // 28) Executive step: the Owner is now the PRIMARY approver (gets the e-mail +
+  //     reminders); the MD is the backup. Reassign memos still sitting at the exec
+  //     step with an MD as current approver over to the Owner so reminders go there.
+  {
+    const owner = await prisma.user.findFirst({ where: { role: 'owner' as any, active: true }, orderBy: { id: 'asc' }, select: { id: true } });
+    if (owner) {
+      const execMemos = await prisma.memo.findMany({
+        where: { status: 'pending_executive' as any },
+        select: { id: true, currentApprover: { select: { role: true } } },
+      });
+      const ids = execMemos.filter((m) => (m.currentApprover?.role as any) === 'md').map((m) => m.id);
+      if (ids.length) {
+        await prisma.memo.updateMany({ where: { id: { in: ids } }, data: { currentApproverId: owner.id } });
+        console.log(`Reassigned ${ids.length} executive-step memo(s) to the Owner (primary approver)`);
+      }
+    }
+  }
+
   console.log('Seed complete: 3 companies, departments seeded, demo + imported users.');
   console.log('  admin@loveandaman.com / admin123');
   console.log('  imported users default password: Password123!');

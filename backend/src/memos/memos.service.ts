@@ -462,10 +462,16 @@ export class MemosService {
       // Special routing: these creators' memos skip the department head / HR / MD
       // chain and go STRAIGHT to the Owner for final sign-off.
       const DIRECT_OWNER_EMAILS = ['contentcreator@loveandaman.com'];
-      const directToOwner = DIRECT_OWNER_EMAILS.includes((creator?.email || '').toLowerCase());
-      if (directToOwner) {
+      // These creators' memos skip the department head and go STRAIGHT to the MD for
+      // direct approval (MD's sign-off finalizes).
+      const DIRECT_MD_EMAILS = ['digital.mkt@loveandaman.com', 'asst_marcom@loveandaman.com', 'bd@loveandaman.com'];
+      const emailLc = (creator?.email || '').toLowerCase();
+      if (DIRECT_OWNER_EMAILS.includes(emailLc)) {
         const owner = await tx.user.findFirst({ where: { role: 'owner', active: true }, orderBy: { id: 'asc' }, select: { id: true } });
         if (owner && owner.id !== user.id) { approver = owner.id; firstStatus = 'pending_executive'; }
+      } else if (DIRECT_MD_EMAILS.includes(emailLc)) {
+        const md = await tx.user.findFirst({ where: { role: 'md', active: true }, orderBy: { id: 'asc' }, select: { id: true } });
+        if (md && md.id !== user.id) { approver = md.id; firstStatus = 'pending_manager'; }
       }
       if (!approver && creator?.managerId && creator.managerId !== user.id) {
         const m = await tx.user.findFirst({ where: { id: creator.managerId, active: true }, select: { id: true } });
@@ -552,12 +558,13 @@ export class MemosService {
       await tx.approval.create({ data: { memoId: id, step, approvedBy: user.id, status: 'approve', comment: comment ?? null } });
 
       const finalize = () => ({ status: 'approved' as any, currentApproverId: null, closedAt: new Date() });
-      // Route to the FINAL executive step where MD and Owner are equal: either can
-      // approve. currentApproverId is just the primary; both are notified & can act.
+      // Route to the FINAL executive step. The OWNER is the primary approver (gets the
+      // e-mail + reminders); the MD is the backup — still able to approve, but not
+      // e-mailed. currentApproverId = the Owner so reminders go to the Owner only.
       const routeExec = async () => {
         const md = (await this.pickByRole('md', memo.companyId, user.id)) ?? (await this.pickByRole('md', undefined, user.id));
         const owner = (await this.pickByRole('owner', memo.companyId, user.id)) ?? (await this.pickByRole('owner', undefined, user.id));
-        const primary = md ?? owner;
+        const primary = owner ?? md;
         return primary
           ? { status: 'pending_executive' as any, currentApproverId: primary, reminderCount: 0, lastReminderAt: null, escalatedAt: null }
           : finalize();

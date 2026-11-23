@@ -212,15 +212,21 @@ export class MailService {
 
   /** Notify BOTH the MD and the Owner (equal authority) that a memo awaits their approval — either may approve. */
   async notifyExecApprovers(memo: any) {
-    const users = await this.prisma.user.findMany({ where: { role: { in: ['md', 'owner'] as any }, active: true }, select: { name: true, email: true } });
-    const list = users.filter((u) => u.email);
+    // The OWNER is the primary approver at the final step → e-mail the Owner only.
+    // The MD is the backup (can still approve) but is NOT e-mailed. Falls back to the
+    // MD only if there is no active Owner, so the notice is never lost.
+    let list = await this.prisma.user.findMany({ where: { role: 'owner' as any, active: true }, select: { name: true, email: true } });
+    list = list.filter((u) => u.email);
+    if (!list.length) {
+      list = (await this.prisma.user.findMany({ where: { role: 'md' as any, active: true }, select: { name: true, email: true } })).filter((u) => u.email);
+    }
     if (!list.length) return;
     for (const u of list) {
       const html = this.layout(
         'มีบันทึกข้อความรออนุมัติ (ผู้บริหาร)',
         [
           `เรียน คุณ${this.esc(u.name)}`,
-          `มีบันทึกข้อความรอการอนุมัติขั้นสุดท้าย — กรรมการผู้จัดการ (MD) หรือ ผู้บริหาร (Owner) ท่านใดอนุมัติก่อนก็ถือว่าสมบูรณ์`,
+          `มีบันทึกข้อความรอการอนุมัติขั้นสุดท้ายจากท่าน (ผู้บริหาร / Owner)`,
           `<b>เลขที่:</b> ${this.esc(memo.memoNo || '-')}`,
           `<b>เรื่อง:</b> ${this.esc(memo.subject || '-')}`,
           `<b>ผู้ขอ:</b> ${this.esc(memo.creatorName || memo.fromName || '-')}`,
